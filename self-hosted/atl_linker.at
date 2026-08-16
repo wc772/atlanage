@@ -1,0 +1,1257 @@
+设 IMAGE_BASE = 0x00400000;
+设 SECTION_ALIGNMENT = 0x1000;
+设 FILE_ALIGNMENT = 0x200;
+设 MACHINE_AMD64 = 0x8664;
+设 SUBSYSTEM_CUI = 3;
+
+设 g_link_symbols = 空;
+设 g_link_relocs = 空;
+设 g_link_modules = 空;
+设 g_link_imports = 空;
+设 g_link_defined = 空;
+设 g_link_dlls = 空;
+设 g_link_import_dlls = 空;
+设 g_link_dll_iat_start = 空;
+
+设 g_thunk_code = 0;
+设 g_thunk_params = 0;
+
+声明 init_linker_globals(){
+    创建 ArrayList:g_link_symbols;
+    创建 ArrayList:g_link_relocs;
+    创建 ArrayList:g_link_modules;
+    创建 ArrayList:g_link_imports;
+    g_link_defined = [];
+    创建 ArrayList:g_link_dlls;
+    创建 ArrayList:g_link_import_dlls;
+    创建 ArrayList:g_link_dll_iat_start;
+    返回值 0;
+};
+init_linker_globals();
+
+声明 read_u16(addr, off){
+    设 b0 = 内存.读字节(addr, off);
+    设 b1 = 内存.读字节(addr, off + 1);
+    返回值 b0 + b1 * 256;
+};
+
+声明 read_u32(addr, off){
+    设 b0 = 内存.读字节(addr, off);
+    设 b1 = 内存.读字节(addr, off + 1);
+    设 b2 = 内存.读字节(addr, off + 2);
+    设 b3 = 内存.读字节(addr, off + 3);
+    返回值 b0 + b1 * 256 + b2 * 65536 + b3 * 16777216;
+};
+
+声明 write_u8(buf, off, val){
+    内存.写字节(buf, off, val & 255);
+    返回值 0;
+};
+
+声明 write_u16(buf, off, val){
+    设 v = val;
+    如果(v < 0){ v = v + 65536; };
+    内存.写字节(buf, off, v & 255);
+    内存.写字节(buf, off + 1, (v / 256) & 255);
+    返回值 0;
+};
+
+声明 write_u32(buf, off, val){
+    设 v = val;
+    如果(v < 0){ v = v + 4294967296; };
+    内存.写字节(buf, off, v & 255);
+    内存.写字节(buf, off + 1, (v / 256) & 255);
+    内存.写字节(buf, off + 2, (v / 65536) & 255);
+    内存.写字节(buf, off + 3, (v / 16777216) & 255);
+    返回值 0;
+};
+
+声明 write_u64_lo(buf, off, val){
+    write_u32(buf, off, val);
+    write_u32(buf, off + 4, 0);
+    返回值 0;
+};
+
+声明 write_u64(buf, off, val){
+    设 lo = val & 4294967295;
+    设 hi = (val / 4294967296) & 4294967295;
+    write_u32(buf, off, lo);
+    write_u32(buf, off + 4, hi);
+    返回值 0;
+};
+
+声明 align_up(val, alignment){
+    返回值 ((val + alignment - 1) / alignment) * alignment;
+};
+
+声明 read_cstr(addr, off, max_len){
+    设 s = "";
+    设 i = 0;
+    循环(i < max_len){
+        设 b = 内存.读字节(addr, off + i);
+        如果(b == 0){ 跳出; };
+        s = s + 字符(b);
+        i = i + 1;
+    };
+    返回值 s;
+};
+
+声明 mem_zero(buf, n){
+    设 i = 0;
+    循环(i < n){
+        内存.写字节(buf, i, 0);
+        i = i + 1;
+    };
+    返回值 0;
+};
+
+声明 mem_copy(dst, dst_off, src, src_off, n){
+    设 i = 0;
+    循环(i < n){
+        设 b = 内存.读字节(src, src_off + i);
+        内存.写字节(dst, dst_off + i, b);
+        i = i + 1;
+    };
+    返回值 0;
+};
+
+声明 section_rva(sec){
+    如果(sec == 0){ 返回值 0x1000; };
+    如果(sec == 1){ 返回值 0x2000; };
+    如果(sec == 2){ 返回值 0x3000; };
+    返回值 0;
+};
+
+声明 write_section_name(buf, off, name){
+    设 len = name.长度();
+    设 i = 0;
+    循环(i < 8){
+        设 b = 0;
+        如果(i < len){
+            b = name.字节(i);
+        };
+        内存.写字节(buf, off + i, b);
+        i = i + 1;
+    };
+    返回值 0;
+};
+
+声明 dll_for_import(name0){
+    设 name = name0;
+    如果(name.以开始("__imp_")){
+        name = name.子字符串(6, name.长度());
+    };
+    如果(name.以开始("Internet") || name.以开始("Http")){ 返回值 "wininet.dll"; };
+    如果(name == "WSAStartup" || name == "gethostbyname" || name == "socket" ||
+       name == "htons" || name == "ioctlsocket" || name == "connect" ||
+       name == "closesocket" || name == "WSAGetLastError" || name == "select" ||
+       name == "getsockopt" || name == "inet_ntoa"){ 返回值 "ws2_32.dll"; };
+    如果(name == "BitBlt" || name == "CreateCompatibleDC" || name == "CreateDIBSection" ||
+       name == "SelectObject" || name == "DeleteDC" || name == "DeleteObject" ||
+       name == "CreateFontW" || name == "SetBkMode" || name == "SetTextColor" ||
+       name == "TextOutW" || name == "GetTextExtentPoint32W"){ 返回值 "gdi32.dll"; };
+    如果(name == "GetWindowTextW" || name == "DestroyWindow" ||
+       name == "DefWindowProcA" || name == "RegisterClassExA" || name == "CreateWindowExA" ||
+       name == "CreateWindowExW" || name == "SetWindowTextW" || name == "ShowWindow" ||
+       name == "UpdateWindow" || name == "GetMessageA" || name == "IsDialogMessageA" ||
+       name == "DispatchMessageA" || name == "TranslateMessage" ||
+       name == "BeginPaint" || name == "GetClientRect" || name == "EndPaint" ||
+       name == "InvalidateRect" || name == "PeekMessageA" || name == "GetAsyncKeyState" ||
+       name == "MoveWindow" || name == "GetSystemMetrics"){ 返回值 "user32.dll"; };
+    如果(name == "timeBeginPeriod" || name == "timeEndPeriod"){ 返回值 "winmm.dll"; };
+    返回值 "kernel32.dll";
+};
+
+声明 import_iat_off(import_idx){
+    设 dll_of = g_link_import_dlls.获取(import_idx);
+    设 dll_idx = g_link_dlls.查找(dll_of);
+    设 within = 0;
+    设 k = 0;
+    循环(k < import_idx){
+        如果(g_link_import_dlls.获取(k) == dll_of){ within = within + 1; };
+        k = k + 1;
+    };
+    返回值 g_link_dll_iat_start.获取(dll_idx) + within;
+};
+
+声明 w8(off, v){
+    内存.写字节(g_thunk_code, off, v);
+    返回值 0;
+};
+
+声明 init_win32_thunk(){
+    g_thunk_params = 分配(64);
+    g_thunk_code = 内存.分配可执行内存(80);
+
+    w8(0, 0x48); w8(1, 0x81); w8(2, 0xEC); w8(3, 0x48); w8(4, 0); w8(5, 0); w8(6, 0);
+
+    w8(7, 0x48); w8(8, 0xB8);
+
+    w8(17, 0x48); w8(18, 0x8B); w8(19, 0x08);
+
+    w8(20, 0x48); w8(21, 0x8B); w8(22, 0x50); w8(23, 0x08);
+
+    w8(24, 0x4C); w8(25, 0x8B); w8(26, 0x40); w8(27, 0x10);
+
+    w8(28, 0x4C); w8(29, 0x8B); w8(30, 0x48); w8(31, 0x18);
+
+    w8(32, 0x4C); w8(33, 0x8B); w8(34, 0x50); w8(35, 0x20);
+
+    w8(36, 0x4C); w8(37, 0x89); w8(38, 0x54); w8(39, 0x24); w8(40, 0x20);
+
+    w8(41, 0x4C); w8(42, 0x8B); w8(43, 0x50); w8(44, 0x28);
+
+    w8(45, 0x4C); w8(46, 0x89); w8(47, 0x54); w8(48, 0x24); w8(49, 0x28);
+
+    w8(50, 0x4C); w8(51, 0x8B); w8(52, 0x50); w8(53, 0x30);
+
+    w8(54, 0x4C); w8(55, 0x89); w8(56, 0x54); w8(57, 0x24); w8(58, 0x30);
+
+    w8(59, 0x4C); w8(60, 0x8B); w8(61, 0x50); w8(62, 0x38);
+
+    w8(63, 0x41); w8(64, 0xFF); w8(65, 0xD2);
+
+    w8(66, 0x48); w8(67, 0x81); w8(68, 0xC4); w8(69, 0x48); w8(70, 0); w8(71, 0); w8(72, 0);
+
+    w8(73, 0xC3);
+
+    write_u64(g_thunk_code, 9, g_thunk_params);
+
+    内存.设为可执行(g_thunk_code, 80);
+    返回值 0;
+};
+init_win32_thunk();
+
+声明 win_create_file(path){
+
+    如果(g_thunk_code == 0){ init_win32_thunk(); };
+
+    设 path_len = 0;
+    设 pbb = 1;
+    循环(1 == 1){
+        pbb = path.字节(path_len);
+        如果(pbb == 0){ 跳出; };
+        path_len = path_len + 1;
+    };
+    设 path_buf = 分配(path_len + 1);
+    设 i = 0;
+    循环(i < path_len){
+        内存.写字节(path_buf, i, path.字节(i));
+        i = i + 1;
+    };
+    内存.写字节(path_buf, path_len, 0);
+
+    设 fn_mb = 系统.获取函数("kernel32.dll", "MultiByteToWideChar");
+    write_u64(g_thunk_params, 0, 65001);
+    write_u64(g_thunk_params, 8, 0);
+    write_u64(g_thunk_params, 16, path_buf);
+    write_u64(g_thunk_params, 24, path_len);
+    write_u64(g_thunk_params, 32, 0);
+    write_u64(g_thunk_params, 40, 0);
+    write_u64(g_thunk_params, 48, 0);
+    write_u64(g_thunk_params, 56, fn_mb);
+    设 wlen = 内存.执行(g_thunk_code);
+    如果(wlen <= 0){ 释放(path_buf); 返回值 0; };
+
+    设 wpath = 分配(wlen * 2 + 2);
+    write_u64(g_thunk_params, 32, wpath);
+    write_u64(g_thunk_params, 40, wlen);
+    内存.执行(g_thunk_code);
+
+    内存.写字节(wpath, wlen * 2, 0);
+    内存.写字节(wpath, wlen * 2 + 1, 0);
+
+    设 fn_cw = 系统.获取函数("kernel32.dll", "CreateFileW");
+    write_u64(g_thunk_params, 0, wpath);
+    write_u64(g_thunk_params, 8, 0x40000000);
+    write_u64(g_thunk_params, 16, 1);
+    write_u64(g_thunk_params, 24, 0);
+    write_u64(g_thunk_params, 32, 2);
+    write_u64(g_thunk_params, 40, 0);
+    write_u64(g_thunk_params, 48, 0);
+    write_u64(g_thunk_params, 56, fn_cw);
+    设 h = 内存.执行(g_thunk_code);
+    释放(wpath);
+    释放(path_buf);
+    返回值 h;
+};
+
+声明 win_write_file(handle, buf, len){
+    设 fn = 系统.获取函数("kernel32.dll", "WriteFile");
+    设 written_buf = 分配(8);
+    write_u64(g_thunk_params, 0, handle);
+    write_u64(g_thunk_params, 8, buf);
+    write_u64(g_thunk_params, 16, len);
+    write_u64(g_thunk_params, 24, written_buf);
+    write_u64(g_thunk_params, 32, 0);
+    write_u64(g_thunk_params, 40, 0);
+    write_u64(g_thunk_params, 48, 0);
+    write_u64(g_thunk_params, 56, fn);
+    设 ret = 内存.执行(g_thunk_code);
+    释放(written_buf);
+    返回值 ret;
+};
+
+声明 win_close_handle(handle){
+    设 fn = 系统.获取函数("kernel32.dll", "CloseHandle");
+    write_u64(g_thunk_params, 0, handle);
+    write_u64(g_thunk_params, 8, 0);
+    write_u64(g_thunk_params, 16, 0);
+    write_u64(g_thunk_params, 24, 0);
+    write_u64(g_thunk_params, 32, 0);
+    write_u64(g_thunk_params, 40, 0);
+    write_u64(g_thunk_params, 48, 0);
+    write_u64(g_thunk_params, 56, fn);
+    设 ret = 内存.执行(g_thunk_code);
+    返回值 ret;
+};
+
+类 LinkSymbol {
+公开:
+    设 name 存在;
+    设 section 存在;
+    设 offset 存在;
+    设 is_extern 存在;
+    设 is_static 存在;
+    设 module_idx 存在;
+    构造(){ name=空; section=-1; offset=0; is_extern=0; is_static=0; module_idx=0; };
+};
+
+类 LinkReloc {
+公开:
+    设 section 存在;
+    设 offset 存在;
+    设 sym_name 存在;
+    设 type 存在;
+    设 module_idx 存在;
+    构造(){ section=0; offset=0; sym_name=空; type=0; module_idx=0; };
+};
+
+类 LinkModule {
+公开:
+    设 text_addr 存在;
+    设 text_size 存在;
+    设 data_addr 存在;
+    设 data_size 存在;
+    设 bss_size 存在;
+    设 symbols 存在;
+    设 relocs 存在;
+    设 text_base 存在;
+    设 data_base 存在;
+    设 bss_base 存在;
+    构造(){
+        text_addr=0; text_size=0;
+        data_addr=0; data_size=0;
+        bss_size=0;
+        text_base=0; data_base=0; bss_base=0;
+        symbols = 创建 ArrayList;
+        relocs = 创建 ArrayList;
+    };
+};
+
+声明 parse_coff(filename){
+    设 h = 打开文件("" + filename);
+    设 sz = 文件大小(h);
+    设 buf = 分配(sz);
+    读取字节(h, buf, sz);
+    关闭文件(h);
+
+    创建 LinkModule:mod;
+
+    设 num_sections = read_u16(buf, 2);
+    设 ptr_symtab = read_u32(buf, 8);
+    设 num_syms = read_u32(buf, 12);
+    设 size_opt_hdr = read_u16(buf, 16);
+
+    设 sec_hdr_start = 20 + size_opt_hdr;
+
+    设 strtab = ptr_symtab + num_syms * 18;
+
+    设 text_total = 0; 设 data_total = 0; 设 bss_total = 0;
+    创建 ArrayList:sec_m;
+    创建 ArrayList:sec_b;
+    创建 ArrayList:sec_rp;
+    创建 ArrayList:sec_rs;
+    创建 ArrayList:sec_rlp;
+    创建 ArrayList:sec_nrl;
+
+    设 i = 0;
+    循环(i < num_sections){
+        设 shoff = sec_hdr_start + i * 40;
+        设 sec_name = read_cstr(buf, shoff, 8);
+
+        如果(sec_name.长度() > 1 && sec_name.字节(0) == 0x2F){
+            设 soff = 0;
+            设 si2 = 1;
+            设 slen2 = sec_name.长度();
+            循环(si2 < slen2){
+                soff = soff * 10 + (sec_name.字节(si2) - 48);
+                si2 = si2 + 1;
+            };
+            sec_name = read_cstr(buf, strtab + soff, 256);
+        };
+        设 raw_size = read_u32(buf, shoff + 16);
+        设 virt_size = read_u32(buf, shoff + 8);
+        设 raw_ptr = read_u32(buf, shoff + 20);
+        设 reloc_ptr = read_u32(buf, shoff + 24);
+        设 num_relocs = read_u16(buf, shoff + 32);
+        设 merge = -1;
+        设 base = 0;
+        如果(sec_name.以开始(".text")){ merge = 0; base = text_total; text_total = text_total + raw_size; };
+        又如果(sec_name.以开始(".data")){ merge = 1; base = data_total; data_total = data_total + raw_size; };
+        又如果(sec_name.以开始(".rdata")){ merge = 1; base = data_total; data_total = data_total + raw_size; };
+
+        又如果(sec_name.以开始(".bss")){
+            merge = 2; base = bss_total;
+            设 bss_sz = virt_size;
+            如果(bss_sz == 0){ bss_sz = raw_size; };
+            bss_total = bss_total + bss_sz;
+        };
+        sec_m.添加(merge);
+        sec_b.添加(base);
+        sec_rp.添加(raw_ptr);
+        sec_rs.添加(raw_size);
+        sec_rlp.添加(reloc_ptr);
+        sec_nrl.添加(num_relocs);
+        i = i + 1;
+    };
+
+    mod.text_size = text_total;
+    如果(text_total > 0){
+        设 text_buf = 分配(text_total);
+        mem_zero(text_buf, text_total);
+        设 k = 0;
+        循环(k < num_sections){
+            如果(sec_m.获取(k) == 0 && sec_rs.获取(k) > 0){
+                mem_copy(text_buf, sec_b.获取(k), buf, sec_rp.获取(k), sec_rs.获取(k));
+            };
+            k = k + 1;
+        };
+        mod.text_addr = text_buf;
+    };
+
+    mod.data_size = data_total;
+    如果(data_total > 0){
+        设 data_buf = 分配(data_total);
+        mem_zero(data_buf, data_total);
+        设 k = 0;
+        循环(k < num_sections){
+            如果(sec_m.获取(k) == 1 && sec_rs.获取(k) > 0){
+                mem_copy(data_buf, sec_b.获取(k), buf, sec_rp.获取(k), sec_rs.获取(k));
+            };
+            k = k + 1;
+        };
+        mod.data_addr = data_buf;
+    };
+
+    mod.bss_size = bss_total;
+
+    i = 0;
+    循环(i < num_syms){
+        设 symoff = ptr_symtab + i * 18;
+
+        设 first4 = read_u32(buf, symoff);
+        设 sym_name = "";
+        如果(first4 != 0){
+
+            sym_name = read_cstr(buf, symoff, 8);
+        }否则{
+
+            设 str_off = read_u32(buf, symoff + 4);
+            sym_name = read_cstr(buf, strtab + str_off, 256);
+        };
+
+        设 value = read_u32(buf, symoff + 8);
+        设 sec_num = read_u16(buf, symoff + 12);
+        设 storage_class = 内存.读字节(buf, symoff + 16);
+        设 num_aux = 内存.读字节(buf, symoff + 17);
+
+        如果(storage_class == 2 || storage_class == 3){
+            如果(sym_name != "" && sym_name.长度() > 0){
+                如果(sec_num > 0 && (sec_num - 1) < num_sections){
+
+                    设 sec_idx = sec_num - 1;
+                    设 mapped = sec_m.获取(sec_idx);
+                    设 adj_offset = value + sec_b.获取(sec_idx);
+                    如果(mapped >= 0){
+                        创建 LinkSymbol:sym;
+                        sym.name = sym_name;
+                        sym.section = mapped;
+                        sym.offset = adj_offset;
+                        sym.is_extern = 0;
+
+                        sym.is_static = 0;
+                        如果(storage_class == 3){ sym.is_static = 1; };
+                        sym.module_idx = 0;
+                        mod.symbols.添加(sym);
+                    };
+                }否则{
+
+                    如果(storage_class == 2){
+                        创建 LinkSymbol:sym;
+                        sym.name = sym_name;
+                        sym.section = -1;
+                        sym.offset = 0;
+                        sym.is_extern = 1;
+                        sym.module_idx = 0;
+                        mod.symbols.添加(sym);
+                    };
+                };
+            };
+        };
+
+        i = i + 1 + num_aux;
+    };
+
+    设 si = 0;
+    循环(si < num_sections){
+        设 nrel = sec_nrl.获取(si);
+        设 merge_sec = sec_m.获取(si);
+        如果(nrel > 0 && merge_sec >= 0){
+            设 rel_base = sec_rlp.获取(si);
+            设 rel_base_off = sec_b.获取(si);
+
+            设 real_nrel = nrel;
+            设 rel_start = rel_base;
+            如果(nrel == 0xFFFF){
+                real_nrel = read_u32(buf, rel_base);
+                rel_start = rel_base + 10;
+            };
+            设 j = 0;
+            循环(j < real_nrel){
+                设 roff = rel_start + j * 10;
+                设 va = read_u32(buf, roff);
+                设 sym_idx = read_u32(buf, roff + 4);
+
+                设 symoff2 = ptr_symtab + sym_idx * 18;
+                设 r_sym_name = "";
+                设 r_first4 = read_u32(buf, symoff2);
+                如果(r_first4 != 0){
+                    r_sym_name = read_cstr(buf, symoff2, 8);
+                }否则{
+                    设 r_str_off = read_u32(buf, symoff2 + 4);
+                    r_sym_name = read_cstr(buf, strtab + r_str_off, 256);
+                };
+
+                创建 LinkReloc:reloc;
+                reloc.section = merge_sec;
+                reloc.offset = va + rel_base_off;
+                reloc.sym_name = r_sym_name;
+
+                设 ctype = read_u16(buf, roff + 8);
+                如果(ctype == 1){
+                    reloc.type = 2;
+                }又如果(ctype == 5){
+                    reloc.type = 3;
+                }又如果(ctype == 8){
+                    reloc.type = 4;
+                }否则{
+                    reloc.type = 0;
+                };
+                reloc.module_idx = 0;
+                mod.relocs.添加(reloc);
+
+                j = j + 1;
+            };
+        };
+        si = si + 1;
+    };
+
+    释放(buf);
+    返回值 mod;
+};
+
+声明 asmresult_to_module(asm_result){
+    创建 AsmResult:ar;
+    ar = asm_result;
+    创建 LinkModule:mod;
+
+    mod.text_size = ar.text_bytes.长度();
+    如果(mod.text_size > 0){
+        设 text_buf = 分配(mod.text_size);
+        设 i = 0;
+        循环(i < mod.text_size){
+            设 b = ar.text_bytes.获取(i);
+            内存.写字节(text_buf, i, b);
+            i = i + 1;
+        };
+        mod.text_addr = text_buf;
+    };
+
+    mod.data_size = ar.data_bytes.长度();
+    如果(mod.data_size > 0){
+        设 data_buf = 分配(mod.data_size);
+        设 i = 0;
+        循环(i < mod.data_size){
+            设 b = ar.data_bytes.获取(i);
+            内存.写字节(data_buf, i, b);
+            i = i + 1;
+        };
+        mod.data_addr = data_buf;
+    };
+
+    mod.bss_size = ar.bss_size;
+
+    设 nsyms = ar.symbols.长度();
+    设 i = 0;
+    循环(i < nsyms){
+        创建 AsmSymbol:asym;
+        asym = ar.symbols.获取(i);
+        创建 LinkSymbol:sym;
+        sym.name = asym.name;
+        sym.section = asym.section;
+        sym.offset = asym.offset;
+        sym.is_extern = asym.is_extern;
+        sym.module_idx = 0;
+        mod.symbols.添加(sym);
+        i = i + 1;
+    };
+
+    设 nrelocs = ar.relocs.长度();
+    i = 0;
+    循环(i < nrelocs){
+        创建 AsmReloc:areloc;
+        areloc = ar.relocs.获取(i);
+        创建 LinkReloc:reloc;
+        reloc.section = areloc.section;
+        reloc.offset = areloc.offset;
+        reloc.sym_name = areloc.sym_name;
+        reloc.type = areloc.type;
+        reloc.module_idx = 0;
+        mod.relocs.添加(reloc);
+        i = i + 1;
+    };
+
+    返回值 mod;
+};
+
+声明 link(user_module, obj_files, output_exe){
+    创建 LinkModule:umod;
+    umod = user_module;
+    创建 ArrayList:files;
+    files = obj_files;
+
+    创建 ArrayList:g_link_symbols;
+    创建 ArrayList:g_link_relocs;
+    创建 ArrayList:g_link_modules;
+    创建 ArrayList:g_link_imports;
+    g_link_defined = [];
+    创建 ArrayList:g_link_dlls;
+    创建 ArrayList:g_link_import_dlls;
+    创建 ArrayList:g_link_dll_iat_start;
+
+    设 nfiles = files.长度();
+    设 i = 0;
+    循环(i < nfiles){
+        设 fname = files.获取(i);
+        创建 LinkModule:mod;
+        mod = parse_coff(fname);
+
+        设 s1 = 0;
+        循环(s1 < mod.symbols.长度()){
+            创建 LinkSymbol:msym1;
+            msym1 = mod.symbols.获取(s1);
+            msym1.module_idx = i;
+            s1 = s1 + 1;
+        };
+        设 r1 = 0;
+        循环(r1 < mod.relocs.长度()){
+            创建 LinkReloc:mrel1;
+            mrel1 = mod.relocs.获取(r1);
+            mrel1.module_idx = i;
+            r1 = r1 + 1;
+        };
+        g_link_modules.添加(mod);
+        i = i + 1;
+    };
+
+    设 s2 = 0;
+    循环(s2 < umod.symbols.长度()){
+        创建 LinkSymbol:msym2;
+        msym2 = umod.symbols.获取(s2);
+        msym2.module_idx = nfiles;
+        s2 = s2 + 1;
+    };
+    设 r2 = 0;
+    循环(r2 < umod.relocs.长度()){
+        创建 LinkReloc:mrel2;
+        mrel2 = umod.relocs.获取(r2);
+        mrel2.module_idx = nfiles;
+        r2 = r2 + 1;
+    };
+    g_link_modules.添加(umod);
+    设 nmods = g_link_modules.长度();
+    内存报告("link-p1");
+
+    i = 0;
+    循环(i < nmods){
+        创建 LinkModule:mod;
+        mod = g_link_modules.获取(i);
+        设 j = 0;
+        循环(j < mod.symbols.长度()){
+            创建 LinkSymbol:sym;
+            sym = mod.symbols.获取(j);
+            如果(sym.section >= 0 && sym.is_extern == 0){
+
+                设 is_section_sym = 0;
+                如果(sym.name.长度() > 0){
+                    设 first_char = sym.name.字节(0);
+                    如果(first_char == 0x2E || first_char == 0x2F){
+                        is_section_sym = 1;
+                    };
+                };
+                如果(is_section_sym == 0){
+                    如果(g_link_defined.存在键(sym.name) == 0){
+                        创建 LinkSymbol:ds;
+                        ds.name = sym.name;
+                        ds.section = sym.section;
+                        ds.offset = sym.offset;
+                        ds.is_extern = 0;
+                        ds.is_static = sym.is_static;
+                        ds.module_idx = i;
+                        字典设置(g_link_defined, sym.name, ds);
+                    };
+                };
+            };
+            j = j + 1;
+        };
+        i = i + 1;
+    };
+
+    创建 ArrayList:g_link_refs;
+    设 g_link_refs_dict = [];
+    i = 0;
+    循环(i < nmods){
+        创建 LinkModule:mod;
+        mod = g_link_modules.获取(i);
+        设 k = 0;
+        循环(k < mod.relocs.长度()){
+            创建 LinkReloc:rel;
+            rel = mod.relocs.获取(k);
+            如果(rel.sym_name != 空){
+                如果(rel.sym_name.长度() > 0){
+                    如果(g_link_refs_dict.存在键(rel.sym_name) == 0){
+                        g_link_refs.添加(rel.sym_name);
+                        字典设置(g_link_refs_dict, rel.sym_name, 1);
+                    };
+                };
+            };
+            k = k + 1;
+        };
+        i = i + 1;
+    };
+
+    i = 0;
+    循环(i < nmods){
+        创建 LinkModule:mod;
+        mod = g_link_modules.获取(i);
+        设 j = 0;
+        循环(j < mod.symbols.长度()){
+            创建 LinkSymbol:sym;
+            sym = mod.symbols.获取(j);
+            如果(sym.is_extern == 1){
+                如果(g_link_defined.存在键(sym.name) == 0){
+                    如果(g_link_refs.查找(sym.name) >= 0){
+                        如果(g_link_imports.查找(sym.name) < 0){
+                            g_link_imports.添加(sym.name);
+                            g_link_import_dlls.添加(dll_for_import(sym.name));
+                        };
+                    };
+                };
+            };
+            j = j + 1;
+        };
+        i = i + 1;
+    };
+
+    设 num_imports = g_link_imports.长度();
+    设 thunk_size = num_imports * 6;
+
+    设 text_cur = thunk_size;
+    设 data_cur = 0;
+    设 bss_cur = 0;
+    i = 0;
+    循环(i < nmods){
+        创建 LinkModule:mod;
+        mod = g_link_modules.获取(i);
+        mod.text_base = text_cur;
+        text_cur = align_up(text_cur + mod.text_size, 16);
+        mod.data_base = data_cur;
+        data_cur = align_up(data_cur + mod.data_size, 16);
+        mod.bss_base = bss_cur;
+        bss_cur = align_up(bss_cur + mod.bss_size, 16);
+        i = i + 1;
+    };
+
+    设 total_text_vsize = text_cur;
+    设 total_data_merged = data_cur;
+    设 total_bss_vsize = bss_cur;
+
+    设 nd = g_link_defined.个数();
+    i = 0;
+    循环(i < nd){
+        创建 ArrayList:pair;
+        pair = g_link_defined[i];
+        如果(pair != 空){
+            创建 LinkSymbol:ds;
+            ds = pair[1];
+            如果(ds != 空){
+                创建 LinkModule:mod;
+                mod = g_link_modules.获取(ds.module_idx);
+                如果(ds.section == 0){ ds.offset = ds.offset + mod.text_base; };
+                如果(ds.section == 1){ ds.offset = ds.offset + mod.data_base; };
+                如果(ds.section == 2){ ds.offset = ds.offset + mod.bss_base; };
+            };
+        };
+        i = i + 1;
+    };
+
+    i = 0;
+    循环(i < nmods){
+        创建 LinkModule:mod;
+        mod = g_link_modules.获取(i);
+        设 j = 0;
+        循环(j < mod.relocs.长度()){
+            创建 LinkReloc:reloc;
+            reloc = mod.relocs.获取(j);
+            reloc.module_idx = i;
+            g_link_relocs.添加(reloc);
+            j = j + 1;
+        };
+        i = i + 1;
+    };
+
+    i = 0;
+    循环(i < num_imports){
+        设 dll_of0 = g_link_import_dlls.获取(i);
+        如果(g_link_dlls.查找(dll_of0) < 0){
+            g_link_dlls.添加(dll_of0);
+        };
+        i = i + 1;
+    };
+    设 ndll = g_link_dlls.长度();
+
+    设 dll_cur = 0;
+    i = 0;
+    循环(i < ndll){
+        g_link_dll_iat_start.添加(dll_cur);
+        设 cnt = 0;
+        设 k = 0;
+        循环(k < num_imports){
+            如果(g_link_import_dlls.获取(k) == g_link_dlls.获取(i)){ cnt = cnt + 1; };
+            k = k + 1;
+        };
+        dll_cur = dll_cur + cnt + 1;
+        i = i + 1;
+    };
+
+    设 iat_size = (num_imports + ndll) * 8;
+    设 ilt_size = (num_imports + ndll) * 8;
+    设 names_size = 0;
+    i = 0;
+    循环(i < num_imports){
+        设 iname = g_link_imports.获取(i);
+        设 sname = iname;
+        如果(iname.以开始("__imp_")){
+            sname = iname.子字符串(6, iname.长度());
+        };
+        names_size = names_size + 2 + sname.长度() + 1;
+        i = i + 1;
+    };
+
+    设 dll_names_size = 0;
+    i = 0;
+    循环(i < ndll){
+        dll_names_size = dll_names_size + g_link_dlls.获取(i).长度() + 1;
+        i = i + 1;
+    };
+    创建 ArrayList:dll_name_start;
+    设 dn_cur = 0;
+    i = 0;
+    循环(i < ndll){
+        dll_name_start.添加(dn_cur);
+        dn_cur = dn_cur + g_link_dlls.获取(i).长度() + 1;
+        i = i + 1;
+    };
+    设 import_desc_size = ndll * 20 + 20;
+
+    设 iat_data_off = total_data_merged;
+    设 ilt_data_off = iat_data_off + iat_size;
+    设 names_data_off = ilt_data_off + ilt_size;
+    设 dll_name_data_off = names_data_off + names_size;
+    设 import_desc_data_off = dll_name_data_off + dll_names_size;
+    import_desc_data_off = import_desc_data_off + 7;
+    import_desc_data_off = import_desc_data_off - (import_desc_data_off % 8);
+    设 total_data_vsize = import_desc_data_off + import_desc_size;
+
+    设 text_rva = 0x1000;
+    设 data_rva = text_rva + align_up(total_text_vsize, SECTION_ALIGNMENT);
+    设 bss_rva = data_rva + align_up(total_data_vsize, SECTION_ALIGNMENT);
+
+    设 iat_rva = data_rva + iat_data_off;
+    设 ilt_rva = data_rva + ilt_data_off;
+    设 dll_name_rva = data_rva + dll_name_data_off;
+    设 import_desc_rva = data_rva + import_desc_data_off;
+
+    设 text_raw_size = align_up(total_text_vsize, FILE_ALIGNMENT);
+    设 text_buf = 分配(text_raw_size);
+    mem_zero(text_buf, text_raw_size);
+
+    i = 0;
+    循环(i < nmods){
+        创建 LinkModule:mod;
+        mod = g_link_modules.获取(i);
+        如果(mod.text_size > 0){
+            mem_copy(text_buf, mod.text_base, mod.text_addr, 0, mod.text_size);
+        };
+        i = i + 1;
+    };
+
+    i = 0;
+    循环(i < num_imports){
+        设 thunk_off = i * 6;
+
+        内存.写字节(text_buf, thunk_off, 0xFF);
+        内存.写字节(text_buf, thunk_off + 1, 0x25);
+
+        设 iat_entry_va = IMAGE_BASE + data_rva + iat_data_off + import_iat_off(i) * 8;
+        设 thunk_va = IMAGE_BASE + text_rva + thunk_off;
+        设 disp32 = iat_entry_va - (thunk_va + 6);
+        write_u32(text_buf, thunk_off + 2, disp32);
+        i = i + 1;
+    };
+
+    设 data_raw_size = align_up(total_data_vsize, FILE_ALIGNMENT);
+    设 data_buf = 分配(data_raw_size);
+    mem_zero(data_buf, data_raw_size);
+
+    i = 0;
+    循环(i < nmods){
+        创建 LinkModule:mod;
+        mod = g_link_modules.获取(i);
+        如果(mod.data_size > 0){
+            mem_copy(data_buf, mod.data_base, mod.data_addr, 0, mod.data_size);
+        };
+        i = i + 1;
+    };
+
+    设 name_cur_off = names_data_off;
+    i = 0;
+    循环(i < num_imports){
+        设 iname = g_link_imports.获取(i);
+        设 sname = iname;
+        如果(iname.以开始("__imp_")){
+            sname = iname.子字符串(6, iname.长度());
+        };
+        设 name_struct_rva = data_rva + name_cur_off;
+
+        write_u64_lo(data_buf, iat_data_off + import_iat_off(i) * 8, name_struct_rva);
+
+        write_u64_lo(data_buf, ilt_data_off + import_iat_off(i) * 8, name_struct_rva);
+
+        write_u16(data_buf, name_cur_off, 0);
+        设 sname_len = sname.长度();
+        设 j = 0;
+        循环(j < sname_len){
+            内存.写字节(data_buf, name_cur_off + 2 + j, sname.字节(j));
+            j = j + 1;
+        };
+        内存.写字节(data_buf, name_cur_off + 2 + sname_len, 0);
+
+        name_cur_off = name_cur_off + 2 + sname_len + 1;
+        i = i + 1;
+    };
+
+    i = 0;
+    循环(i < ndll){
+        设 dll_n = g_link_dlls.获取(i);
+        设 dn_len = dll_n.长度();
+        设 j = 0;
+        循环(j < dn_len){
+            内存.写字节(data_buf, dll_name_data_off + dll_name_start.获取(i) + j, dll_n.字节(j));
+            j = j + 1;
+        };
+        内存.写字节(data_buf, dll_name_data_off + dll_name_start.获取(i) + dn_len, 0);
+        i = i + 1;
+    };
+
+    设 id_off = import_desc_data_off;
+    i = 0;
+    循环(i < ndll){
+        设 ilt_rva_d = data_rva + ilt_data_off + g_link_dll_iat_start.获取(i) * 8;
+        设 iat_rva_d = data_rva + iat_data_off + g_link_dll_iat_start.获取(i) * 8;
+        设 dll_name_rva_d = data_rva + dll_name_data_off + dll_name_start.获取(i);
+        write_u32(data_buf, id_off + i * 20 + 0, ilt_rva_d);
+        write_u32(data_buf, id_off + i * 20 + 4, 0);
+        write_u32(data_buf, id_off + i * 20 + 8, 0);
+        write_u32(data_buf, id_off + i * 20 + 12, dll_name_rva_d);
+        write_u32(data_buf, id_off + i * 20 + 16, iat_rva_d);
+        i = i + 1;
+    };
+
+    内存报告("link-p15-start");
+    设 nrelocs = g_link_relocs.长度();
+    设 nrelocs_start = nrelocs;
+    i = 0;
+    循环(i < nrelocs){
+        创建 LinkReloc:reloc;
+        reloc = g_link_relocs.获取(i);
+
+        创建 LinkModule:rmod;
+        rmod = g_link_modules.获取(reloc.module_idx);
+        设 reloc_sec_rva = 0;
+        如果(reloc.section == 0){ reloc_sec_rva = text_rva; };
+        如果(reloc.section == 1){ reloc_sec_rva = data_rva; };
+        如果(reloc.section == 2){ reloc_sec_rva = bss_rva; };
+        设 reloc_base_off = 0;
+        如果(reloc.section == 0){ reloc_base_off = rmod.text_base; };
+        如果(reloc.section == 1){ reloc_base_off = rmod.data_base; };
+        设 reloc_va = IMAGE_BASE + reloc_sec_rva + reloc_base_off + reloc.offset;
+        设 patch_off = reloc_base_off + reloc.offset;
+
+        设 target_va = 0;
+
+        设 is_section_sym = 0;
+        如果(reloc.sym_name.长度() > 0){
+            设 first_char = reloc.sym_name.字节(0);
+            如果(first_char == 0x2E || first_char == 0x2F){
+                is_section_sym = 1;
+            };
+        };
+
+        如果(is_section_sym){
+
+            设 found_sec = -1;
+            设 found_off = 0;
+            设 j = 0;
+            循环(j < rmod.symbols.长度()){
+                创建 LinkSymbol:msym;
+                msym = rmod.symbols.获取(j);
+                如果(msym.name == reloc.sym_name){
+                    found_sec = msym.section;
+                    found_off = msym.offset;
+                    跳出;
+                };
+                j = j + 1;
+            };
+            如果(found_sec >= 0){
+                设 t_sec_rva = 0;
+                设 t_mod_base = 0;
+                如果(found_sec == 0){ t_sec_rva = text_rva; t_mod_base = rmod.text_base; };
+                如果(found_sec == 1){ t_sec_rva = data_rva; t_mod_base = rmod.data_base; };
+                如果(found_sec == 2){ t_sec_rva = bss_rva; t_mod_base = rmod.bss_base; };
+                target_va = IMAGE_BASE + t_sec_rva + t_mod_base + found_off;
+            };
+        }否则{
+
+            设 import_idx = g_link_imports.查找(reloc.sym_name);
+            如果(import_idx >= 0){
+                设 iname = g_link_imports.获取(import_idx);
+                如果(iname.以开始("__imp_")){
+
+                    target_va = IMAGE_BASE + data_rva + iat_data_off + import_iat_off(import_idx) * 8;
+                }否则{
+
+                    target_va = IMAGE_BASE + text_rva + import_idx * 6;
+                };
+            }否则{
+                创建 LinkSymbol:ds;
+                ds = 字典获取(g_link_defined, reloc.sym_name);
+                设 local_found = -1;
+                设 local_off = 0;
+                如果(ds != 空){
+                    如果(ds.is_static == 1){
+                        如果(ds.module_idx != reloc.module_idx){
+
+                            设 lj = 0;
+                            创建 LinkSymbol:lsym;
+                            循环(lj < rmod.symbols.长度()){
+                                lsym = rmod.symbols.获取(lj);
+                                如果(lsym.name == reloc.sym_name){
+                                    如果(lsym.section >= 0){
+                                        local_found = lsym.section;
+                                        local_off = lsym.offset;
+                                        跳出;
+                                    };
+                                };
+                                lj = lj + 1;
+                            };
+                        };
+                    };
+                };
+                如果(local_found >= 0){
+                    设 t_sec_rva2 = 0;
+                    设 t_mod_base2 = 0;
+                    如果(local_found == 0){
+                        t_sec_rva2 = text_rva;
+                        t_mod_base2 = rmod.text_base;
+                    };
+                    如果(local_found == 1){
+                        t_sec_rva2 = data_rva;
+                        t_mod_base2 = rmod.data_base;
+                    };
+                    如果(local_found == 2){
+                        t_sec_rva2 = bss_rva;
+                        t_mod_base2 = rmod.bss_base;
+                    };
+                    target_va = IMAGE_BASE + t_sec_rva2 + t_mod_base2 + local_off;
+                }否则{
+                    如果(ds != 空){
+                        设 target_sec_rva = 0;
+                        如果(ds.section == 0){ target_sec_rva = text_rva; };
+                        如果(ds.section == 1){ target_sec_rva = data_rva; };
+                        如果(ds.section == 2){ target_sec_rva = bss_rva; };
+                        target_va = IMAGE_BASE + target_sec_rva + ds.offset;
+                    }否则{
+                        错误打印("[dbg] reloc UNRESOLVED: <" + reloc.sym_name + "> sec=" + reloc.section + " off=" + reloc.offset);
+                    };
+                };
+            };
+        };
+
+        如果(reloc.type == 2){
+            如果(reloc.section == 0){
+                write_u64(text_buf, patch_off, target_va);
+            };
+            如果(reloc.section == 1){
+                write_u64(data_buf, patch_off, target_va);
+            };
+        }否则{
+
+            设 addend = 0;
+            如果(reloc.section == 0){
+                addend = read_u32(text_buf, patch_off);
+            };
+            如果(reloc.section == 1){
+                addend = read_u32(data_buf, patch_off);
+            };
+
+            设 imm_len = 0;
+            如果(reloc.type == 3){ imm_len = 1; };
+            如果(reloc.type == 4){ imm_len = 4; };
+            设 patch = target_va - (reloc_va + 4) - imm_len + addend;
+
+            如果(reloc.section == 0){
+                write_u32(text_buf, patch_off, patch);
+            };
+            如果(reloc.section == 1){
+                write_u32(data_buf, patch_off, patch);
+            };
+        };
+
+        i = i + 1;
+    };
+    内存报告("link-p15-end");
+
+    设 entry_offset = 0;
+    创建 LinkSymbol:entry_sym;
+    entry_sym = 字典获取(g_link_defined, "mainCRTStartup");
+    如果(entry_sym != 空){
+        entry_offset = entry_sym.offset;
+    }否则{
+
+    };
+    设 entry_rva = text_rva + entry_offset;
+
+    设 header_buf = 分配(0x200);
+    mem_zero(header_buf, 0x200);
+
+    write_u16(header_buf, 0, 0x5A4D);
+    write_u32(header_buf, 0x3C, 0x80);
+
+    内存.写字节(header_buf, 0x80, 0x50);
+    内存.写字节(header_buf, 0x81, 0x45);
+    内存.写字节(header_buf, 0x82, 0x00);
+    内存.写字节(header_buf, 0x83, 0x00);
+
+    设 num_sections = 3;
+    如果(total_bss_vsize == 0){ num_sections = 2; };
+    write_u16(header_buf, 0x84, MACHINE_AMD64);
+    write_u16(header_buf, 0x86, num_sections);
+    write_u32(header_buf, 0x88, 0);
+    write_u32(header_buf, 0x8C, 0);
+    write_u32(header_buf, 0x90, 0);
+    write_u16(header_buf, 0x94, 240);
+    write_u16(header_buf, 0x96, 0x0022);
+
+    write_u16(header_buf, 0x98, 0x020B);
+    内存.写字节(header_buf, 0x9A, 1);
+    内存.写字节(header_buf, 0x9B, 0);
+    write_u32(header_buf, 0x9C, text_raw_size);
+    write_u32(header_buf, 0xA0, data_raw_size);
+    write_u32(header_buf, 0xA4, align_up(total_bss_vsize, FILE_ALIGNMENT));
+    write_u32(header_buf, 0xA8, entry_rva);
+    write_u32(header_buf, 0xAC, text_rva);
+    write_u64_lo(header_buf, 0xB0, IMAGE_BASE);
+    write_u32(header_buf, 0xB8, SECTION_ALIGNMENT);
+    write_u32(header_buf, 0xBC, FILE_ALIGNMENT);
+    write_u16(header_buf, 0xC0, 5);
+    write_u16(header_buf, 0xC2, 0);
+    write_u16(header_buf, 0xC4, 0);
+    write_u16(header_buf, 0xC6, 0);
+    write_u16(header_buf, 0xC8, 5);
+    write_u16(header_buf, 0xCA, 2);
+    write_u32(header_buf, 0xCC, 0);
+
+    设 size_of_image = bss_rva + align_up(total_bss_vsize, SECTION_ALIGNMENT);
+
+    如果(total_bss_vsize == 0){
+        size_of_image = data_rva + align_up(total_data_vsize, SECTION_ALIGNMENT);
+    };
+    write_u32(header_buf, 0xD0, size_of_image);
+    write_u32(header_buf, 0xD4, 0x200);
+    write_u32(header_buf, 0xD8, 0);
+    write_u16(header_buf, 0xDC, SUBSYSTEM_CUI);
+    write_u16(header_buf, 0xDE, 0x0100);
+    write_u64_lo(header_buf, 0xE0, 0x4000000);
+    write_u64_lo(header_buf, 0xE8, 0x1000);
+    write_u64_lo(header_buf, 0xF0, 0x100000);
+    write_u64_lo(header_buf, 0xF8, 0x1000);
+    write_u32(header_buf, 0x100, 0);
+    write_u32(header_buf, 0x104, 16);
+
+    write_u32(header_buf, 0x108 + 1 * 8, import_desc_rva);
+    write_u32(header_buf, 0x108 + 1 * 8 + 4, import_desc_size);
+
+    write_u32(header_buf, 0x108 + 12 * 8, iat_rva);
+    write_u32(header_buf, 0x108 + 12 * 8 + 4, iat_size);
+
+    write_section_name(header_buf, 0x188, ".text");
+    write_u32(header_buf, 0x188 + 8, total_text_vsize);
+    write_u32(header_buf, 0x188 + 12, text_rva);
+    write_u32(header_buf, 0x188 + 16, text_raw_size);
+    write_u32(header_buf, 0x188 + 20, 0x200);
+    write_u32(header_buf, 0x188 + 36, 0x60000020);
+
+    write_section_name(header_buf, 0x1B0, ".data");
+    write_u32(header_buf, 0x1B0 + 8, total_data_vsize);
+    write_u32(header_buf, 0x1B0 + 12, data_rva);
+    write_u32(header_buf, 0x1B0 + 16, data_raw_size);
+    设 data_ptr_raw = 0x200 + text_raw_size;
+    write_u32(header_buf, 0x1B0 + 20, data_ptr_raw);
+    write_u32(header_buf, 0x1B0 + 36, 0xC0000040);
+
+    如果(total_bss_vsize > 0){
+        write_section_name(header_buf, 0x1D8, ".bss");
+        write_u32(header_buf, 0x1D8 + 8, total_bss_vsize);
+        write_u32(header_buf, 0x1D8 + 12, bss_rva);
+        write_u32(header_buf, 0x1D8 + 16, 0);
+        write_u32(header_buf, 0x1D8 + 20, 0);
+        write_u32(header_buf, 0x1D8 + 36, 0xC0000080);
+    };
+
+    设 h = win_create_file(output_exe);
+
+    如果(h != 0 && h != -1){
+        win_write_file(h, header_buf, 0x200);
+        win_write_file(h, text_buf, text_raw_size);
+        win_write_file(h, data_buf, data_raw_size);
+        win_close_handle(h);
+    };
+
+    释放(header_buf);
+    释放(text_buf);
+    释放(data_buf);
+
+    返回值 0;
+};

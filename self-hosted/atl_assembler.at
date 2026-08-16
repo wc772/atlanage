@@ -1,0 +1,5068 @@
+设 RELOC_REL32 = 0;
+设 RELOC_RIP32 = 1;
+设 RELOC_ADDR64 = 2;
+设 RELOC_RIP32_IMM1 = 3;
+设 RELOC_RIP32_IMM4 = 4;
+
+声明 parse_float_dq(s0){
+    设 s = trim(s0);
+    设 neg = 0;
+    如果(s.子字符串(0, 1) == "-"){
+        neg = 1;
+        s = s.子字符串(1, s.长度());
+    };
+
+    设 dot = find_char(s, ".", 0);
+    设 ip_str = s;
+    设 fp_str = "";
+    如果(dot >= 0){
+        ip_str = s.子字符串(0, dot);
+        fp_str = s.子字符串(dot + 1, s.长度());
+    };
+    设 ip = parse_int(ip_str);
+
+    设 fp = 0;
+    设 nd = fp_str.长度();
+    设 j = 0;
+    循环(j < nd){
+        fp = fp * 10 + (fp_str.字节(j) - 48);
+        j = j + 1;
+    };
+
+    设 num = ip;
+    设 den = 1;
+    j = 0;
+    循环(j < nd){
+        num = num * 10;
+        den = den * 10;
+        j = j + 1;
+    };
+    num = num + fp;
+
+    如果(num == 0){ 返回值 0; };
+
+    设 e = 0;
+    循环(1 == 1){
+        如果(num < den){
+            num = num * 2;
+            e = e - 1;
+        }又如果(num >= den * 2){
+            den = den * 2;
+            e = e + 1;
+        }否则{
+            跳出;
+        };
+    };
+
+    设 m = 0;
+    设 frac = num - den;
+    设 bit = 51;
+    设 pow2 = 2251799813685248;
+    循环(bit >= 0){
+        frac = frac * 2;
+        如果(frac >= den){
+            m = m + pow2;
+            frac = frac - den;
+        };
+        pow2 = pow2 / 2;
+        bit = bit - 1;
+    };
+
+    设 exp_field = e + 1023;
+    设 bits = exp_field * 4503599627370496 + m;
+    如果(neg == 1){
+
+        bits = bits - 9223372036854775808;
+    };
+    返回值 bits;
+};
+
+设 g_enc_parts = 空;
+设 g_enc_symbols = 空;
+设 g_enc_relocs = 空;
+设 g_enc_out_bytes = 空;
+设 g_cur_global = "";
+
+声明 init_asm_globals(){
+    创建 ArrayList:g_enc_parts;
+    创建 ArrayList:g_enc_symbols;
+    创建 ArrayList:g_enc_relocs;
+    创建 ArrayList:g_enc_out_bytes;
+    返回值 0;
+};
+init_asm_globals();
+
+类 AsmSymbol {
+公开:
+    设 name 存在;
+    设 section 存在;
+    设 offset 存在;
+    设 is_global 存在;
+    设 is_extern 存在;
+
+    构造(){
+        name = 空;
+        section = 0;
+        offset = 0;
+        is_global = 0;
+        is_extern = 0;
+    };
+};
+
+类 AsmReloc {
+公开:
+    设 section 存在;
+    设 offset 存在;
+    设 sym_name 存在;
+    设 type 存在;
+
+    构造(){
+        section = 0;
+        offset = 0;
+        sym_name = 空;
+        type = 0;
+    };
+};
+
+类 AsmResult {
+公开:
+    设 text_bytes 存在;
+    设 data_bytes 存在;
+    设 bss_size 存在;
+    设 symbols 存在;
+    设 relocs 存在;
+
+    构造(){
+        text_bytes = 创建 ArrayList;
+        data_bytes = 创建 ArrayList;
+        bss_size = 0;
+        symbols = 创建 ArrayList;
+        relocs = 创建 ArrayList;
+    };
+};
+
+声明 reg_lookup(name){
+    如果(name == "rax"){ 返回值 0; };
+    如果(name == "rcx"){ 返回值 1; };
+    如果(name == "cl"){ 返回值 201; };
+    如果(name == "rdx"){ 返回值 2; };
+    如果(name == "rbx"){ 返回值 3; };
+    如果(name == "rsp"){ 返回值 4; };
+    如果(name == "rbp"){ 返回值 5; };
+    如果(name == "rsi"){ 返回值 6; };
+    如果(name == "rdi"){ 返回值 7; };
+    如果(name == "r8"){ 返回值 8; };
+    如果(name == "r9"){ 返回值 9; };
+    如果(name == "r10"){ 返回值 10; };
+    如果(name == "r11"){ 返回值 11; };
+    如果(name == "r12"){ 返回值 12; };
+    如果(name == "r13"){ 返回值 13; };
+    如果(name == "r14"){ 返回值 14; };
+    如果(name == "r15"){ 返回值 15; };
+    如果(name == "eax"){ 返回值 100; };
+    如果(name == "ecx"){ 返回值 101; };
+    如果(name == "edx"){ 返回值 102; };
+    如果(name == "ebx"){ 返回值 103; };
+    如果(name == "esp"){ 返回值 104; };
+    如果(name == "ebp"){ 返回值 105; };
+    如果(name == "esi"){ 返回值 106; };
+    如果(name == "edi"){ 返回值 107; };
+    如果(name == "r8d"){ 返回值 108; };
+    如果(name == "r9d"){ 返回值 109; };
+    如果(name == "r10d"){ 返回值 110; };
+    如果(name == "r11d"){ 返回值 111; };
+    如果(name == "r12d"){ 返回值 112; };
+    如果(name == "r13d"){ 返回值 113; };
+    如果(name == "r14d"){ 返回值 114; };
+    如果(name == "r15d"){ 返回值 115; };
+
+    如果(name == "al"){ 返回值 200; };
+    如果(name == "cl"){ 返回值 201; };
+    如果(name == "dl"){ 返回值 202; };
+    如果(name == "bl"){ 返回值 203; };
+    如果(name == "spl"){ 返回值 204; };
+    如果(name == "bpl"){ 返回值 205; };
+    如果(name == "sil"){ 返回值 206; };
+    如果(name == "dil"){ 返回值 207; };
+    如果(name == "r8b"){ 返回值 208; };
+    如果(name == "r9b"){ 返回值 209; };
+    如果(name == "r10b"){ 返回值 210; };
+    如果(name == "r11b"){ 返回值 211; };
+    如果(name == "r12b"){ 返回值 212; };
+    如果(name == "r13b"){ 返回值 213; };
+    如果(name == "r14b"){ 返回值 214; };
+    如果(name == "r15b"){ 返回值 215; };
+
+    如果(name == "ax"){ 返回值 300; };
+    如果(name == "cx"){ 返回值 301; };
+    如果(name == "dx"){ 返回值 302; };
+    如果(name == "bx"){ 返回值 303; };
+    如果(name == "sp"){ 返回值 304; };
+    如果(name == "bp"){ 返回值 305; };
+    如果(name == "si"){ 返回值 306; };
+    如果(name == "di"){ 返回值 307; };
+    如果(name == "r8w"){ 返回值 308; };
+    如果(name == "r9w"){ 返回值 309; };
+    如果(name == "r10w"){ 返回值 310; };
+    如果(name == "r11w"){ 返回值 311; };
+    如果(name == "r12w"){ 返回值 312; };
+    如果(name == "r13w"){ 返回值 313; };
+    如果(name == "r14w"){ 返回值 314; };
+    如果(name == "r15w"){ 返回值 315; };
+    返回值 -1;
+};
+
+声明 is_reg64(r){
+    返回值 (r >= 0 && r < 100);
+};
+
+声明 parse_xmm(s){
+    设 t = trim(s);
+    如果(t.以开始("xmm")){
+        设 num = parse_int(t.子字符串(3, t.长度()));
+        如果(num >= 0 && num <= 15){ 返回值 num; };
+    };
+    返回值 -1;
+};
+
+声明 reg_num(r){
+    如果(r >= 300){ 返回值 r - 300; };
+    如果(r >= 200){ 返回值 r - 200; };
+    如果(r >= 100){ 返回值 r - 100; };
+    返回值 r;
+};
+
+声明 find_char(s, ch, from){
+    返回值 检索从(s, ch, from);
+};
+
+声明 trim(s){
+    返回值 s.去除空白();
+};
+
+声明 parse_int(s){
+    设 t = trim(s);
+    设 len = t.长度();
+    如果(len == 0){ 返回值 0; };
+
+    如果(len >= 3 && (t.子字符串(0, 2) == "0x" || t.子字符串(0, 2) == "0X")){
+        设 hexv = 0;
+        设 hi = 2;
+        循环(hi < len){
+            hexv = hexv * 16;
+            设 hb = t.字节(hi);
+            如果(hb >= 48 && hb <= 57){ hexv = hexv + (hb - 48); };
+            又如果(hb >= 65 && hb <= 70){ hexv = hexv + (hb - 55); };
+            又如果(hb >= 97 && hb <= 102){ hexv = hexv + (hb - 87); };
+            hi = hi + 1;
+        };
+        返回值 hexv;
+    };
+    设 neg = 0;
+    设 idx = 0;
+    设 b0 = t.字节(0);
+    如果(b0 == 45){
+        neg = 1;
+        idx = 1;
+    }又如果(b0 == 43){
+        idx = 1;
+    };
+    设 val = 0;
+    循环(idx < len){
+        设 b = t.字节(idx);
+        如果(b >= 48 && b <= 57){
+            val = val * 10 + (b - 48);
+        }否则{
+            跳出;
+        };
+        idx = idx + 1;
+    };
+    如果(neg){ val = -val; };
+    返回值 val;
+};
+
+声明 eval_disp(s){
+    设 t = trim(s);
+    设 len = t.长度();
+    设 i = 0;
+    设 total = 0;
+    设 term = 0;
+    设 sign = 1;
+    循环(i < len){
+        设 c = t.字节(i);
+        如果(c == 43){
+            total = total + sign * term;
+            term = 0;
+            sign = 1;
+            i = i + 1;
+        }又如果(c == 45){
+            total = total + sign * term;
+            term = 0;
+            sign = -1;
+            i = i + 1;
+        }又如果(c == 42){
+
+            设 j = i + 1;
+            设 v2 = 0;
+            循环(j < len){
+                设 b2 = t.字节(j);
+                如果(b2 >= 48 && b2 <= 57){
+                    v2 = v2 * 10 + (b2 - 48);
+                    j = j + 1;
+                }否则{
+                    跳出;
+                };
+            };
+            term = term * v2;
+            i = j;
+        }又如果(c >= 48 && c <= 57){
+
+            如果(c == 48 && i + 1 < len){
+                设 nx = t.字节(i + 1);
+                如果(nx == 120 || nx == 88){
+                    i = i + 2;
+                    设 hv = 0;
+                    循环(i < len){
+                        设 hb = t.字节(i);
+                        如果(hb >= 48 && hb <= 57){ hv = hv * 16 + (hb - 48); }
+                        又如果(hb >= 65 && hb <= 70){ hv = hv * 16 + (hb - 55); }
+                        又如果(hb >= 97 && hb <= 102){ hv = hv * 16 + (hb - 87); }
+                        否则{ 跳出; };
+                        i = i + 1;
+                    };
+                    term = hv;
+                    继续;
+                };
+            };
+            term = term * 10 + (c - 48);
+            i = i + 1;
+        }否则{
+            i = i + 1;
+        };
+    };
+    total = total + sign * term;
+    返回值 total;
+};
+
+声明 is_int_str(s){
+    设 t = trim(s);
+    设 len = t.长度();
+    如果(len == 0){ 返回值 0; };
+
+    如果(len >= 3 && (t.子字符串(0, 2) == "0x" || t.子字符串(0, 2) == "0X")){
+        设 hi = 2;
+        循环(hi < len){
+            设 hb = t.字节(hi);
+            如果(!((hb >= 48 && hb <= 57) || (hb >= 65 && hb <= 70) || (hb >= 97 && hb <= 102))){
+                返回值 0;
+            };
+            hi = hi + 1;
+        };
+        返回值 1;
+    };
+    设 idx = 0;
+    设 b0 = t.字节(0);
+    如果(b0 == 45 || b0 == 43){
+        idx = 1;
+        如果(len == 1){ 返回值 0; };
+    };
+    循环(idx < len){
+        设 b = t.字节(idx);
+        如果(b < 48 || b > 57){ 返回值 0; };
+        idx = idx + 1;
+    };
+    返回值 1;
+};
+
+声明 starts_with(s, prefix){
+    返回值 s.以开始(prefix);
+};
+
+声明 is_label_char(ch){
+    设 cp = 码点(ch);
+    如果(cp >= 48 && cp <= 57){ 返回值 1; };
+    如果(cp >= 65 && cp <= 90){ 返回值 1; };
+    如果(cp >= 97 && cp <= 122){ 返回值 1; };
+    如果(cp == 95){ 返回值 1; };
+    如果(cp == 46){ 返回值 1; };
+    返回值 0;
+};
+
+设 OPND_REG = 1;
+设 OPND_IMM = 2;
+设 OPND_MEM = 3;
+设 OPND_LABEL = 4;
+设 OPND_RIPMEM = 5;
+
+类 Operand {
+公开:
+    设 type 存在;
+    设 reg 存在;
+    设 imm 存在;
+    设 label 存在;
+    设 is_global 存在;
+    设 index 存在;
+    设 scale 存在;
+    设 size 存在;
+
+    构造(){
+        type = 0;
+        reg = -1;
+        imm = 0;
+        label = 空;
+        is_global = 0;
+        index = -1;
+        scale = 1;
+        size = 0;
+    };
+};
+
+声明 parse_operand(s){
+    创建 Operand:opnd;
+    设 t = trim(s);
+
+    如果(t.以开始("qword ")){ opnd.size = 8; t = trim(t.子字符串(6, t.长度())); }
+    又如果(t.以开始("dword ")){ opnd.size = 4; t = trim(t.子字符串(6, t.长度())); }
+    又如果(t.以开始("word ")){ opnd.size = 2; t = trim(t.子字符串(5, t.长度())); }
+    又如果(t.以开始("byte ")){ opnd.size = 1; t = trim(t.子字符串(5, t.长度())); };
+    设 len = t.长度();
+    如果(len == 0){ 返回值 opnd; };
+
+    如果(t.子字符串(0, 1) == "["){
+
+        设 rb = find_char(t, "]", 1);
+        如果(rb < 0){ 返回值 opnd; };
+        设 inner = trim(t.子字符串(1, rb));
+
+        设 r = reg_lookup(inner);
+        如果(r < 0){
+
+            设 plus_pos = find_char(inner, "+", 0);
+            设 minus_pos = find_char(inner, "-", 0);
+            设 sep = -1;
+            如果(plus_pos >= 0){ sep = plus_pos; };
+            如果(minus_pos >= 0){
+                如果(sep < 0 || minus_pos < sep){ sep = minus_pos; };
+            };
+
+            如果(sep < 0){
+
+                设 lbl1 = inner;
+                如果(lbl1.以开始("rel ")){
+                    lbl1 = lbl1.子字符串(4, lbl1.长度());
+                };
+
+                如果(lbl1.以开始(".") && g_cur_global.长度() > 0){
+                    lbl1 = g_cur_global + lbl1;
+                };
+                opnd.type = OPND_RIPMEM;
+                opnd.label = lbl1;
+                opnd.is_global = 1;
+            }否则{
+
+                设 base_str = trim(inner.子字符串(0, sep));
+                设 rest = trim(inner.子字符串(sep + 1, len));
+                设 base_reg = reg_lookup(base_str);
+                如果(base_reg >= 0){
+                    opnd.type = OPND_MEM;
+                    opnd.reg = base_reg;
+
+                    设 star_pos = find_char(rest, "*", 0);
+                    如果(star_pos >= 0){
+                        设 idx_str = trim(rest.子字符串(0, star_pos));
+                        设 sc_str = trim(rest.子字符串(star_pos + 1, len));
+                        设 idx_reg = reg_lookup(idx_str);
+                        如果(idx_reg >= 0){
+                            opnd.index = idx_reg;
+                            opnd.scale = parse_int(sc_str);
+                            opnd.imm = 0;
+                        }否则{
+                            opnd.imm = eval_disp(rest);
+                        };
+                    }否则{
+
+                        设 rest_reg = reg_lookup(rest);
+                        如果(rest_reg >= 0 && sep == plus_pos){
+                            opnd.index = rest_reg;
+                            opnd.scale = 1;
+                            opnd.imm = 0;
+                        }否则{
+
+                            设 sep2 = -1;
+                            设 plus2 = find_char(rest, "+", 1);
+                            设 minus2 = find_char(rest, "-", 1);
+                            如果(plus2 >= 0){ sep2 = plus2; };
+                            如果(minus2 >= 0){
+                                如果(sep2 < 0 || minus2 < sep2){ sep2 = minus2; };
+                            };
+                            如果(sep2 > 0){
+                                设 disp_str = trim(rest.子字符串(0, sep2));
+                                设 idx_str = trim(rest.子字符串(sep2 + 1, rest.长度()));
+                                设 idx_reg2 = reg_lookup(idx_str);
+                                如果(idx_reg2 >= 0){
+
+                                    设 dv2 = parse_int(disp_str);
+                                    如果(sep == minus_pos){ opnd.imm = -dv2; }
+                                    否则{ opnd.imm = dv2; };
+                                    opnd.index = idx_reg2;
+                                    opnd.scale = 1;
+                                }否则{
+
+                                    设 idx_reg3 = reg_lookup(disp_str);
+                                    如果(idx_reg3 >= 0){
+                                        opnd.index = idx_reg3;
+                                        opnd.scale = 1;
+                                        设 dv3 = parse_int(idx_str);
+                                        如果(sep2 == minus2){ opnd.imm = -dv3; }
+                                        否则{ opnd.imm = dv3; };
+                                    }否则{
+                                        如果(sep == minus_pos){ opnd.imm = -eval_disp(rest); }
+                                        否则{ opnd.imm = eval_disp(rest); };
+                                    };
+                                };
+                            }否则{
+
+                                如果(sep == minus_pos){
+                                    opnd.imm = -eval_disp(rest);
+                                }否则{
+                                    opnd.imm = eval_disp(rest);
+                                };
+                            };
+                        };
+                    };
+                }否则{
+
+                    设 lbl2 = inner;
+                    如果(lbl2.以开始("rel ")){
+                        lbl2 = lbl2.子字符串(4, lbl2.长度());
+                    };
+                    opnd.type = OPND_RIPMEM;
+                    opnd.label = lbl2;
+                    opnd.is_global = 1;
+                };
+            };
+        }否则{
+
+            opnd.type = OPND_MEM;
+            opnd.reg = r;
+            opnd.imm = 0;
+        };
+        返回值 opnd;
+    };
+
+    如果(is_int_str(t)){
+        opnd.type = OPND_IMM;
+        opnd.imm = parse_int(t);
+        返回值 opnd;
+    };
+
+    设 r2 = reg_lookup(t);
+    如果(r2 >= 0){
+        opnd.type = OPND_REG;
+        opnd.reg = r2;
+        返回值 opnd;
+    };
+
+    opnd.type = OPND_LABEL;
+    opnd.label = t;
+
+    如果(opnd.label.以开始(".") && g_cur_global.长度() > 0){
+        opnd.label = g_cur_global + opnd.label;
+    };
+    opnd.is_global = 1;
+    返回值 opnd;
+};
+
+声明 parse_insn_line(line){
+    创建 ArrayList:parts;
+    设 t = trim(line);
+    设 len = t.长度();
+    如果(len == 0){ 返回值 parts; };
+
+    设 sp = find_char(t, " ", 0);
+    设 tab = find_char(t, "\t", 0);
+    设 sep = sp;
+    如果(tab >= 0){
+        如果(sep < 0 || tab < sep){ sep = tab; };
+    };
+
+    如果(sep < 0){
+
+        parts.添加(t);
+        返回值 parts;
+    };
+
+    设 mnemonic = trim(t.子字符串(0, sep));
+    parts.添加(mnemonic);
+
+    设 rest = trim(t.子字符串(sep + 1, len));
+
+    如果(mnemonic == "lock"){
+        设 sp2 = find_char(rest, " ", 0);
+        设 tab2 = find_char(rest, "\t", 0);
+        设 sep2 = sp2;
+        如果(tab2 >= 0){
+            如果(sep2 < 0 || tab2 < sep2){ sep2 = tab2; };
+        };
+        如果(sep2 > 0){
+            mnemonic = "lock " + trim(rest.子字符串(0, sep2));
+            rest = trim(rest.子字符串(sep2 + 1, rest.长度()));
+            parts.设置(0, mnemonic);
+        };
+    };
+
+    设 idx = 0;
+    设 rlen = rest.长度();
+    循环(idx < rlen){
+        设 comma = find_char(rest, ",", idx);
+        如果(comma < 0){
+            parts.添加(trim(rest.子字符串(idx, rlen)));
+            跳出;
+        }否则{
+            parts.添加(trim(rest.子字符串(idx, comma)));
+            idx = comma + 1;
+        };
+    };
+
+    返回值 parts;
+};
+
+声明 insn_length(){
+    设 mnemonic = g_enc_parts.获取(0);
+    设 nops = g_enc_parts.长度() - 1;
+
+    如果(mnemonic == "ret"){ 返回值 1; };
+    如果(mnemonic == "hlt"){ 返回值 1; };
+
+    如果(mnemonic == "push" || mnemonic == "pop"){
+        创建 Operand:op_pp;
+        op_pp = parse_operand(g_enc_parts.获取(1));
+        如果(op_pp.reg >= 100){ 返回值 2; };
+        如果(op_pp.reg >= 8){ 返回值 2; };
+        返回值 1;
+    };
+
+    如果(mnemonic == "call" || mnemonic == "jmp"){
+        创建 Operand:cop;
+        cop = parse_operand(g_enc_parts.获取(1));
+        如果(cop.type == OPND_REG){ 返回值 2; };
+
+        如果(cop.type == OPND_MEM){
+            设 base = reg_num(cop.reg);
+            设 len_ = 2;
+            如果(base >= 8){ len_ = len_ + 1; };
+            如果(base == 4 || cop.index >= 0){ len_ = len_ + 1; };
+            如果(cop.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(cop.imm >= -128 && cop.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+        返回值 5;
+    };
+
+    如果(mnemonic == "jz" || mnemonic == "je"){
+        返回值 6;
+    };
+
+    如果(mnemonic == "jnz"){
+        返回值 6;
+    };
+
+    如果(mnemonic == "jne" || mnemonic == "jl" || mnemonic == "jge" ||
+       mnemonic == "jle" || mnemonic == "jg" || mnemonic == "jc" ||
+       mnemonic == "jb" || mnemonic == "jnc" || mnemonic == "jae" ||
+       mnemonic == "jbe" || mnemonic == "ja" || mnemonic == "js" ||
+       mnemonic == "jns"){
+        返回值 6;
+    };
+
+    如果(mnemonic == "inc" || mnemonic == "dec"){
+        设 iop2s = trim(g_enc_parts.获取(1));
+        设 iop2r = reg_lookup(iop2s);
+        如果(iop2r >= 0){
+            设 d = reg_num(iop2r);
+            设 need_rex = 0;
+            如果(iop2r < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(need_rex){ 返回值 3; };
+            返回值 2;
+        };
+        创建 Operand:iopm;
+        iopm = parse_operand(iop2s);
+        如果(iopm.type == OPND_MEM){
+
+            设 base = reg_num(iopm.reg);
+            设 len_ = 3;
+            如果(iopm.size == 4){ len_ = 2; };
+            如果(base == 4){ len_ = len_ + 1; };
+            如果(iopm.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(iopm.imm >= -128 && iopm.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+        返回值 3;
+    };
+
+    如果(mnemonic == "xchg"){
+        创建 Operand:xop1;
+        xop1 = parse_operand(g_enc_parts.获取(1));
+        创建 Operand:xop2;
+        xop2 = parse_operand(g_enc_parts.获取(2));
+
+        设 xmem = xop1;
+        设 xreg = xop2;
+        如果(xop1.type == OPND_REG){ xmem = xop2; xreg = xop1; };
+        如果(xreg.type != OPND_REG){ 返回值 0; };
+        如果(xmem.type == OPND_RIPMEM){
+            设 rd = reg_num(xreg.reg);
+            设 need_rex = 0;
+            如果(xreg.reg < 100){ need_rex = 1; };
+            如果(rd >= 8){ need_rex = 1; };
+            如果(need_rex){ 返回值 7; };
+            返回值 6;
+        };
+        如果(xmem.type == OPND_MEM){
+            设 base = reg_num(xmem.reg);
+            设 len_ = 2;
+            如果(xreg.reg < 100){ len_ = len_ + 1; };
+            如果(reg_num(xreg.reg) >= 8 || base >= 8 || xmem.index >= 8){ len_ = len_ + 1; };
+            如果(base == 4 || xmem.index >= 0){ len_ = len_ + 1; };
+            如果(xmem.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(xmem.imm >= -128 && xmem.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+        如果(xmem.type == OPND_REG){
+            设 d1 = reg_num(xmem.reg);
+            设 d2 = reg_num(xreg.reg);
+            设 need_rex = 0;
+            如果(xmem.reg < 100 || xreg.reg < 100){ need_rex = 1; };
+            如果(d1 >= 8 || d2 >= 8){ need_rex = 1; };
+            如果(need_rex){ 返回值 3; };
+            返回值 2;
+        };
+        返回值 0;
+    };
+
+    如果(starts_with(mnemonic, "lock ")){
+        设 inner_m2 = mnemonic.子字符串(5, mnemonic.长度());
+        如果(inner_m2 == "cmpxchg"){
+
+            创建 Operand:cxl;
+            cxl = parse_operand(g_enc_parts.获取(1));
+            创建 Operand:cxr;
+            cxr = parse_operand(g_enc_parts.获取(2));
+            如果(cxl.type == OPND_RIPMEM){
+                如果(reg_num(cxr.reg) >= 8){ 返回值 10; };
+                返回值 9;
+            };
+            如果(cxl.type == OPND_MEM){
+                设 base = reg_num(cxl.reg);
+                设 len_ = 5;
+                如果(base == 4 || cxl.index >= 0){ len_ = len_ + 1; };
+                如果(cxl.imm == 0 && base != 5){
+                    如果(base == 5){ len_ = len_ + 1; };
+                }又如果(cxl.imm >= -128 && cxl.imm <= 127){
+                    len_ = len_ + 1;
+                }否则{
+                    len_ = len_ + 4;
+                };
+                返回值 len_;
+            };
+            返回值 9;
+        };
+        如果(inner_m2 == "inc" || inner_m2 == "dec"){
+
+            创建 Operand:lxd;
+            lxd = parse_operand(g_enc_parts.获取(1));
+            如果(lxd.type == OPND_RIPMEM){ 返回值 8; };
+            如果(lxd.type == OPND_MEM){
+                设 base = reg_num(lxd.reg);
+                设 len_ = 4;
+                如果(base == 4 || lxd.index >= 0){ len_ = len_ + 1; };
+                如果(lxd.imm == 0 && base != 5){
+                    如果(base == 5){ len_ = len_ + 1; };
+                }又如果(lxd.imm >= -128 && lxd.imm <= 127){
+                    len_ = len_ + 1;
+                }否则{
+                    len_ = len_ + 4;
+                };
+                返回值 len_;
+            };
+            返回值 8;
+        };
+        返回值 0;
+    };
+
+    如果(mnemonic == "cqo"){
+        返回值 2;
+    };
+
+    如果(mnemonic == "cpuid" || mnemonic == "rdtsc"){
+        返回值 2;
+    };
+
+    如果(mnemonic == "movsd"){
+
+        如果(nops >= 2){
+            创建 Operand:msp1;
+            msp1 = parse_operand(g_enc_parts.获取(1));
+            如果(msp1.type == OPND_MEM){
+
+                设 base = reg_num(msp1.reg);
+                设 len_ = 4;
+                如果(base >= 8){ len_ = len_ + 1; };
+                如果(base == 4 || msp1.index >= 0){ len_ = len_ + 1; };
+                如果(msp1.imm == 0 && base != 5){
+                    如果(base == 5){ len_ = len_ + 1; };
+                }又如果(msp1.imm >= -128 && msp1.imm <= 127){
+                    len_ = len_ + 1;
+                }否则{
+                    len_ = len_ + 4;
+                };
+                返回值 len_;
+            };
+            创建 Operand:msp2;
+            msp2 = parse_operand(g_enc_parts.获取(2));
+            如果(msp2.type == OPND_MEM){
+                设 base = reg_num(msp2.reg);
+                设 disp = msp2.imm;
+                设 len_ = 4;
+                如果(base >= 8){ len_ = len_ + 1; };
+                如果(base == 4 || msp2.index >= 0){ len_ = len_ + 1; };
+                如果(disp == 0 && base != 5){
+                    如果(base == 5){ len_ = len_ + 1; };
+                }又如果(disp >= -128 && disp <= 127){
+                    len_ = len_ + 1;
+                }否则{
+                    len_ = len_ + 4;
+                };
+                返回值 len_;
+            };
+        };
+
+        设 xd1 = parse_xmm(g_enc_parts.获取(1));
+        设 xs1 = parse_xmm(g_enc_parts.获取(2));
+        如果(xd1 >= 0 && xs1 >= 0){ 返回值 4; };
+        返回值 8;
+    };
+
+    如果(mnemonic == "movups"){
+        如果(nops >= 2){
+            创建 Operand:usp1;
+            usp1 = parse_operand(g_enc_parts.获取(1));
+            如果(usp1.type == OPND_MEM){
+
+                设 uxs = parse_xmm(g_enc_parts.获取(2));
+                如果(uxs < 0){ uxs = 0; };
+                设 base = reg_num(usp1.reg);
+                设 len_ = 3;
+                如果(uxs >= 8){ len_ = len_ + 1; };
+                如果(base >= 8){ len_ = len_ + 1; };
+                如果(base == 4 || usp1.index >= 0){ len_ = len_ + 1; };
+                如果(usp1.imm == 0 && base != 5){
+                    如果(base == 5){ len_ = len_ + 1; };
+                }又如果(usp1.imm >= -128 && usp1.imm <= 127){
+                    len_ = len_ + 1;
+                }否则{
+                    len_ = len_ + 4;
+                };
+                返回值 len_;
+            };
+            创建 Operand:usp2;
+            usp2 = parse_operand(g_enc_parts.获取(2));
+            如果(usp2.type == OPND_MEM){
+
+                设 uxd = parse_xmm(g_enc_parts.获取(1));
+                如果(uxd < 0){ uxd = 0; };
+                设 base = reg_num(usp2.reg);
+                设 len_ = 3;
+                如果(uxd >= 8){ len_ = len_ + 1; };
+                如果(base >= 8){ len_ = len_ + 1; };
+                如果(base == 4 || usp2.index >= 0){ len_ = len_ + 1; };
+                如果(usp2.imm == 0 && base != 5){
+                    如果(base == 5){ len_ = len_ + 1; };
+                }又如果(usp2.imm >= -128 && usp2.imm <= 127){
+                    len_ = len_ + 1;
+                }否则{
+                    len_ = len_ + 4;
+                };
+                返回值 len_;
+            };
+        };
+
+        设 uxd1 = parse_xmm(g_enc_parts.获取(1));
+        设 uxs1 = parse_xmm(g_enc_parts.获取(2));
+        如果(uxd1 >= 0 && uxs1 >= 0){
+            设 len_ = 3;
+            如果(uxd1 >= 8 || uxs1 >= 8){ len_ = len_ + 1; };
+            返回值 len_;
+        };
+        返回值 7;
+    };
+
+    如果(mnemonic == "stmxcsr" || mnemonic == "ldmxcsr"){
+        创建 Operand:mxc;
+        mxc = parse_operand(g_enc_parts.获取(1));
+        如果(mxc.type == OPND_MEM){
+            设 base = reg_num(mxc.reg);
+            设 len_ = 3;
+            如果(base >= 8){ len_ = len_ + 1; };
+            如果(base == 4 || mxc.index >= 0){ len_ = len_ + 1; };
+            如果(mxc.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(mxc.imm >= -128 && mxc.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+        返回值 7;
+    };
+
+    如果(mnemonic == "movq"){
+        如果(nops >= 2){
+            创建 Operand:qop1;
+            qop1 = parse_operand(g_enc_parts.获取(1));
+            如果(qop1.type == OPND_RIPMEM){
+                返回值 9;
+            };
+            创建 Operand:qmem;
+            qmem = qop1;
+            如果(qop1.type != OPND_MEM){
+            创建 Operand:qop2;
+            qop2 = parse_operand(g_enc_parts.获取(2));
+            如果(qop2.type == OPND_MEM){ qmem = qop2; }
+            又如果(qop2.type == OPND_RIPMEM){
+                返回值 9;
+            }
+            否则{
+
+                设 xa1 = parse_xmm(g_enc_parts.获取(1));
+                设 xa2 = parse_xmm(g_enc_parts.获取(2));
+                如果(xa1 >= 0 && xa2 >= 0){
+                    如果(xa1 >= 8 || xa2 >= 8){ 返回值 5; };
+                    返回值 4;
+                };
+                返回值 5;
+            };
+            };
+            设 base = reg_num(qmem.reg);
+            设 len_ = 5;
+            如果(base >= 8){ len_ = len_ + 1; };
+            如果(base == 4 || qmem.index >= 0){ len_ = len_ + 1; };
+            如果(qmem.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(qmem.imm >= -128 && qmem.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+        返回值 5;
+    };
+
+    如果(mnemonic == "addsd" || mnemonic == "subsd" ||
+       mnemonic == "mulsd" || mnemonic == "divsd"){
+        创建 Operand:fso2;
+        fso2 = parse_operand(g_enc_parts.获取(2));
+        如果(fso2.type == OPND_RIPMEM){ 返回值 8; };
+        如果(fso2.type == OPND_MEM){
+            设 base = reg_num(fso2.reg);
+            设 len_ = 4;
+            如果(base >= 8){ len_ = len_ + 1; };
+            如果(base == 4 || fso2.index >= 0){ len_ = len_ + 1; };
+            如果(fso2.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(fso2.imm >= -128 && fso2.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+        返回值 4;
+    };
+
+    如果(mnemonic == "comisd"){
+        返回值 4;
+    };
+
+    如果(mnemonic == "xorpd"){
+        返回值 4;
+    };
+
+    如果(mnemonic == "cvtsi2sd" || mnemonic == "cvttsd2si"){
+        返回值 5;
+    };
+
+    如果(mnemonic == "not" || mnemonic == "neg" || mnemonic == "idiv" || mnemonic == "div"){
+        返回值 3;
+    };
+
+    如果(mnemonic == "imul" && nops == 1){
+        返回值 3;
+    };
+
+    如果(mnemonic == "sete" || mnemonic == "setne" || mnemonic == "setl" ||
+       mnemonic == "setge" || mnemonic == "setle" || mnemonic == "setg"){
+        返回值 3;
+    };
+
+    如果(mnemonic == "shl" || mnemonic == "shr"){
+        设 shl_s = trim(g_enc_parts.获取(1));
+        创建 Operand:shm;
+        shm = parse_operand(shl_s);
+        如果(shm.type == OPND_MEM){
+
+            设 base = reg_num(shm.reg);
+            设 len_ = 2;
+            如果(shm.size == 8 || shm.size == 0){
+                len_ = len_ + 1;
+            }又如果(base >= 8 || shm.index >= 8){
+                len_ = len_ + 1;
+            };
+            如果(base == 4 || shm.index >= 0){ len_ = len_ + 1; };
+            如果(shm.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(shm.imm >= -128 && shm.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_ + 1;
+        };
+        设 shl_r = reg_lookup(shl_s);
+        设 shn = reg_num(shl_r);
+        设 need_rex = 0;
+        如果(shl_r < 100){ need_rex = 1; };
+        如果(shn >= 8){ need_rex = 1; };
+        如果(nops >= 2){
+            设 shs2s = trim(g_enc_parts.获取(2));
+            如果(is_int_str(shs2s)){
+                如果(need_rex){ 返回值 4; };
+                返回值 3;
+            };
+        };
+        如果(need_rex){ 返回值 3; };
+        返回值 2;
+    };
+
+    如果(nops < 2){
+        错误打印("汇编器: 未知指令 [" + mnemonic + "] 长度 0——产物语义可能错误");
+        返回值 0;
+    };
+
+    创建 Operand:dst;
+    dst = parse_operand(g_enc_parts.获取(1));
+    创建 Operand:src;
+    src = parse_operand(g_enc_parts.获取(2));
+
+    如果(mnemonic == "mov"){
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_IMM){
+            如果(dst.size == 1){ 返回值 7; };
+            如果(dst.size == 4){ 返回值 10; };
+            返回值 11;
+        };
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_REG){
+            设 s3 = reg_num(src.reg);
+            设 need_rex3 = 0;
+            如果(src.reg < 100){ need_rex3 = 1; };
+            如果(s3 >= 8){ need_rex3 = 1; };
+            如果(need_rex3){ 返回值 7; };
+            返回值 6;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 disp = dst.imm;
+            如果(dst.size == 1){
+
+                设 len_ = 2;
+                如果(base >= 8 || dst.index >= 8){ len_ = len_ + 1; };
+                如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+                如果(disp == 0 && base != 5){
+                    如果(base == 5){ len_ = len_ + 1; };
+                }又如果(disp >= -128 && disp <= 127){
+                    len_ = len_ + 1;
+                }否则{
+                    len_ = len_ + 4;
+                };
+                返回值 len_ + 1;
+            };
+
+            设 len_ = 2;
+            如果(dst.size != 4){ len_ = len_ + 1; };
+            又如果(base >= 8 || dst.index >= 8){ len_ = len_ + 1; };
+            如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+            如果(disp == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(disp >= -128 && disp <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_ + 4;
+        };
+
+        如果(src.type == OPND_IMM){
+            设 r = reg_num(dst.reg);
+            设 v = src.imm;
+
+            如果(dst.reg >= 200 && dst.reg < 300){
+                如果(r >= 8){ 返回值 3; };
+                返回值 2;
+            };
+
+            设 imm_txt = trim(g_enc_parts.获取(2));
+            设 is_hex = 0;
+            如果(imm_txt.以开始("0x") || imm_txt.以开始("0X")){ is_hex = 1; };
+            如果(is_hex && v < 0){ 返回值 10; };
+
+            如果(v >= 0 && v <= 4294967295){
+                如果(r >= 8){ 返回值 6; };
+                返回值 5;
+            };
+
+            如果(v < 0){
+                如果(dst.reg >= 100 && dst.reg < 200){
+                    如果(r >= 8){ 返回值 6; };
+                    返回值 5;
+                };
+                返回值 7;
+            };
+
+            返回值 10;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d2 = reg_num(dst.reg);
+            设 s2 = reg_num(src.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d2 >= 8){ need_rex = 1; };
+            如果(s2 >= 8){ need_rex = 1; };
+            如果(need_rex){ 返回值 3; };
+            返回值 2;
+        };
+
+        如果(dst.type == OPND_MEM || src.type == OPND_MEM){
+            设 base_reg = dst.reg;
+            如果(src.type == OPND_MEM){ base_reg = src.reg; };
+            设 base = reg_num(base_reg);
+            设 disp = dst.imm;
+            如果(src.type == OPND_MEM){ disp = src.imm; };
+            设 len_ = 2;
+
+            设 w_op = dst.reg;
+            如果(src.type == OPND_REG){ w_op = src.reg; };
+
+            如果(w_op >= 300 && w_op < 400){ len_ = len_ + 1; };
+            设 need_rex = 0;
+            如果(w_op < 100){ need_rex = 1; };
+            设 w_opn = reg_num(w_op);
+            如果(w_opn >= 8){ need_rex = 1; };
+            如果(base >= 8){ need_rex = 1; };
+            如果(dst.index >= 8 || src.index >= 8){ need_rex = 1; };
+            如果(need_rex){ len_ = len_ + 1; };
+
+            如果(base == 4){ len_ = len_ + 1; };
+            如果(src.type == OPND_MEM && src.index >= 0){ len_ = len_ + 1; };
+            如果(dst.type == OPND_MEM && dst.index >= 0){ len_ = len_ + 1; };
+
+            如果(disp == 0 && base != 5){
+
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(disp >= -128 && disp <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(dst.type == OPND_RIPMEM || src.type == OPND_RIPMEM){
+            设 w_op2 = dst.reg;
+            如果(src.type == OPND_REG){ w_op2 = src.reg; };
+            设 need_rex2 = 0;
+            如果(w_op2 < 100){ need_rex2 = 1; };
+            设 d3 = reg_num(w_op2);
+            如果(d3 >= 8){ need_rex2 = 1; };
+            如果(need_rex2){ 返回值 7; };
+            返回值 6;
+        };
+        返回值 7;
+    };
+
+    如果(mnemonic == "movsxd"){
+
+        如果(dst.type == OPND_REG && src.type == OPND_RIPMEM){ 返回值 7; };
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 base = reg_num(src.reg);
+            设 len_ = 3;
+            如果(base == 4){ len_ = len_ + 1; };
+            如果(src.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(src.imm >= -128 && src.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+        如果(dst.type == OPND_REG && src.type == OPND_REG){ 返回值 3; };
+        返回值 7;
+    };
+
+    如果(mnemonic == "lea"){
+
+        如果(src.type == OPND_RIPMEM){ 返回值 7; };
+
+        如果(src.type == OPND_MEM){
+            设 base = reg_num(src.reg);
+            设 len_ = 3;
+            如果(base == 4){ len_ = len_ + 1; };
+            如果(src.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(src.imm >= -128 && src.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+        返回值 7;
+    };
+
+    如果(mnemonic == "add" || mnemonic == "sub"){
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d = reg_num(dst.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(dst.reg >= 200 && dst.reg < 300){ 如果(d >= 8){ 返回值 4; }; 返回值 3; };
+            如果(src.imm >= -128 && src.imm <= 127){
+                如果(need_rex){ 返回值 4; };
+                返回值 3;
+            }否则{
+                如果(need_rex){ 返回值 7; };
+                返回值 6;
+            };
+        };
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_IMM){
+            如果(src.imm >= -128 && src.imm <= 127){ 返回值 8; };
+            返回值 11;
+        };
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_REG){
+            返回值 7;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 len_ = 2;
+            如果(dst.size == 1){
+
+                如果(base >= 8 || dst.index >= 8){ len_ = len_ + 1; };
+            }又如果(dst.size == 4){
+
+                如果(base >= 8 || dst.index >= 8){ len_ = len_ + 1; };
+            }否则{
+
+                len_ = len_ + 1;
+            };
+            如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+            如果(dst.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(dst.imm >= -128 && dst.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            如果(dst.size == 1){ 返回值 len_ + 1; };
+            如果(src.imm >= -128 && src.imm <= 127){
+                返回值 len_ + 1;
+            };
+            返回值 len_ + 4;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_REG){
+            设 s = reg_num(src.reg);
+            设 base = reg_num(dst.reg);
+            设 len_ = 2;
+            设 need_rex = 0;
+            如果(src.reg < 100){ need_rex = 1; };
+            如果(s >= 8){ need_rex = 1; };
+            如果(base >= 8){ need_rex = 1; };
+            如果(need_rex){ len_ = len_ + 1; };
+            如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+            如果(dst.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(dst.imm >= -128 && dst.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 base = reg_num(src.reg);
+            设 len_ = 2;
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(base >= 8){ need_rex = 1; };
+            如果(need_rex){ len_ = len_ + 1; };
+            如果(base == 4 || src.index >= 0){ len_ = len_ + 1; };
+            如果(src.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(src.imm >= -128 && src.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_RIPMEM){
+            返回值 7;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(s >= 8){ need_rex = 1; };
+            如果(need_rex){ 返回值 3; };
+            返回值 2;
+        };
+        返回值 3;
+    };
+
+    如果(mnemonic == "xor"){
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(s >= 8){ need_rex = 1; };
+            如果(need_rex){ 返回值 3; };
+            返回值 2;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 base = reg_num(src.reg);
+            设 len_ = 2;
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(base >= 8){ need_rex = 1; };
+            如果(need_rex){ len_ = len_ + 1; };
+            如果(base == 4 || src.index >= 0){ len_ = len_ + 1; };
+            如果(src.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(src.imm >= -128 && src.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d4 = reg_num(dst.reg);
+            设 need_rex4 = 0;
+            如果(dst.reg < 100){ need_rex4 = 1; };
+            如果(d4 >= 8){ need_rex4 = 1; };
+
+            如果(dst.reg >= 200 && dst.reg < 300){ 如果(d4 >= 8){ 返回值 4; }; 返回值 3; };
+            如果(src.imm >= -128 && src.imm <= 127){
+                如果(need_rex4){ 返回值 4; };
+                返回值 3;
+            }否则{
+                如果(need_rex4){ 返回值 7; };
+                返回值 6;
+            };
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 len_ = 2;
+            如果(dst.size == 1){
+                如果(base >= 8){ len_ = len_ + 1; };
+            }又如果(dst.size == 4){
+                如果(base >= 8){ len_ = len_ + 1; };
+            }否则{
+                len_ = len_ + 1;
+            };
+            如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+            如果(dst.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(dst.imm >= -128 && dst.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            如果(dst.size == 1){ 返回值 len_ + 1; };
+            如果(src.imm >= -128 && src.imm <= 127){
+                返回值 len_ + 1;
+            };
+            返回值 len_ + 4;
+        };
+        返回值 3;
+    };
+
+    如果(mnemonic == "test"){
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 is64t = is_reg64(dst.reg);
+            如果(is64t){ 返回值 3; };
+            设 d8 = reg_num(dst.reg);
+            如果(dst.reg >= 200 && dst.reg < 300 && d8 >= 8){ 返回值 3; };
+            如果(dst.reg >= 100 && d8 >= 8){ 返回值 3; };
+            返回值 2;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d = reg_num(dst.reg);
+            如果(dst.reg >= 200 && dst.reg < 300){
+                如果(d >= 8){ 返回值 4; };
+                返回值 3;
+            };
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(need_rex){ 返回值 7; };
+            返回值 6;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 len_ = 2;
+            如果(dst.size == 1){
+                如果(base >= 8){ len_ = len_ + 1; };
+            }又如果(dst.size == 4){
+                如果(base >= 8){ len_ = len_ + 1; };
+            }否则{
+                len_ = len_ + 1;
+            };
+            如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+            如果(dst.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(dst.imm >= -128 && dst.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            如果(dst.size == 1){ 返回值 len_ + 1; };
+            返回值 len_ + 4;
+        };
+        返回值 3;
+    };
+
+    如果(mnemonic == "cmp"){
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d = reg_num(dst.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(dst.reg >= 200 && dst.reg < 300){ 如果(d >= 8){ 返回值 4; }; 返回值 3; };
+            如果(src.imm >= -128 && src.imm <= 127){
+                如果(need_rex){ 返回值 4; };
+                返回值 3;
+            }否则{
+                如果(need_rex){ 返回值 7; };
+                返回值 6;
+            };
+        };
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_IMM){
+            如果(src.imm >= -128 && src.imm <= 127){ 返回值 8; };
+            返回值 11;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_RIPMEM){
+            返回值 7;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 len_ = 2;
+            如果(dst.size == 1){
+
+                如果(base >= 8){ len_ = len_ + 1; };
+            }又如果(dst.size == 4){
+
+                如果(base >= 8){ len_ = len_ + 1; };
+            }否则{
+
+                len_ = len_ + 1;
+            };
+            如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+            如果(dst.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(dst.imm >= -128 && dst.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            如果(dst.size == 1){
+                返回值 len_ + 1;
+            };
+            如果(src.imm >= -128 && src.imm <= 127){
+                返回值 len_ + 1;
+            };
+            返回值 len_ + 4;
+        };
+
+        如果(src.type == OPND_MEM){
+            设 base = reg_num(src.reg);
+            设 len_ = 2;
+            设 need_rex = 0;
+            设 d4 = reg_num(dst.reg);
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d4 >= 8){ need_rex = 1; };
+            如果(base >= 8){ need_rex = 1; };
+            如果(need_rex){ len_ = len_ + 1; };
+            如果(base == 4){ len_ = len_ + 1; };
+            如果(src.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(src.imm >= -128 && src.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_REG){
+            设 s = reg_num(src.reg);
+            设 base = reg_num(dst.reg);
+            设 len_ = 2;
+            设 need_rex = 0;
+            如果(src.reg < 100){ need_rex = 1; };
+            如果(s >= 8){ need_rex = 1; };
+            如果(base >= 8){ need_rex = 1; };
+            如果(need_rex){ len_ = len_ + 1; };
+            如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+            如果(dst.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(dst.imm >= -128 && dst.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(s >= 8){ need_rex = 1; };
+            如果(need_rex){ 返回值 3; };
+            返回值 2;
+        };
+        返回值 3;
+    };
+
+    如果(mnemonic == "and" || mnemonic == "or"){
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d = reg_num(dst.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(dst.reg >= 200 && dst.reg < 300){ 如果(d >= 8){ 返回值 4; }; 返回值 3; };
+            如果(src.imm >= -128 && src.imm <= 127){
+                如果(need_rex){ 返回值 4; };
+                返回值 3;
+            }否则{
+                如果(need_rex){ 返回值 7; };
+                返回值 6;
+            };
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 len_ = 2;
+            如果(dst.size == 1){
+                如果(base >= 8){ len_ = len_ + 1; };
+            }又如果(dst.size == 4){
+                如果(base >= 8){ len_ = len_ + 1; };
+            }否则{
+                len_ = len_ + 1;
+            };
+            如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+            如果(dst.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(dst.imm >= -128 && dst.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            如果(dst.size == 1){ 返回值 len_ + 1; };
+            如果(src.imm >= -128 && src.imm <= 127){
+                返回值 len_ + 1;
+            };
+            返回值 len_ + 4;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_REG){
+            设 base = reg_num(dst.reg);
+            设 len_ = 2;
+            设 s_opn = reg_num(src.reg);
+            设 need_rex = 0;
+            如果(src.reg < 100){ need_rex = 1; };
+            如果(s_opn >= 8){ need_rex = 1; };
+            如果(base >= 8){ need_rex = 1; };
+            如果(need_rex){ len_ = len_ + 1; };
+            如果(base == 4 || dst.index >= 0){ len_ = len_ + 1; };
+            如果(dst.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(dst.imm >= -128 && dst.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 base = reg_num(src.reg);
+            设 len_ = 2;
+            设 w_opn = reg_num(dst.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(w_opn >= 8){ need_rex = 1; };
+            如果(base >= 8){ need_rex = 1; };
+            如果(need_rex){ len_ = len_ + 1; };
+            如果(base == 4 || src.index >= 0){ len_ = len_ + 1; };
+            如果(src.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(src.imm >= -128 && src.imm <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(d >= 8){ need_rex = 1; };
+            如果(s >= 8){ need_rex = 1; };
+            如果(need_rex){ 返回值 3; };
+            返回值 2;
+        };
+        返回值 3;
+    };
+
+    如果(mnemonic == "movzx" || mnemonic == "imul"){
+
+        如果(mnemonic == "imul" && dst.type == OPND_REG && src.type == OPND_IMM){
+            如果(src.imm >= -128 && src.imm <= 127){ 返回值 4; };
+            返回值 7;
+        };
+
+        如果(mnemonic == "imul" && dst.type == OPND_REG && src.type == OPND_REG && nops >= 3){
+            设 iml_s = trim(g_enc_parts.获取(3));
+            设 iml_base = 3;
+            如果(dst.reg < 100){ iml_base = iml_base + 1; };
+            又如果(reg_num(dst.reg) >= 8 || reg_num(src.reg) >= 8){ iml_base = iml_base + 1; };
+            如果(is_int_str(iml_s)){
+                设 iml_v = parse_int(iml_s);
+                如果(iml_v >= -128 && iml_v <= 127){ 返回值 iml_base; };
+            };
+            返回值 iml_base + 3;
+        };
+
+        如果(mnemonic == "imul" && dst.type == OPND_REG && src.type == OPND_MEM){
+            设 base = reg_num(src.reg);
+            设 len_ = 4;
+            如果(base == 4 || src.index >= 0){ len_ = len_ + 1; };
+            如果(src.imm == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(src.imm >= -128 && src.imm <= 127){                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(mnemonic == "imul" && dst.type == OPND_REG && src.type == OPND_REG && nops == 2){
+            返回值 4;
+        };
+
+        如果(mnemonic == "movzx" && src.type == OPND_MEM){
+            设 base = reg_num(src.reg);
+            设 disp = src.imm;
+            设 len_ = 3;
+
+            设 w_opn = reg_num(dst.reg);
+            设 need_rex = 0;
+            如果(dst.reg < 100){ need_rex = 1; };
+            如果(w_opn >= 8){ need_rex = 1; };
+            如果(base >= 8){ need_rex = 1; };
+            如果(need_rex){ len_ = len_ + 1; };
+            如果(base == 4 || src.index >= 0){ len_ = len_ + 1; };
+            如果(disp == 0 && base != 5){
+                如果(base == 5){ len_ = len_ + 1; };
+            }又如果(disp >= -128 && disp <= 127){
+                len_ = len_ + 1;
+            }否则{
+                len_ = len_ + 4;
+            };
+            返回值 len_;
+        };
+
+        如果(mnemonic == "movzx" && dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            如果(dst.reg >= 100 && d < 8 && s < 8){ 返回值 3; };
+            返回值 4;
+        };
+        返回值 4;
+    };
+
+    如果(mnemonic == "sar"){
+
+        如果(src.type == OPND_IMM){ 返回值 4; };
+        返回值 3;
+    };
+
+    错误打印("汇编器: 未知指令 [" + mnemonic + "] 长度 0——产物语义可能错误");
+    返回值 0;
+};
+
+声明 emit_modrm(reg_field, base_reg, disp){
+    设 base = reg_num(base_reg);
+    设 need_sib = 0;
+    如果(base == 4){ need_sib = 1; };
+
+    设 mod = 0;
+    设 disp_size = 0;
+    如果(disp == 0 && base != 5){
+        mod = 0;
+        disp_size = 0;
+    }又如果(disp == 0 && base == 5){
+        mod = 1;
+        disp_size = 1;
+    }又如果(disp >= -128 && disp <= 127){
+        mod = 1;
+        disp_size = 1;
+    }否则{
+        mod = 2;
+        disp_size = 4;
+    };
+
+    设 modrm = mod * 64 + reg_field * 8 + (base & 7);
+    g_enc_out_bytes.添加(modrm);
+
+    如果(need_sib){
+        g_enc_out_bytes.添加(0x24);
+    };
+
+    如果(disp_size == 1){
+        设 d = disp;
+        如果(d < 0){ d = d + 256; };
+        g_enc_out_bytes.添加(d);
+    }又如果(disp_size == 4){
+        设 d = disp;
+        如果(d < 0){ d = d + 4294967296; };
+        g_enc_out_bytes.添加(d & 255);
+        g_enc_out_bytes.添加((d / 256) & 255);
+        g_enc_out_bytes.添加((d / 65536) & 255);
+        g_enc_out_bytes.添加((d / 16777216) & 255);
+    };
+
+    返回值 0;
+};
+
+声明 emit_modrm_sib(reg_field, base_reg, index_reg, scale, disp){
+    设 base = reg_num(base_reg);
+    设 idx = reg_num(index_reg);
+
+    设 mod = 0;
+    设 disp_size = 0;
+    如果(disp == 0 && base != 5){
+        mod = 0;
+        disp_size = 0;
+    }又如果(disp == 0 && base == 5){
+        mod = 1;
+        disp_size = 1;
+    }又如果(disp >= -128 && disp <= 127){
+        mod = 1;
+        disp_size = 1;
+    }否则{
+        mod = 2;
+        disp_size = 4;
+    };
+
+    设 modrm = mod * 64 + reg_field * 8 + 4;
+    g_enc_out_bytes.添加(modrm);
+
+    设 scale_code = 0;
+    如果(scale == 2){ scale_code = 1; };
+    如果(scale == 4){ scale_code = 2; };
+    如果(scale == 8){ scale_code = 3; };
+    设 sib = scale_code * 64 + (idx & 7) * 8 + (base & 7);
+    g_enc_out_bytes.添加(sib);
+
+    如果(disp_size == 1){
+        设 d = disp;
+        如果(d < 0){ d = d + 256; };
+        g_enc_out_bytes.添加(d);
+    }又如果(disp_size == 4){
+        设 d = disp;
+        如果(d < 0){ d = d + 4294967296; };
+        g_enc_out_bytes.添加(d & 255);
+        g_enc_out_bytes.添加((d / 256) & 255);
+        g_enc_out_bytes.添加((d / 65536) & 255);
+        g_enc_out_bytes.添加((d / 16777216) & 255);
+    };
+
+    返回值 0;
+};
+
+声明 add_reloc(section, offset, sym_name, rtype){
+    创建 AsmReloc:relx;
+    relx.section = section;
+    relx.offset = offset;
+    relx.sym_name = sym_name;
+    relx.type = rtype;
+    g_enc_relocs.添加(relx);
+    返回值 0;
+};
+
+声明 emit_modrm_rip(reg_field){
+
+    设 modrm = 0 * 64 + reg_field * 8 + 5;
+    g_enc_out_bytes.添加(modrm);
+
+    g_enc_out_bytes.添加(0);
+    g_enc_out_bytes.添加(0);
+    g_enc_out_bytes.添加(0);
+    g_enc_out_bytes.添加(0);
+    返回值 0;
+};
+
+声明 make_rex(w, r, x, b){
+    设 rex = 0x40;
+    如果(w){ rex = rex + 8; };
+    如果(r){ rex = rex + 4; };
+    如果(x){ rex = rex + 2; };
+    如果(b){ rex = rex + 1; };
+    返回值 rex;
+};
+
+声明 encode_insn(section, offset){
+    创建 ArrayList:bytes;
+    g_enc_out_bytes = bytes;
+    设 mnemonic = g_enc_parts.获取(0);
+    设 nops = g_enc_parts.长度() - 1;
+
+    如果(mnemonic == "ret"){
+        bytes.添加(0xC3);
+        返回值 bytes;
+    };
+    如果(mnemonic == "hlt"){
+        bytes.添加(0xF4);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "push" || mnemonic == "pop"){
+        创建 Operand:op_pp2;
+        op_pp2 = parse_operand(g_enc_parts.获取(1));
+        设 r = reg_num(op_pp2.reg);
+        设 base = 0x50;
+        如果(mnemonic == "pop"){ base = 0x58; };
+        如果(r >= 8){
+            bytes.添加(0x41);
+            bytes.添加(base + (r & 7));
+        }否则{
+            bytes.添加(base + r);
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "call"){
+        创建 Operand:op_call;
+        op_call = parse_operand(g_enc_parts.获取(1));
+        如果(op_call.type == OPND_REG){
+            bytes.添加(0xFF);
+            bytes.添加(0xD0 + op_call.reg);
+            返回值 bytes;
+        };
+        如果(op_call.type == OPND_MEM){
+
+            设 base = reg_num(op_call.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(b_bit){ bytes.添加(0x41); };
+            bytes.添加(0xFF);
+            如果(op_call.index >= 0){
+                emit_modrm_sib(2, base, op_call.index, op_call.scale, op_call.imm);
+            }否则{
+                emit_modrm(2, base, op_call.imm);
+            };
+            返回值 bytes;
+        };
+        bytes.添加(0xE8);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        add_reloc(section, offset + 1, op_call.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "jmp"){
+        创建 Operand:op_jmp;
+        op_jmp = parse_operand(g_enc_parts.获取(1));
+        如果(op_jmp.type == OPND_REG){
+            bytes.添加(0xFF);
+            bytes.添加(0xE0 + op_jmp.reg);
+            返回值 bytes;
+        };
+        如果(op_jmp.type == OPND_MEM){
+
+            设 base = reg_num(op_jmp.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(b_bit){ bytes.添加(0x41); };
+            bytes.添加(0xFF);
+            如果(op_jmp.index >= 0){
+                emit_modrm_sib(4, base, op_jmp.index, op_jmp.scale, op_jmp.imm);
+            }否则{
+                emit_modrm(4, base, op_jmp.imm);
+            };
+            返回值 bytes;
+        };
+        bytes.添加(0xE9);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        add_reloc(section, offset + 1, op_jmp.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "jz" || mnemonic == "je"){
+        bytes.添加(0x0F);
+        bytes.添加(0x84);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jz;
+        op_jz = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jz.label, RELOC_REL32);
+        返回值 bytes;
+    };
+    如果(mnemonic == "jnz"){
+        bytes.添加(0x0F);
+        bytes.添加(0x85);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jnz;
+        op_jnz = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jnz.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "jne"){
+        bytes.添加(0x0F);
+        bytes.添加(0x85);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jne;
+        op_jne = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jne.label, RELOC_REL32);
+        返回值 bytes;
+    };
+    如果(mnemonic == "jl"){
+        bytes.添加(0x0F);
+        bytes.添加(0x8C);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jl;
+        op_jl = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jl.label, RELOC_REL32);
+        返回值 bytes;
+    };
+    如果(mnemonic == "jge"){
+        bytes.添加(0x0F);
+        bytes.添加(0x8D);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jge;
+        op_jge = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jge.label, RELOC_REL32);
+        返回值 bytes;
+    };
+    如果(mnemonic == "jle"){
+        bytes.添加(0x0F);
+        bytes.添加(0x8E);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jle;
+        op_jle = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jle.label, RELOC_REL32);
+        返回值 bytes;
+    };
+    如果(mnemonic == "jg"){
+        bytes.添加(0x0F);
+        bytes.添加(0x8F);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jg;
+        op_jg = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jg.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "jc" || mnemonic == "jb"){
+        bytes.添加(0x0F);
+        bytes.添加(0x82);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jc;
+        op_jc = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jc.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "jbe"){
+        bytes.添加(0x0F);
+        bytes.添加(0x86);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jbe;
+        op_jbe = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jbe.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "ja"){
+        bytes.添加(0x0F);
+        bytes.添加(0x87);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_ja;
+        op_ja = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_ja.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "js"){
+        bytes.添加(0x0F);
+        bytes.添加(0x88);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_js;
+        op_js = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_js.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "jns"){
+        bytes.添加(0x0F);
+        bytes.添加(0x89);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jns;
+        op_jns = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jns.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "jnc" || mnemonic == "jae"){
+        bytes.添加(0x0F);
+        bytes.添加(0x83);
+        bytes.添加(0); bytes.添加(0); bytes.添加(0); bytes.添加(0);
+        创建 Operand:op_jnc;
+        op_jnc = parse_operand(g_enc_parts.获取(1));
+        add_reloc(section, offset + 2, op_jnc.label, RELOC_REL32);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "inc"){
+        创建 Operand:iop;
+        iop = parse_operand(g_enc_parts.获取(1));
+        如果(iop.type == OPND_REG){
+            设 d = reg_num(iop.reg);
+            设 b_bit = 0;
+            如果(d >= 8){ b_bit = 1; };
+
+            如果(iop.reg >= 200 && iop.reg < 300){
+                如果(b_bit){ bytes.添加(make_rex(0, 0, 0, b_bit)); };
+                bytes.添加(0xFE);
+                bytes.添加(0xC0 + (d & 7));
+                返回值 bytes;
+            };
+            设 iw = 0;
+            如果(iop.reg < 100){ iw = 1; };
+            如果(iw || b_bit){
+                bytes.添加(make_rex(iw, 0, 0, b_bit));
+            };
+            bytes.添加(0xFF);            bytes.添加(0xC0 + (d & 7));
+            返回值 bytes;
+        };
+
+        如果(iop.type == OPND_MEM){
+            设 base = reg_num(iop.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(iop.size == 8 || iop.size == 0){
+                bytes.添加(make_rex(1, 0, 0, b_bit));
+            }又如果(b_bit){
+                bytes.添加(make_rex(0, 0, 0, 1));
+            };
+            bytes.添加(0xFF);
+            emit_modrm(0, base, iop.imm);
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "dec"){
+        创建 Operand:dop2;
+        dop2 = parse_operand(g_enc_parts.获取(1));
+        如果(dop2.type == OPND_REG){
+            设 d2 = reg_num(dop2.reg);
+            设 b2 = 0;
+            如果(d2 >= 8){ b2 = 1; };
+            设 dw = 0;
+            如果(dop2.reg < 100){ dw = 1; };
+            如果(dw || b2){
+                bytes.添加(make_rex(dw, 0, 0, b2));
+            };
+            bytes.添加(0xFF);
+            bytes.添加(0xC8 + (d2 & 7));
+            返回值 bytes;
+        };
+
+        如果(dop2.type == OPND_MEM){
+            设 base2 = reg_num(dop2.reg);
+            设 b2 = 0;
+            如果(base2 >= 8){ b2 = 1; };
+            如果(dop2.size == 8 || dop2.size == 0){
+                bytes.添加(make_rex(1, 0, 0, b2));
+            }又如果(b2){
+                bytes.添加(make_rex(0, 0, 0, 1));
+            };
+            bytes.添加(0xFF);
+            emit_modrm(1, base2, dop2.imm);
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "cqo"){
+        bytes.添加(0x48);
+        bytes.添加(0x99);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "cpuid"){
+        bytes.添加(0x0F);
+        bytes.添加(0xA2);
+        返回值 bytes;
+    };
+    如果(mnemonic == "rdtsc"){
+        bytes.添加(0x0F);
+        bytes.添加(0x31);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "movsd"){
+
+        创建 Operand:sop_a;
+        sop_a = parse_operand(g_enc_parts.获取(1));
+        如果(sop_a.type == OPND_MEM){
+            设 xms = parse_xmm(g_enc_parts.获取(2));
+            如果(xms < 0){ xms = 0; };
+            设 base = reg_num(sop_a.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(b_bit){ bytes.添加(0x41); };
+            bytes.添加(0xF2);
+            bytes.添加(0x0F);
+            bytes.添加(0x11);
+            如果(sop_a.index >= 0){
+                emit_modrm_sib(xms, base, sop_a.index, sop_a.scale, sop_a.imm);
+            }否则{
+                emit_modrm(xms & 7, base, sop_a.imm);
+            };
+            返回值 bytes;
+        };
+        创建 Operand:sop_b;
+        sop_b = parse_operand(g_enc_parts.获取(2));
+        如果(sop_b.type == OPND_RIPMEM){
+
+            设 xmd = parse_xmm(g_enc_parts.获取(1));
+            如果(xmd < 0){ xmd = 0; };
+            bytes.添加(0xF2);
+            bytes.添加(0x0F);
+            bytes.添加(0x10);
+            emit_modrm_rip(xmd);
+            add_reloc(section, offset + 4, sop_b.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+        如果(sop_b.type == OPND_MEM){
+
+            设 xmd = parse_xmm(g_enc_parts.获取(1));
+            如果(xmd < 0){ xmd = 0; };
+            bytes.添加(0xF2);
+            设 base = reg_num(sop_b.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(b_bit){ bytes.添加(0x41); };
+            bytes.添加(0x0F);
+            bytes.添加(0x10);
+            如果(sop_b.index >= 0){
+                emit_modrm_sib(xmd, base, sop_b.index, sop_b.scale, sop_b.imm);
+            }否则{
+                emit_modrm(xmd & 7, base, sop_b.imm);
+            };
+            返回值 bytes;
+        };
+
+        设 xmd2 = parse_xmm(g_enc_parts.获取(1));
+        设 xms2 = parse_xmm(g_enc_parts.获取(2));
+        如果(xmd2 >= 0 && xms2 >= 0){
+            bytes.添加(0xF2);
+            bytes.添加(0x0F);
+            bytes.添加(0x10);
+            bytes.添加(0xC0 + (xmd2 & 7) * 8 + (xms2 & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "movups"){
+
+        创建 Operand:up_a;
+        up_a = parse_operand(g_enc_parts.获取(1));
+        如果(up_a.type == OPND_MEM){
+            设 uxms = parse_xmm(g_enc_parts.获取(2));
+            如果(uxms < 0){ uxms = 0; };
+            设 base = reg_num(up_a.reg);
+            设 r_bit = 0;
+            如果(uxms >= 8){ r_bit = 1; };
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(r_bit || b_bit){ bytes.添加(make_rex(0, r_bit, 0, b_bit)); };
+            bytes.添加(0x0F);
+            bytes.添加(0x11);
+            如果(up_a.index >= 0){
+                emit_modrm_sib(uxms & 7, base, up_a.index, up_a.scale, up_a.imm);
+            }否则{
+                emit_modrm(uxms & 7, base, up_a.imm);
+            };
+            返回值 bytes;
+        };
+        创建 Operand:up_b;
+        up_b = parse_operand(g_enc_parts.获取(2));
+        如果(up_b.type == OPND_RIPMEM){
+
+            设 uxmd = parse_xmm(g_enc_parts.获取(1));
+            如果(uxmd < 0){ uxmd = 0; };
+            bytes.添加(0x0F);
+            bytes.添加(0x10);
+            emit_modrm_rip(uxmd);
+            add_reloc(section, offset + 3, up_b.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+        如果(up_b.type == OPND_MEM){
+
+            设 uxmd = parse_xmm(g_enc_parts.获取(1));
+            如果(uxmd < 0){ uxmd = 0; };
+            设 base = reg_num(up_b.reg);
+            设 r_bit = 0;
+            如果(uxmd >= 8){ r_bit = 1; };
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(r_bit || b_bit){ bytes.添加(make_rex(0, r_bit, 0, b_bit)); };
+            bytes.添加(0x0F);
+            bytes.添加(0x10);
+            如果(up_b.index >= 0){
+                emit_modrm_sib(uxmd & 7, base, up_b.index, up_b.scale, up_b.imm);
+            }否则{
+                emit_modrm(uxmd & 7, base, up_b.imm);
+            };
+            返回值 bytes;
+        };
+
+        设 uxmd2 = parse_xmm(g_enc_parts.获取(1));
+        设 uxms2 = parse_xmm(g_enc_parts.获取(2));
+        如果(uxmd2 >= 0 && uxms2 >= 0){
+            设 r_bit = 0;
+            如果(uxmd2 >= 8){ r_bit = 1; };
+            设 b_bit = 0;
+            如果(uxms2 >= 8){ b_bit = 1; };
+            如果(r_bit || b_bit){ bytes.添加(make_rex(0, r_bit, 0, b_bit)); };
+            bytes.添加(0x0F);
+            bytes.添加(0x10);
+            bytes.添加(0xC0 + (uxmd2 & 7) * 8 + (uxms2 & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "stmxcsr" || mnemonic == "ldmxcsr"){
+        创建 Operand:mx_op;
+        mx_op = parse_operand(g_enc_parts.获取(1));
+        如果(mx_op.type == OPND_MEM){
+            设 base = reg_num(mx_op.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(b_bit){ bytes.添加(make_rex(0, 0, 0, 1)); };
+            bytes.添加(0x0F);
+            bytes.添加(0xAE);
+            设 digit = 3;
+            如果(mnemonic == "ldmxcsr"){ digit = 2; };
+            如果(mx_op.index >= 0){
+                emit_modrm_sib(digit, base, mx_op.index, mx_op.scale, mx_op.imm);
+            }否则{
+                emit_modrm(digit, base, mx_op.imm);
+            };
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "movq"){
+        设 qxd1 = parse_xmm(g_enc_parts.获取(1));
+        设 qxs1 = parse_xmm(g_enc_parts.获取(2));
+
+        如果(qxd1 >= 0 && qxs1 >= 0){
+            设 r_bit = 0;
+            如果(qxd1 >= 8){ r_bit = 1; };
+            设 b_bit = 0;
+            如果(qxs1 >= 8){ b_bit = 1; };
+            如果(r_bit || b_bit){ bytes.添加(make_rex(0, r_bit, 0, b_bit)); };
+            bytes.添加(0xF3);
+            bytes.添加(0x0F);
+            bytes.添加(0x7E);
+            bytes.添加(0xC0 + (qxd1 & 7) * 8 + (qxs1 & 7));
+            返回值 bytes;
+        };
+        创建 Operand:qop_a;
+        qop_a = parse_operand(g_enc_parts.获取(1));
+        如果(qop_a.type == OPND_MEM){
+
+            设 qxms = parse_xmm(g_enc_parts.获取(2));
+            如果(qxms < 0){ qxms = 0; };
+            设 base = reg_num(qop_a.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            bytes.添加(0x66);
+            bytes.添加(make_rex(1, 0, 0, b_bit));
+            bytes.添加(0x0F);
+            bytes.添加(0x7E);
+            如果(qop_a.index >= 0){
+                emit_modrm_sib(qxms & 7, base, qop_a.index, qop_a.scale, qop_a.imm);
+            }否则{
+                emit_modrm(qxms & 7, base, qop_a.imm);
+            };
+            返回值 bytes;
+        };
+        如果(qop_a.type == OPND_RIPMEM){
+
+            设 qxms = parse_xmm(g_enc_parts.获取(2));
+            如果(qxms < 0){ qxms = 0; };
+            bytes.添加(0x66);
+            bytes.添加(make_rex(1, 0, 0, 0));
+            bytes.添加(0x0F);
+            bytes.添加(0x7E);
+            emit_modrm_rip(qxms);
+            add_reloc(section, offset + 5, qop_a.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+
+        如果(qop_a.type == OPND_REG && qxs1 >= 0){
+            设 d = reg_num(qop_a.reg);
+            设 b_bit = 0;
+            如果(d >= 8){ b_bit = 1; };
+            设 r_bit = 0;
+            如果(qxs1 >= 8){ r_bit = 1; };
+            bytes.添加(0x66);
+            bytes.添加(make_rex(1, r_bit, 0, b_bit));
+            bytes.添加(0x0F);
+            bytes.添加(0x7E);
+            bytes.添加(0xC0 + (qxs1 & 7) * 8 + (d & 7));
+            返回值 bytes;
+        };
+
+        如果(qxd1 >= 0){
+            创建 Operand:qop_b;
+            qop_b = parse_operand(g_enc_parts.获取(2));
+            如果(qop_b.type == OPND_RIPMEM){
+
+                bytes.添加(0x66);
+                bytes.添加(make_rex(1, 0, 0, 0));
+                bytes.添加(0x0F);
+                bytes.添加(0x6E);
+                emit_modrm_rip(qxd1);
+                add_reloc(section, offset + 5, qop_b.label, RELOC_RIP32);
+                返回值 bytes;
+            };
+            如果(qop_b.type == OPND_MEM){
+
+                设 base = reg_num(qop_b.reg);
+                设 b_bit = 0;
+                如果(base >= 8){ b_bit = 1; };
+                bytes.添加(0x66);
+                bytes.添加(make_rex(1, 0, 0, b_bit));
+                bytes.添加(0x0F);
+                bytes.添加(0x6E);
+                如果(qop_b.index >= 0){
+                    emit_modrm_sib(qxd1, base, qop_b.index, qop_b.scale, qop_b.imm);
+                }否则{
+                    emit_modrm(qxd1, base, qop_b.imm);
+                };
+                返回值 bytes;
+            };
+
+            如果(qop_b.type == OPND_REG){
+                设 s2 = reg_num(qop_b.reg);
+                设 b_bit2 = 0;
+                如果(s2 >= 8){ b_bit2 = 1; };
+                设 r_bit2 = 0;
+                如果(qxd1 >= 8){ r_bit2 = 1; };
+                bytes.添加(0x66);
+                bytes.添加(make_rex(1, r_bit2, 0, b_bit2));
+                bytes.添加(0x0F);
+                bytes.添加(0x6E);
+                bytes.添加(0xC0 + (qxd1 & 7) * 8 + (s2 & 7));
+                返回值 bytes;
+            };
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "cvtsi2sd"){
+        创建 Operand:fsrc;
+        fsrc = parse_operand(g_enc_parts.获取(2));
+        设 fs = reg_num(fsrc.reg);
+        设 fb = 0;
+        如果(fs >= 8){ fb = 1; };
+        设 fxd = parse_xmm(g_enc_parts.获取(1));
+        如果(fxd < 0){ fxd = 0; };
+        bytes.添加(0xF2);
+        bytes.添加(make_rex(1, 0, 0, fb));
+        bytes.添加(0x0F);
+        bytes.添加(0x2A);
+        bytes.添加(0xC0 + (fxd & 7) * 8 + (fs & 7));
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "cvttsd2si"){
+        创建 Operand:fdst;
+        fdst = parse_operand(g_enc_parts.获取(1));
+        设 fd = reg_num(fdst.reg);
+        设 fr = 0;
+        如果(fd >= 8){ fr = 1; };
+        bytes.添加(0xF2);
+        bytes.添加(make_rex(1, fr, 0, 0));
+        bytes.添加(0x0F);
+        bytes.添加(0x2C);
+        bytes.添加(0xC0 + (fd & 7) * 8);
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "addsd" || mnemonic == "subsd" ||
+       mnemonic == "mulsd" || mnemonic == "divsd"){
+        设 fopc = 0x58;
+        如果(mnemonic == "subsd"){ fopc = 0x5C; };
+        如果(mnemonic == "mulsd"){ fopc = 0x59; };
+        如果(mnemonic == "divsd"){ fopc = 0x5E; };
+
+        创建 Operand:fop2;
+        fop2 = parse_operand(g_enc_parts.获取(2));
+        设 fxd = parse_xmm(g_enc_parts.获取(1));
+        如果(fxd < 0){ fxd = 0; };
+        如果(fop2.type == OPND_RIPMEM){
+            bytes.添加(0xF2);
+            bytes.添加(0x0F);
+            bytes.添加(fopc);
+            emit_modrm_rip(fxd);
+            add_reloc(section, offset + 4, fop2.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+
+        如果(fop2.type == OPND_MEM){
+            设 base = reg_num(fop2.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(b_bit){ bytes.添加(0x41); };
+            bytes.添加(0xF2);
+            bytes.添加(0x0F);
+            bytes.添加(fopc);
+            如果(fop2.index >= 0){
+                emit_modrm_sib(fxd, base, fop2.index, fop2.scale, fop2.imm);
+            }否则{
+                emit_modrm(fxd, base, fop2.imm);
+            };
+            返回值 bytes;
+        };
+
+        设 fxs = parse_xmm(g_enc_parts.获取(2));
+        如果(fxd >= 0 && fxs >= 0){
+            bytes.添加(0xF2);
+            bytes.添加(0x0F);
+            bytes.添加(fopc);
+            bytes.添加(0xC0 + (fxd & 7) * 8 + (fxs & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "comisd"){
+        设 cx2 = parse_xmm(g_enc_parts.获取(1));
+        设 cy2 = parse_xmm(g_enc_parts.获取(2));
+        如果(cx2 >= 0 && cy2 >= 0){
+            bytes.添加(0x66);
+            bytes.添加(0x0F);
+            bytes.添加(0x2F);
+            bytes.添加(0xC0 + (cx2 & 7) * 8 + (cy2 & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "xorpd"){
+        设 xp1 = parse_xmm(g_enc_parts.获取(1));
+        设 xp2 = parse_xmm(g_enc_parts.获取(2));
+        如果(xp1 >= 0 && xp2 >= 0){
+            bytes.添加(0x66);
+            bytes.添加(0x0F);
+            bytes.添加(0x57);
+            bytes.添加(0xC0 + (xp1 & 7) * 8 + (xp2 & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "and" || mnemonic == "or" || mnemonic == "xor"){
+        创建 Operand:ad;
+        ad = parse_operand(g_enc_parts.获取(1));
+        创建 Operand:as;
+        as = parse_operand(g_enc_parts.获取(2));
+        如果(ad.type == OPND_REG && as.type == OPND_REG){
+            设 adn = reg_num(ad.reg);
+            设 asn = reg_num(as.reg);
+            设 ar_bit = 0;
+            设 ab_bit = 0;
+            如果(asn >= 8){ ar_bit = 1; };
+            如果(adn >= 8){ ab_bit = 1; };
+            设 aw = 0;
+            如果(ad.reg < 100){ aw = 1; };
+            设 aopc = 0x21;
+            如果(mnemonic == "or"){ aopc = 0x09; };
+            如果(mnemonic == "xor"){ aopc = 0x31; };
+            如果(aw || ar_bit || ab_bit){
+                bytes.添加(make_rex(aw, ar_bit, 0, ab_bit));
+            };
+            bytes.添加(aopc);
+            bytes.添加(0xC0 + (asn & 7) * 8 + (adn & 7));
+            返回值 bytes;
+        };
+
+        如果(ad.type == OPND_REG && as.type == OPND_IMM){
+            设 adn2 = reg_num(ad.reg);
+            设 ab2 = 0;
+            如果(adn2 >= 8){ ab2 = 1; };
+            设 aw2 = 0;
+            如果(ad.reg < 100){ aw2 = 1; };
+            设 adigit = 4;
+            如果(mnemonic == "or"){ adigit = 1; };
+            如果(mnemonic == "xor"){ adigit = 6; };
+
+            如果(ad.reg >= 200 && ad.reg < 300){
+                如果(ab2){ bytes.添加(make_rex(0, 0, 0, 1)); };
+                bytes.添加(0x80);
+                bytes.添加(0xC0 + adigit * 8 + (adn2 & 7));
+                设 av8 = as.imm;
+                如果(av8 < 0){ av8 = av8 + 256; };
+                bytes.添加(av8 & 255);
+                返回值 bytes;
+            };
+            如果(aw2 || ab2){
+                bytes.添加(make_rex(aw2, 0, 0, ab2));
+            };
+            如果(as.imm >= -128 && as.imm <= 127){
+                bytes.添加(0x83);
+                bytes.添加(0xC0 + adigit * 8 + (adn2 & 7));
+                设 av2 = as.imm;
+                如果(av2 < 0){ av2 = av2 + 256; };
+                bytes.添加(av2 & 255);
+            }否则{
+                bytes.添加(0x81);
+                bytes.添加(0xC0 + adigit * 8 + (adn2 & 7));
+                设 av2 = as.imm;
+                如果(av2 < 0){ av2 = av2 + 4294967296; };
+                bytes.添加(av2 & 255);
+                bytes.添加((av2 / 256) & 255);
+                bytes.添加((av2 / 65536) & 255);
+                bytes.添加((av2 / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+    };
+
+    如果(mnemonic == "not"){
+        创建 Operand:nn;
+        nn = parse_operand(g_enc_parts.获取(1));
+        设 nn_ = reg_num(nn.reg);
+        设 nb = 0;
+        如果(nn_ >= 8){ nb = 1; };
+        bytes.添加(make_rex(1, 0, 0, nb));
+        bytes.添加(0xF7);
+        bytes.添加(0xD0 + (nn_ & 7));
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "neg"){
+        创建 Operand:nn2;
+        nn2 = parse_operand(g_enc_parts.获取(1));
+        设 nn2_ = reg_num(nn2.reg);
+        设 nb2 = 0;
+        如果(nn2_ >= 8){ nb2 = 1; };
+        bytes.添加(make_rex(1, 0, 0, nb2));
+        bytes.添加(0xF7);
+        bytes.添加(0xD8 + (nn2_ & 7));
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "imul" && nops == 1){
+        创建 Operand:im1;
+        im1 = parse_operand(g_enc_parts.获取(1));
+        如果(im1.type == OPND_REG){
+            设 d1 = reg_num(im1.reg);
+            设 b1 = 0;
+            如果(d1 >= 8){ b1 = 1; };
+            bytes.添加(make_rex(1, 0, 0, b1));
+            bytes.添加(0xF7);
+            bytes.添加(0xE8 + (d1 & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "sete" || mnemonic == "setne" || mnemonic == "setl" ||
+       mnemonic == "setge" || mnemonic == "setle" || mnemonic == "setg"){
+        设 opc = 0x94;
+        如果(mnemonic == "setne"){ opc = 0x95; };
+        如果(mnemonic == "setl"){ opc = 0x9C; };
+        如果(mnemonic == "setge"){ opc = 0x9D; };
+        如果(mnemonic == "setle"){ opc = 0x9E; };
+        如果(mnemonic == "setg"){ opc = 0x9F; };
+        创建 Operand:scd;
+        scd = parse_operand(g_enc_parts.获取(1));
+        如果(scd.type == OPND_REG){
+            设 d3 = reg_num(scd.reg);
+            如果(d3 >= 4){
+                bytes.添加(0x40);
+            };
+            bytes.添加(0x0F);
+            bytes.添加(opc);
+            bytes.添加(0xC0 + (d3 & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "shl" || mnemonic == "shr"){
+        创建 Operand:sh;
+        sh = parse_operand(g_enc_parts.获取(1));
+        设 shn = reg_num(sh.reg);
+        设 shb = 0;
+        如果(shn >= 8){ shb = 1; };
+        设 shw = 0;
+        如果(sh.reg < 100){ shw = 1; };
+        创建 Operand:shs;
+        shs = parse_operand(g_enc_parts.获取(2));
+
+        如果(sh.type == OPND_MEM){
+            设 base = reg_num(sh.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            设 x_bit = 0;
+            如果(sh.index >= 8){ x_bit = 1; };
+            如果(sh.size == 8 || sh.size == 0){
+                bytes.添加(make_rex(1, 0, x_bit, b_bit));
+            }又如果(b_bit || x_bit){
+                bytes.添加(make_rex(0, 0, x_bit, b_bit));
+            };
+            bytes.添加(0xC1);
+            设 shop1 = 0xE0;
+            如果(mnemonic == "shr"){ shop1 = 0xE8; };
+            如果(sh.index >= 0){
+                emit_modrm_sib((shop1 >> 3) & 7, base, sh.index, sh.scale, sh.imm);
+            }否则{
+                emit_modrm((shop1 >> 3) & 7, base, sh.imm);
+            };
+            bytes.添加(shs.imm & 255);
+            返回值 bytes;
+        };
+        如果(shs.type == OPND_IMM){
+            如果(shw || shb){
+                bytes.添加(make_rex(shw, 0, 0, shb));
+            };
+            bytes.添加(0xC1);
+            设 shop1 = 0xE0;
+            如果(mnemonic == "shr"){ shop1 = 0xE8; };
+            bytes.添加(shop1 + (shn & 7));
+            bytes.添加(shs.imm & 255);
+            返回值 bytes;
+        };
+        如果(shw || shb){
+            bytes.添加(make_rex(shw, 0, 0, shb));
+        };
+        bytes.添加(0xD3);
+        设 shop = 0xE0;
+        如果(mnemonic == "shr"){ shop = 0xE8; };
+        bytes.添加(shop + (shn & 7));
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "idiv"){
+        创建 Operand:iv;
+        iv = parse_operand(g_enc_parts.获取(1));
+        设 ivn = reg_num(iv.reg);
+        设 ivb = 0;
+        如果(ivn >= 8){ ivb = 1; };
+        bytes.添加(make_rex(1, 0, 0, ivb));
+        bytes.添加(0xF7);
+        bytes.添加(0xF8 + (ivn & 7));
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "div"){
+        创建 Operand:dv;
+        dv = parse_operand(g_enc_parts.获取(1));
+        设 dvn = reg_num(dv.reg);
+        设 dvb = 0;
+        如果(dvn >= 8){ dvb = 1; };
+        bytes.添加(make_rex(1, 0, 0, dvb));
+        bytes.添加(0xF7);
+        bytes.添加(0xF0 + (dvn & 7));
+        返回值 bytes;
+    };
+
+    如果(starts_with(mnemonic, "lock ")){
+        设 inner_m = mnemonic.子字符串(5, mnemonic.长度());
+
+        如果(inner_m == "cmpxchg"){
+            创建 Operand:lxl;
+            lxl = parse_operand(g_enc_parts.获取(1));
+            创建 Operand:lxr;
+            lxr = parse_operand(g_enc_parts.获取(2));
+            设 rd = reg_num(lxr.reg);
+            设 r_bit = 0;
+            如果(rd >= 8){ r_bit = 1; };
+            设 base = 0;
+            设 b_bit = 0;
+            设 x_bit = 0;
+            设 is_rip = 0;
+            如果(lxl.type == OPND_RIPMEM){ is_rip = 1; }
+            否则{
+                base = reg_num(lxl.reg);
+                如果(base >= 8){ b_bit = 1; };
+                如果(lxl.index >= 8){ x_bit = 1; };
+            };
+            bytes.添加(0xF0);
+            bytes.添加(make_rex(1, r_bit, x_bit, b_bit));
+            bytes.添加(0x0F);
+            bytes.添加(0xB1);
+            如果(is_rip){
+                emit_modrm_rip(rd & 7);
+
+                add_reloc(section, offset + 5, lxl.label, RELOC_RIP32);
+            }又如果(lxl.index >= 0){
+                emit_modrm_sib(rd & 7, base, lxl.index, lxl.scale, lxl.imm);
+            }否则{
+                emit_modrm(rd & 7, base, lxl.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(inner_m == "inc" || inner_m == "dec"){
+            创建 Operand:lxi;
+            lxi = parse_operand(g_enc_parts.获取(1));
+            设 digit = 0;
+            如果(inner_m == "dec"){ digit = 1; };
+            设 base = 0;
+            设 b_bit = 0;
+            设 x_bit = 0;
+            设 is_rip = 0;
+            如果(lxi.type == OPND_RIPMEM){ is_rip = 1; }
+            否则{
+                base = reg_num(lxi.reg);
+                如果(base >= 8){ b_bit = 1; };
+                如果(lxi.index >= 8){ x_bit = 1; };
+            };
+            bytes.添加(0xF0);
+            bytes.添加(make_rex(1, 0, x_bit, b_bit));
+            bytes.添加(0xFF);
+            如果(is_rip){
+                emit_modrm_rip(digit);
+
+                add_reloc(section, offset + 4, lxi.label, RELOC_RIP32);
+            }又如果(lxi.index >= 0){
+                emit_modrm_sib(digit, base, lxi.index, lxi.scale, lxi.imm);
+            }否则{
+                emit_modrm(digit, base, lxi.imm);
+            };
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(nops < 2){ 返回值 bytes; };
+
+    创建 Operand:dst;
+    dst = parse_operand(g_enc_parts.获取(1));
+    创建 Operand:src;
+    src = parse_operand(g_enc_parts.获取(2));
+
+    如果(mnemonic == "mov"){
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_IMM){
+            如果(dst.size == 1){
+                bytes.添加(0xC6);
+                emit_modrm_rip(0);
+                设 v1 = src.imm;
+                如果(v1 < 0){ v1 = v1 + 256; };
+                bytes.添加(v1 & 255);
+                add_reloc(section, offset + 2, dst.label, RELOC_RIP32_IMM1);
+                返回值 bytes;
+            };
+            如果(dst.size == 4){
+                bytes.添加(0xC7);
+                emit_modrm_rip(0);
+                设 v = src.imm;
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+                add_reloc(section, offset + 2, dst.label, RELOC_RIP32_IMM4);
+                返回值 bytes;
+            };
+
+            bytes.添加(make_rex(1, 0, 0, 0));
+            bytes.添加(0xC7);
+            emit_modrm_rip(0);
+            设 v = src.imm;
+            bytes.添加(v & 255);
+            bytes.添加((v / 256) & 255);
+            bytes.添加((v / 65536) & 255);
+            bytes.添加((v / 16777216) & 255);
+            add_reloc(section, offset + 3, dst.label, RELOC_RIP32_IMM4);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            设 x_bit = 0;
+            如果(dst.index >= 8){ x_bit = 1; };
+            如果(dst.size == 1){
+                如果(b_bit || x_bit){ bytes.添加(make_rex(0, 0, x_bit, b_bit)); };
+                bytes.添加(0xC6);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(0, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(0, base, dst.imm);
+                };
+                设 v1 = src.imm;
+                如果(v1 < 0){ v1 = v1 + 256; };
+                bytes.添加(v1 & 255);
+                返回值 bytes;
+            };
+
+            如果(dst.size == 4){
+                如果(b_bit || x_bit){ bytes.添加(make_rex(0, 0, x_bit, b_bit)); };
+                bytes.添加(0xC7);
+            }否则{
+                bytes.添加(make_rex(1, 0, x_bit, b_bit));
+                bytes.添加(0xC7);
+            };
+            如果(dst.index >= 0){
+                emit_modrm_sib(0, base, dst.index, dst.scale, dst.imm);
+            }否则{
+                emit_modrm(0, base, dst.imm);
+            };
+            设 v = src.imm;
+            bytes.添加(v & 255);
+            bytes.添加((v / 256) & 255);
+            bytes.添加((v / 65536) & 255);
+            bytes.添加((v / 16777216) & 255);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 r = reg_num(dst.reg);
+            设 v = src.imm;
+
+            如果(dst.reg >= 200 && dst.reg < 300){
+                设 rb = 0;
+                如果(r >= 8){ rb = 1; };
+                如果(rb){ bytes.添加(make_rex(0, 0, 0, 1)); };
+                bytes.添加(0xB0 + (r & 7));
+                bytes.添加(v & 255);
+                返回值 bytes;
+            };
+
+            设 imm_txt = trim(g_enc_parts.获取(2));
+            设 is_hex = 0;
+            如果(imm_txt.以开始("0x") || imm_txt.以开始("0X")){ is_hex = 1; };
+            如果(is_hex && v < 0){
+                设 b = 0;
+                如果(r >= 8){ b = 1; };
+                bytes.添加(make_rex(1, 0, 0, b));
+                bytes.添加(0xB8 + (r & 7));
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+                设 hi = v / 4294967296;
+                bytes.添加(hi & 255);
+                bytes.添加((hi / 256) & 255);
+                bytes.添加((hi / 65536) & 255);
+                bytes.添加((hi / 16777216) & 255);
+                返回值 bytes;
+            };
+
+            如果(v >= 0 && v <= 4294967295){
+                如果(r >= 8){
+                    bytes.添加(0x41);
+                };
+                bytes.添加(0xB8 + (r & 7));
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+                返回值 bytes;
+            };
+
+            如果(v < 0){
+                如果(dst.reg >= 100 && dst.reg < 200){
+                    如果(r >= 8){ bytes.添加(0x41); };
+                    bytes.添加(0xB8 + (r & 7));
+                    设 u2 = v + 4294967296;
+                    bytes.添加(u2 & 255);
+                    bytes.添加((u2 / 256) & 255);
+                    bytes.添加((u2 / 65536) & 255);
+                    bytes.添加((u2 / 16777216) & 255);
+                    返回值 bytes;
+                };
+                设 b = 0;
+                如果(r >= 8){ b = 1; };
+                bytes.添加(make_rex(1, 0, 0, b));
+                bytes.添加(0xC7);
+                bytes.添加(0xC0 + (r & 7));
+                设 u = v + 4294967296;
+                bytes.添加(u & 255);
+                bytes.添加((u / 256) & 255);
+                bytes.添加((u / 65536) & 255);
+                bytes.添加((u / 16777216) & 255);
+                返回值 bytes;
+            };
+
+            设 b2 = 0;
+            如果(r >= 8){ b2 = 1; };
+            bytes.添加(make_rex(1, 0, 0, b2));
+            bytes.添加(0xB8 + (r & 7));
+            bytes.添加(v & 255);
+            bytes.添加((v / 256) & 255);
+            bytes.添加((v / 65536) & 255);
+            bytes.添加((v / 16777216) & 255);
+            设 hi = v / 4294967296;
+            bytes.添加(hi & 255);
+            bytes.添加((hi / 256) & 255);
+            bytes.添加((hi / 65536) & 255);
+            bytes.添加((hi / 16777216) & 255);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            如果(d >= 8){ b_bit = 1; };
+            设 w = 0;
+            如果(dst.reg < 100){ w = 1; };
+            设 opcode = 0x89;
+            如果(dst.reg >= 200 && dst.reg < 300){ opcode = 0x88; };
+            如果(w || r_bit || b_bit){
+                bytes.添加(make_rex(w, r_bit, 0, b_bit));
+            };
+            bytes.添加(opcode);
+            bytes.添加(0xC0 + (s & 7) * 8 + (d & 7));
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 w = 0;
+            如果(dst.reg < 100){ w = 1; };
+            设 opcode = 0x8B;
+            如果(dst.reg >= 200 && dst.reg < 300){ opcode = 0x8A; };
+            设 base = reg_num(src.reg);
+            如果(base >= 8){ b_bit = 1; };
+            设 x_bit = 0;
+            如果(src.index >= 8){ x_bit = 1; };
+
+            如果(dst.reg >= 300 && dst.reg < 400){ bytes.添加(0x66); };
+            如果(w || r_bit || b_bit || x_bit){
+                bytes.添加(make_rex(w, r_bit, x_bit, b_bit));
+            };
+            bytes.添加(opcode);
+            如果(src.index >= 0){
+                emit_modrm_sib(d & 7, base, src.index, src.scale, src.imm);
+            }否则{
+                emit_modrm(d & 7, base, src.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_REG){
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            设 w = 0;
+            如果(src.reg < 100){ w = 1; };
+            设 opcode = 0x89;
+            如果(src.reg >= 200 && src.reg < 300){ opcode = 0x88; };
+            设 base = reg_num(dst.reg);
+            如果(base >= 8){ b_bit = 1; };
+            设 x_bit = 0;
+            如果(dst.index >= 8){ x_bit = 1; };
+
+            如果(src.reg >= 300 && src.reg < 400){ bytes.添加(0x66); };
+            如果(w || r_bit || b_bit || x_bit){
+                bytes.添加(make_rex(w, r_bit, x_bit, b_bit));
+            };
+            bytes.添加(opcode);
+            如果(dst.index >= 0){
+                emit_modrm_sib(s & 7, base, dst.index, dst.scale, dst.imm);
+            }否则{
+                emit_modrm(s & 7, base, dst.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_RIPMEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 w = 0;
+            如果(dst.reg < 100){ w = 1; };
+            设 opcode = 0x8B;
+            如果(dst.reg >= 200 && dst.reg < 300){ opcode = 0x8A; };
+            设 rex_emit1 = 0;
+            如果(w || r_bit){
+                bytes.添加(make_rex(w, r_bit, 0, 0));
+                rex_emit1 = 1;
+            };
+            bytes.添加(opcode);
+            emit_modrm_rip(d & 7);
+
+            add_reloc(section, offset + 2 + rex_emit1, src.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_REG){
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            设 w = 0;
+            如果(src.reg < 100){ w = 1; };
+            设 opcode = 0x89;
+            如果(src.reg >= 200 && src.reg < 300){ opcode = 0x88; };
+            设 rex_emit2 = 0;
+            如果(w || r_bit){
+                bytes.添加(make_rex(w, r_bit, 0, 0));
+                rex_emit2 = 1;
+            };
+            bytes.添加(opcode);
+            emit_modrm_rip(s & 7);
+
+            add_reloc(section, offset + 2 + rex_emit2, dst.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "movsxd"){
+
+        如果(dst.type == OPND_REG && src.type == OPND_RIPMEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, 0));
+            bytes.添加(0x63);
+            emit_modrm_rip(d & 7);
+            add_reloc(section, offset + 3, src.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 base = reg_num(src.reg);
+            如果(base >= 8){ b_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, b_bit));
+            bytes.添加(0x63);
+            emit_modrm(d & 7, base, src.imm);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            如果(d >= 8){ b_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, b_bit));
+            bytes.添加(0x63);
+            bytes.添加(0xC0 + (s & 7) * 8 + (d & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "lea"){
+
+        如果(dst.type == OPND_REG && src.type == OPND_RIPMEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, 0));
+            bytes.添加(0x8D);
+            emit_modrm_rip(d & 7);
+            add_reloc(section, offset + 3, src.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 base = reg_num(src.reg);
+            如果(base >= 8){ b_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, b_bit));
+            bytes.添加(0x8D);
+            emit_modrm(d & 7, base, src.imm);
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "cmp"){
+        设 digit = 7;
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(d >= 8){ b_bit = 1; };
+            如果(dst.reg >= 200 && dst.reg < 300){
+
+                设 c8b = 0;
+                如果(d >= 8){ c8b = 1; };
+                如果(c8b){ bytes.添加(make_rex(0, 0, 0, 1)); };
+                bytes.添加(0x80);
+                bytes.添加(0xC0 + digit * 8 + (d & 7));
+                设 v8 = src.imm;
+                如果(v8 < 0){ v8 = v8 + 256; };
+                bytes.添加(v8 & 255);
+                返回值 bytes;
+            };
+            设 cw = 0;
+            如果(dst.reg < 100){ cw = 1; };
+            如果(cw || b_bit){
+                bytes.添加(make_rex(cw, 0, 0, b_bit));
+            };
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x83);
+                bytes.添加(0xC0 + digit * 8 + (d & 7));
+                设 v = src.imm;
+                如果(v < 0){ v = v + 256; };
+                bytes.添加(v & 255);
+            }否则{
+                bytes.添加(0x81);
+                bytes.添加(0xC0 + digit * 8 + (d & 7));
+                设 v = src.imm;
+                如果(v < 0){ v = v + 4294967296; };
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_RIPMEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, 0));
+            bytes.添加(0x3B);
+            emit_modrm_rip(d & 7);
+            add_reloc(section, offset + 3, src.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_IMM){
+            bytes.添加(make_rex(1, 0, 0, 0));
+            设 reloc_type_imm = RELOC_RIP32_IMM4;
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x83);
+                emit_modrm_rip(7);
+                设 v = src.imm;
+                如果(v < 0){ v = v + 256; };
+                bytes.添加(v & 255);
+                reloc_type_imm = RELOC_RIP32_IMM1;
+            }否则{
+                bytes.添加(0x81);
+                emit_modrm_rip(7);
+                设 v = src.imm;
+                如果(v < 0){ v = v + 4294967296; };
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+            };
+            add_reloc(section, offset + 3, dst.label, reloc_type_imm);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            设 x_bit = 0;
+            如果(dst.index >= 8){ x_bit = 1; };
+            如果(dst.size == 1){
+
+                如果(b_bit || x_bit){ bytes.添加(make_rex(0, 0, x_bit, b_bit)); };
+                bytes.添加(0x80);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(digit, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(digit, base, dst.imm);
+                };
+                设 vb = src.imm;
+                如果(vb < 0){ vb = vb + 256; };
+                bytes.添加(vb & 255);
+                返回值 bytes;
+            };
+            如果(dst.size == 8 || dst.size == 0){
+
+                bytes.添加(make_rex(1, 0, x_bit, b_bit));
+            }又如果(b_bit || x_bit){
+
+                bytes.添加(make_rex(0, 0, x_bit, b_bit));
+            };
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x83);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(digit, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(digit, base, dst.imm);
+                };
+                设 v = src.imm;
+                如果(v < 0){ v = v + 256; };
+                bytes.添加(v & 255);
+            }否则{
+                bytes.添加(0x81);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(digit, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(digit, base, dst.imm);
+                };
+                设 v = src.imm;
+                如果(v < 0){ v = v + 4294967296; };
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 base = reg_num(src.reg);
+            如果(base >= 8){ b_bit = 1; };
+            设 cw = 0;
+            如果(dst.reg < 100){ cw = 1; };
+            如果(cw || r_bit || b_bit){
+                bytes.添加(make_rex(cw, r_bit, 0, b_bit));
+            };
+            bytes.添加(0x3B);
+            如果(src.index >= 0){
+                emit_modrm_sib(d & 7, base, src.index, src.scale, src.imm);
+            }否则{
+                emit_modrm(d & 7, base, src.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_REG){
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            设 base = reg_num(dst.reg);
+            如果(base >= 8){ b_bit = 1; };
+            设 cw = 0;
+            如果(src.reg < 100){ cw = 1; };
+            如果(cw || r_bit || b_bit){
+                bytes.添加(make_rex(cw, r_bit, 0, b_bit));
+            };
+            设 opcode = 0x39;
+            如果(src.reg >= 200 && src.reg < 300){ opcode = 0x38; };
+            bytes.添加(opcode);
+            如果(dst.index >= 0){
+                emit_modrm_sib(s & 7, base, dst.index, dst.scale, dst.imm);
+            }否则{
+                emit_modrm(s & 7, base, dst.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            如果(d >= 8){ b_bit = 1; };
+
+            如果(dst.reg >= 200 && dst.reg < 300){
+                如果(r_bit || b_bit){
+                    bytes.添加(make_rex(0, r_bit, 0, b_bit));
+                };
+                bytes.添加(0x38);
+                bytes.添加(0xC0 + (s & 7) * 8 + (d & 7));
+                返回值 bytes;
+            };
+            设 cw = 0;
+            如果(dst.reg < 100){ cw = 1; };
+            如果(cw || r_bit || b_bit){
+                bytes.添加(make_rex(cw, r_bit, 0, b_bit));
+            };
+            bytes.添加(0x39);
+            bytes.添加(0xC0 + (s & 7) * 8 + (d & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "movzx"){
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 w_bit = 0;
+            如果(dst.reg < 100){ w_bit = 1; };
+            设 r_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 b_bit = 0;
+            如果(s >= 8){ b_bit = 1; };
+            如果(w_bit || r_bit || b_bit){
+                bytes.添加(make_rex(w_bit, r_bit, 0, b_bit));
+            };
+            bytes.添加(0x0F);
+
+            如果(src.reg >= 300 && src.reg < 400){ bytes.添加(0xB7); }
+            否则{ bytes.添加(0xB6); };
+            bytes.添加(0xC0 + (d & 7) * 8 + (s & 7));
+            返回值 bytes;
+        };
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 w_bit = 0;
+            如果(dst.reg < 100){ w_bit = 1; };
+            设 r_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 base = reg_num(src.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(w_bit || r_bit || b_bit){
+                bytes.添加(make_rex(w_bit, r_bit, 0, b_bit));
+            };
+            bytes.添加(0x0F);
+
+            如果(src.size == 2){ bytes.添加(0xB7); }
+            否则{ bytes.添加(0xB6); };
+            如果(src.index >= 0){
+                emit_modrm_sib(d & 7, base, src.index, src.scale, src.imm);
+            }否则{
+                emit_modrm(d & 7, base, src.imm);
+            };
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "imul"){
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(d >= 8){ b_bit = 1; };
+            bytes.添加(make_rex(1, 0, 0, b_bit));
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x6B);
+                bytes.添加(0xC0 + (d & 7) * 8 + (d & 7));
+                设 iv = src.imm;
+                如果(iv < 0){ iv = iv + 256; };
+                bytes.添加(iv & 255);
+            }否则{
+                bytes.添加(0x69);
+                bytes.添加(0xC0 + (d & 7) * 8 + (d & 7));
+                设 iv = src.imm;
+                如果(iv < 0){ iv = iv + 4294967296; };
+                bytes.添加(iv & 255);
+                bytes.添加((iv / 256) & 255);
+                bytes.添加((iv / 65536) & 255);
+                bytes.添加((iv / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG && nops >= 3){
+            创建 Operand:im;
+            im = parse_operand(g_enc_parts.获取(3));
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            如果(s >= 8){ b_bit = 1; };
+            设 iw3 = 0;
+            如果(dst.reg < 100){ iw3 = 1; };
+            如果(iw3 || r_bit || b_bit){
+                bytes.添加(make_rex(iw3, r_bit, 0, b_bit));
+            };
+            如果(im.imm >= -128 && im.imm <= 127){
+                bytes.添加(0x6B);
+                bytes.添加(0xC0 + (d & 7) * 8 + (s & 7));
+                设 iv = im.imm;
+                如果(iv < 0){ iv = iv + 256; };
+                bytes.添加(iv & 255);
+            }否则{
+                bytes.添加(0x69);
+                bytes.添加(0xC0 + (d & 7) * 8 + (s & 7));
+                设 iv = im.imm;
+                如果(iv < 0){ iv = iv + 4294967296; };
+                bytes.添加(iv & 255);
+                bytes.添加((iv / 256) & 255);
+                bytes.添加((iv / 65536) & 255);
+                bytes.添加((iv / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 base = reg_num(src.reg);
+            如果(base >= 8){ b_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, b_bit));
+            bytes.添加(0x0F);
+            bytes.添加(0xAF);
+            如果(src.index >= 0){
+                emit_modrm_sib(d & 7, base, src.index, src.scale, src.imm);
+            }否则{
+                emit_modrm(d & 7, base, src.imm);
+            };
+            返回值 bytes;
+        };
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            如果(s >= 8){ b_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, b_bit));
+            bytes.添加(0x0F);
+            bytes.添加(0xAF);
+            bytes.添加(0xC0 + (d & 7) * 8 + (s & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "and" || mnemonic == "or"){
+        设 digit = 4;
+        如果(mnemonic == "or"){ digit = 1; };
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(d >= 8){ b_bit = 1; };
+            如果(dst.reg >= 200 && dst.reg < 300){
+                设 a8b = 0;
+                如果(d >= 8){ a8b = 1; };
+                如果(a8b){ bytes.添加(make_rex(0, 0, 0, 1)); };
+                bytes.添加(0x80);
+                bytes.添加(0xC0 + digit * 8 + (d & 7));
+                设 v8 = src.imm;
+                如果(v8 < 0){ v8 = v8 + 256; };
+                bytes.添加(v8 & 255);
+                返回值 bytes;
+            };
+            设 aw = 0;
+            如果(dst.reg < 100){ aw = 1; };
+            如果(aw || b_bit){
+                bytes.添加(make_rex(aw, 0, 0, b_bit));
+            };
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x83);
+                bytes.添加(0xC0 + digit * 8 + (d & 7));
+                设 v = src.imm;
+                如果(v < 0){ v = v + 256; };
+                bytes.添加(v & 255);
+            }否则{
+                bytes.添加(0x81);
+                bytes.添加(0xC0 + digit * 8 + (d & 7));
+                设 v = src.imm;
+                如果(v < 0){ v = v + 4294967296; };
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(dst.size == 1){
+
+                如果(b_bit){ bytes.添加(make_rex(0, 0, 0, 1)); };
+                bytes.添加(0x80);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(digit, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(digit, base, dst.imm);
+                };
+                设 vb = src.imm;
+                如果(vb < 0){ vb = vb + 256; };
+                bytes.添加(vb & 255);
+                返回值 bytes;
+            };
+            如果(dst.size == 8 || dst.size == 0){
+
+                bytes.添加(make_rex(1, 0, 0, b_bit));
+            }又如果(b_bit){
+
+                bytes.添加(make_rex(0, 0, 0, 1));
+            };
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x83);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(digit, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(digit, base, dst.imm);
+                };
+                设 v = src.imm;
+                如果(v < 0){ v = v + 256; };
+                bytes.添加(v & 255);
+            }否则{
+                bytes.添加(0x81);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(digit, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(digit, base, dst.imm);
+                };
+                设 v = src.imm;
+                如果(v < 0){ v = v + 4294967296; };
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_REG){
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            设 base = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            设 aw = 0;
+            如果(src.reg < 100){ aw = 1; };
+            设 opcode = 0x21;
+            如果(mnemonic == "or"){ opcode = 0x09; };
+            如果(src.reg >= 200 && src.reg < 300){ opcode = opcode - 1; };
+            如果(aw || r_bit || b_bit){
+                bytes.添加(make_rex(aw, r_bit, 0, b_bit));
+            };
+            bytes.添加(opcode);
+            如果(dst.index >= 0){
+                emit_modrm_sib(s & 7, base, dst.index, dst.scale, dst.imm);
+            }否则{
+                emit_modrm(s & 7, base, dst.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 base = reg_num(src.reg);
+            如果(base >= 8){ b_bit = 1; };
+            设 aw = 0;
+            如果(dst.reg < 100){ aw = 1; };
+            如果(aw || r_bit || b_bit){
+                bytes.添加(make_rex(aw, r_bit, 0, b_bit));
+            };
+            设 opcode = 0x23;
+            如果(mnemonic == "or"){ opcode = 0x0B; };
+            bytes.添加(opcode);
+            如果(src.index >= 0){
+                emit_modrm_sib(d & 7, base, src.index, src.scale, src.imm);
+            }否则{
+                emit_modrm(d & 7, base, src.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            如果(d >= 8){ b_bit = 1; };
+            设 aw = 0;
+            如果(dst.reg < 100){ aw = 1; };
+            设 opcode = 0x21;
+            如果(mnemonic == "or"){ opcode = 0x09; };
+            如果(aw || r_bit || b_bit){
+                bytes.添加(make_rex(aw, r_bit, 0, b_bit));
+            };
+            bytes.添加(opcode);
+            bytes.添加(0xC0 + (s & 7) * 8 + (d & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "sar"){
+        如果(dst.type == OPND_REG && src.type == OPND_REG && src.reg == reg_lookup("cl")){
+
+            设 d = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(d >= 8){ b_bit = 1; };
+            bytes.添加(make_rex(1, 0, 0, b_bit));
+            bytes.添加(0xD3);
+            bytes.添加(0xF8 + (d & 7));
+            返回值 bytes;
+        };
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+
+            设 d = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(d >= 8){ b_bit = 1; };
+            bytes.添加(make_rex(1, 0, 0, b_bit));
+            bytes.添加(0xC1);
+            bytes.添加(0xF8 + (d & 7));
+            bytes.添加(src.imm & 255);
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "add" || mnemonic == "sub"){
+        设 digit = 0;
+        如果(mnemonic == "sub"){ digit = 5; };
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_IMM){
+            bytes.添加(make_rex(1, 0, 0, 0));
+            设 reloc_type_imm = RELOC_RIP32_IMM4;
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x83);
+                emit_modrm_rip(digit);
+                设 v = src.imm;
+                如果(v < 0){ v = v + 256; };
+                bytes.添加(v & 255);
+                reloc_type_imm = RELOC_RIP32_IMM1;
+            }否则{
+                bytes.添加(0x81);
+                emit_modrm_rip(digit);
+                设 v = src.imm;
+                如果(v < 0){ v = v + 4294967296; };
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+            };
+            add_reloc(section, offset + 3, dst.label, reloc_type_imm);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_RIPMEM && src.type == OPND_REG){
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, 0));
+            设 opcode = 0x01;
+            如果(mnemonic == "sub"){ opcode = 0x29; };
+            bytes.添加(opcode);
+            emit_modrm_rip(s & 7);
+            add_reloc(section, offset + 3, dst.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(d >= 8){ b_bit = 1; };
+            设 aw = 0;
+            如果(dst.reg < 100){ aw = 1; };
+            如果(dst.reg >= 200 && dst.reg < 300){
+
+                设 a8b = 0;
+                如果(d >= 8){ a8b = 1; };
+                如果(a8b){ bytes.添加(make_rex(0, 0, 0, 1)); };
+                bytes.添加(0x80);
+                bytes.添加(0xC0 + digit * 8 + (d & 7));
+                设 v8 = src.imm;
+                如果(v8 < 0){ v8 = v8 + 256; };
+                bytes.添加(v8 & 255);
+                返回值 bytes;
+            };
+            如果(aw || b_bit){
+                bytes.添加(make_rex(aw, 0, 0, b_bit));
+            };
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x83);
+                bytes.添加(0xC0 + digit * 8 + (d & 7));
+                设 v = src.imm;
+                如果(v < 0){ v = v + 256; };
+                bytes.添加(v & 255);
+            }否则{
+                bytes.添加(0x81);
+                bytes.添加(0xC0 + digit * 8 + (d & 7));
+                设 v = src.imm;
+                如果(v < 0){ v = v + 4294967296; };
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            设 x_bit = 0;
+            如果(dst.index >= 8){ x_bit = 1; };
+            如果(dst.size == 1){
+
+                如果(b_bit || x_bit){ bytes.添加(make_rex(0, 0, x_bit, b_bit)); };
+                bytes.添加(0x80);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(digit, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(digit, base, dst.imm);
+                };
+                设 vb2 = src.imm;
+                如果(vb2 < 0){ vb2 = vb2 + 256; };
+                bytes.添加(vb2 & 255);
+                返回值 bytes;
+            };
+            如果(dst.size == 8 || dst.size == 0){
+
+                bytes.添加(make_rex(1, 0, x_bit, b_bit));
+            }又如果(b_bit || x_bit){
+
+                bytes.添加(make_rex(0, 0, x_bit, b_bit));
+            };
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x83);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(digit, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(digit, base, dst.imm);
+                };
+                设 v = src.imm;
+                如果(v < 0){ v = v + 256; };
+                bytes.添加(v & 255);
+            }否则{
+                bytes.添加(0x81);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(digit, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(digit, base, dst.imm);
+                };
+                设 v = src.imm;
+                如果(v < 0){ v = v + 4294967296; };
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_REG){
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            设 base = reg_num(dst.reg);
+            如果(base >= 8){ b_bit = 1; };
+            设 aw = 0;
+            如果(src.reg < 100){ aw = 1; };
+            如果(aw || r_bit || b_bit){
+                bytes.添加(make_rex(aw, r_bit, 0, b_bit));
+            };
+            设 opcode = 0x01;
+            如果(mnemonic == "sub"){ opcode = 0x29; };
+            bytes.添加(opcode);
+            如果(dst.index >= 0){
+                emit_modrm_sib(s & 7, base, dst.index, dst.scale, dst.imm);
+            }否则{
+                emit_modrm(s & 7, base, dst.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 base = reg_num(src.reg);
+            如果(base >= 8){ b_bit = 1; };
+            设 aw = 0;
+            如果(dst.reg < 100){ aw = 1; };
+            如果(aw || r_bit || b_bit){
+                bytes.添加(make_rex(aw, r_bit, 0, b_bit));
+            };
+            设 opcode = 0x03;
+            如果(mnemonic == "sub"){ opcode = 0x2B; };
+            bytes.添加(opcode);
+            如果(src.index >= 0){
+                emit_modrm_sib(d & 7, base, src.index, src.scale, src.imm);
+            }否则{
+                emit_modrm(d & 7, base, src.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_RIPMEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            bytes.添加(make_rex(1, r_bit, 0, 0));
+            设 opcode = 0x03;
+            如果(mnemonic == "sub"){ opcode = 0x2B; };
+            bytes.添加(opcode);
+            emit_modrm_rip(d & 7);
+            add_reloc(section, offset + 3, src.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            如果(d >= 8){ b_bit = 1; };
+            设 aw = 0;
+            如果(dst.reg < 100){ aw = 1; };
+            设 opcode = 0x01;
+            如果(mnemonic == "sub"){ opcode = 0x29; };
+            如果(aw || r_bit || b_bit){
+                bytes.添加(make_rex(aw, r_bit, 0, b_bit));
+            };
+            bytes.添加(opcode);
+            bytes.添加(0xC0 + (s & 7) * 8 + (d & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "xor"){
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            如果(d >= 8){ b_bit = 1; };
+            设 aw = 0;
+            如果(dst.reg < 100){ aw = 1; };
+            如果(aw || r_bit || b_bit){
+                bytes.添加(make_rex(aw, r_bit, 0, b_bit));
+            };
+            bytes.添加(0x31);
+            bytes.添加(0xC0 + (s & 7) * 8 + (d & 7));
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_MEM){
+            设 d = reg_num(dst.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(d >= 8){ r_bit = 1; };
+            设 base = reg_num(src.reg);
+            如果(base >= 8){ b_bit = 1; };
+            设 aw = 0;
+            如果(dst.reg < 100){ aw = 1; };
+            如果(aw || r_bit || b_bit){
+                bytes.添加(make_rex(aw, r_bit, 0, b_bit));
+            };
+            bytes.添加(0x33);
+            如果(src.index >= 0){
+                emit_modrm_sib(d & 7, base, src.index, src.scale, src.imm);
+            }否则{
+                emit_modrm(d & 7, base, src.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(dst.size == 1){
+
+                如果(b_bit){ bytes.添加(make_rex(0, 0, 0, 1)); };
+                bytes.添加(0x80);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(6, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(6, base, dst.imm);
+                };
+                设 vb = src.imm;
+                如果(vb < 0){ vb = vb + 256; };
+                bytes.添加(vb & 255);
+                返回值 bytes;
+            };
+            如果(dst.size == 8 || dst.size == 0){
+
+                bytes.添加(make_rex(1, 0, 0, b_bit));
+            }又如果(b_bit){
+
+                bytes.添加(make_rex(0, 0, 0, 1));
+            };
+            如果(src.imm >= -128 && src.imm <= 127){
+                bytes.添加(0x83);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(6, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(6, base, dst.imm);
+                };
+                设 v = src.imm;
+                如果(v < 0){ v = v + 256; };
+                bytes.添加(v & 255);
+            }否则{
+                bytes.添加(0x81);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(6, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(6, base, dst.imm);
+                };
+                设 v = src.imm;
+                如果(v < 0){ v = v + 4294967296; };
+                bytes.添加(v & 255);
+                bytes.添加((v / 256) & 255);
+                bytes.添加((v / 65536) & 255);
+                bytes.添加((v / 16777216) & 255);
+            };
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "test"){
+        如果(dst.type == OPND_REG && src.type == OPND_REG){
+            设 d = reg_num(dst.reg);
+            设 s = reg_num(src.reg);
+            设 is64 = is_reg64(dst.reg);
+            设 r_bit = 0;
+            设 b_bit = 0;
+            如果(s >= 8){ r_bit = 1; };
+            如果(d >= 8){ b_bit = 1; };
+
+            如果(dst.reg >= 200 && dst.reg < 300){
+                如果(r_bit || b_bit){
+                    bytes.添加(make_rex(0, r_bit, 0, b_bit));
+                };
+                bytes.添加(0x84);
+                bytes.添加(0xC0 + (s & 7) * 8 + (d & 7));
+                返回值 bytes;
+            };
+            如果(is64 || r_bit || b_bit){
+
+                bytes.添加(make_rex(is64, r_bit, 0, b_bit));
+            };
+            bytes.添加(0x85);
+            bytes.添加(0xC0 + (s & 7) * 8 + (d & 7));
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_REG && src.type == OPND_IMM){
+            设 d = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(d >= 8){ b_bit = 1; };
+            如果(dst.reg >= 200 && dst.reg < 300){
+
+                如果(b_bit){ bytes.添加(make_rex(0, 0, 0, 1)); };
+                bytes.添加(0xF6);
+                bytes.添加(0xC0 + (d & 7));
+                设 v8 = src.imm;
+                如果(v8 < 0){ v8 = v8 + 256; };
+                bytes.添加(v8 & 255);
+                返回值 bytes;
+            };
+            设 cw = 0;
+            如果(dst.reg < 100){ cw = 1; };
+            如果(cw || b_bit){
+                bytes.添加(make_rex(cw, 0, 0, b_bit));
+            };
+            bytes.添加(0xF7);
+            bytes.添加(0xC0 + (d & 7));
+            设 v = src.imm;
+            如果(v < 0){ v = v + 4294967296; };
+            bytes.添加(v & 255);
+            bytes.添加((v / 256) & 255);
+            bytes.添加((v / 65536) & 255);
+            bytes.添加((v / 16777216) & 255);
+            返回值 bytes;
+        };
+
+        如果(dst.type == OPND_MEM && src.type == OPND_IMM){
+            设 base = reg_num(dst.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            如果(dst.size == 1){
+
+                如果(b_bit){ bytes.添加(make_rex(0, 0, 0, 1)); };
+                bytes.添加(0xF6);
+                如果(dst.index >= 0){
+                    emit_modrm_sib(0, base, dst.index, dst.scale, dst.imm);
+                }否则{
+                    emit_modrm(0, base, dst.imm);
+                };
+                设 vb = src.imm;
+                如果(vb < 0){ vb = vb + 256; };
+                bytes.添加(vb & 255);
+                返回值 bytes;
+            };
+            如果(dst.size == 8 || dst.size == 0){
+
+                bytes.添加(make_rex(1, 0, 0, b_bit));
+            }又如果(b_bit){
+
+                bytes.添加(make_rex(0, 0, 0, 1));
+            };
+            bytes.添加(0xF7);
+            如果(dst.index >= 0){
+                emit_modrm_sib(0, base, dst.index, dst.scale, dst.imm);
+            }否则{
+                emit_modrm(0, base, dst.imm);
+            };
+            设 v = src.imm;
+            如果(v < 0){ v = v + 4294967296; };
+            bytes.添加(v & 255);
+            bytes.添加((v / 256) & 255);
+            bytes.添加((v / 65536) & 255);
+            bytes.添加((v / 16777216) & 255);
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    如果(mnemonic == "xchg"){
+        创建 Operand:xop1;
+        xop1 = parse_operand(g_enc_parts.获取(1));
+        创建 Operand:xop2;
+        xop2 = parse_operand(g_enc_parts.获取(2));
+
+        设 xmem = xop1;
+        设 xreg = xop2;
+        如果(xop1.type == OPND_REG){ xmem = xop2; xreg = xop1; };
+        如果(xreg.type != OPND_REG){ 返回值 bytes; };
+        设 rd = reg_num(xreg.reg);
+        设 r_bit = 0;
+        如果(rd >= 8){ r_bit = 1; };
+        设 w = 0;
+        如果(xreg.reg < 100){ w = 1; };
+
+        如果(xmem.type == OPND_RIPMEM){
+            设 rex_emit = 0;
+            如果(w || r_bit){
+                bytes.添加(make_rex(w, r_bit, 0, 0));
+                rex_emit = 1;
+            };
+            bytes.添加(0x87);
+            emit_modrm_rip(rd & 7);
+
+            add_reloc(section, offset + 2 + rex_emit, xmem.label, RELOC_RIP32);
+            返回值 bytes;
+        };
+
+        如果(xmem.type == OPND_MEM){
+            设 base = reg_num(xmem.reg);
+            设 b_bit = 0;
+            如果(base >= 8){ b_bit = 1; };
+            设 x_bit = 0;
+            如果(xmem.index >= 8){ x_bit = 1; };
+            如果(w || r_bit || x_bit || b_bit){
+                bytes.添加(make_rex(w, r_bit, x_bit, b_bit));
+            };
+            bytes.添加(0x87);
+            如果(xmem.index >= 0){
+                emit_modrm_sib(rd & 7, base, xmem.index, xmem.scale, xmem.imm);
+            }否则{
+                emit_modrm(rd & 7, base, xmem.imm);
+            };
+            返回值 bytes;
+        };
+
+        如果(xmem.type == OPND_REG){
+            设 d1 = reg_num(xmem.reg);
+            设 b_bit = 0;
+            如果(d1 >= 8){ b_bit = 1; };
+            如果(xmem.reg < 100){ w = 1; };
+            如果(w || r_bit || b_bit){
+                bytes.添加(make_rex(w, r_bit, 0, b_bit));
+            };
+            bytes.添加(0x87);
+            bytes.添加(0xC0 + (rd & 7) * 8 + (d1 & 7));
+            返回值 bytes;
+        };
+        返回值 bytes;
+    };
+
+    错误打印("汇编器: 未知指令 [" + mnemonic + "] 编码 0——产物语义可能错误");
+    返回值 bytes;
+};
+
+声明 assemble(asm_text){
+    创建 AsmResult:result;
+    创建 ArrayList:p1_offs;
+    创建 ArrayList:label_offs;
+
+    设 raw_lines = 分割行(asm_text);
+    设 nlines = raw_lines.长度();
+    创建 ArrayList:lines;
+    设 i = 0;
+    循环(i < nlines){
+
+        lines.添加(raw_lines[i]);
+        i = i + 1;
+    };
+
+    设 nlines = lines.长度();
+    内存报告("asm-split");
+
+    设 cur_section = 0;
+    设 text_off = 0;
+    设 data_off = 0;
+    设 bss_off = 0;
+
+    i = 0;
+    循环(i < nlines){
+        如果((i & 8191) == 0){ 内存报告("asm-p1-line"); };
+        设 line = lines.获取(i);
+
+        设 sc = find_char(line, ";", 0);
+        设 code = line;
+        如果(sc >= 0){ code = line.子字符串(0, sc); };
+        code = trim(code);
+        如果(code.长度() == 0){ i = i + 1; 继续; };
+
+        如果(starts_with(code, "section .text")){ cur_section = 0; i = i + 1; 继续; };
+        如果(starts_with(code, "section .data")){ cur_section = 1; i = i + 1; 继续; };
+        如果(starts_with(code, "section .bss")){ cur_section = 2; i = i + 1; 继续; };
+
+        如果(starts_with(code, "default")){ i = i + 1; 继续; };
+
+        如果(starts_with(code, "global ")){
+            设 gname = trim(code.子字符串(7, code.长度()));
+
+            i = i + 1;
+            继续;
+        };
+
+        如果(starts_with(code, "extern ")){
+            设 ename = trim(code.子字符串(7, code.长度()));
+            创建 AsmSymbol:sym;
+            sym.name = ename;
+            sym.section = -1;
+            sym.is_extern = 1;
+            result.symbols.添加(sym);
+            i = i + 1;
+            继续;
+        };
+
+        设 colon = -1;
+        如果(!starts_with(code, "db ") && !starts_with(code, "dq ") &&
+           !starts_with(code, "resq ") && !starts_with(code, "resb ") &&
+           !starts_with(code, "resd ")){
+            colon = find_char(code, ":", 0);
+        };
+        如果(colon >= 0){
+            设 label_name = trim(code.子字符串(0, colon));
+
+            如果(label_name.以开始(".")){
+                label_name = g_cur_global + label_name;
+            }否则{
+                g_cur_global = label_name;
+            };
+
+            设 rest = trim(code.子字符串(colon + 1, code.长度()));
+            如果(rest.长度() == 0){
+
+                创建 AsmSymbol:sym;
+                sym.name = label_name;
+                sym.section = cur_section;
+                如果(cur_section == 0){ sym.offset = text_off; };
+                如果(cur_section == 1){ sym.offset = data_off; };
+                如果(cur_section == 2){ sym.offset = bss_off; };
+                result.symbols.添加(sym);
+                label_offs.添加(text_off);
+                i = i + 1;
+                继续;
+            };
+
+            创建 AsmSymbol:sym;
+            sym.name = label_name;
+            sym.section = cur_section;
+            如果(cur_section == 0){ sym.offset = text_off; };
+            如果(cur_section == 1){ sym.offset = data_off; };
+            如果(cur_section == 2){ sym.offset = bss_off; };
+            result.symbols.添加(sym);
+            code = rest;
+        };
+
+        如果(starts_with(code, "db ")){
+            设 vals = trim(code.子字符串(3, code.长度()));
+
+            设 count = 0;
+            设 idx = 0;
+            设 vlen = vals.长度();
+            循环(idx < vlen){
+                如果(vals.子字符串(idx, idx + 1) == "'"){
+
+                    设 eq = find_char(vals, "'", idx + 1);
+                    如果(eq < 0){ eq = vlen; };
+                    设 cnts = vals.子字符串(idx + 1, eq);
+                    设 bi = 0;
+                    循环(bi < 4096){
+                        设 bb = cnts.字节(bi);
+                        如果(bb == 0){ 跳出; };
+                        bi = bi + 1;
+                    };
+                    count = count + bi;
+                    idx = eq + 1;
+                    如果(idx < vlen && vals.子字符串(idx, idx + 1) == ","){ idx = idx + 1; };
+                }否则{
+                    设 cm = find_char(vals, ",", idx);
+                    如果(cm < 0){ count = count + 1; 跳出; };
+                    count = count + 1;
+                    idx = cm + 1;
+                };
+            };
+            如果(cur_section == 0){ text_off = text_off + count; };
+            如果(cur_section == 1){ data_off = data_off + count; };
+            i = i + 1;
+            继续;
+        };
+
+        如果(starts_with(code, "dw ")){
+            设 vals = trim(code.子字符串(3, code.长度()));
+
+            设 count = 0;
+            设 idx = 0;
+            设 vlen = vals.长度();
+            循环(idx < vlen){
+                设 comma = find_char(vals, ",", idx);
+                如果(comma < 0){
+                    count = count + 1;
+                    跳出;
+                }否则{
+                    count = count + 1;
+                    idx = comma + 1;
+                };
+            };
+            count = count * 2;
+            如果(cur_section == 0){ text_off = text_off + count; };
+            如果(cur_section == 1){ data_off = data_off + count; };
+            i = i + 1;
+            继续;
+        };
+
+        如果(starts_with(code, "dq ")){
+            设 vals = trim(code.子字符串(3, code.长度()));
+
+            设 count = 0;
+            设 idx = 0;
+            设 vlen = vals.长度();
+            循环(idx < vlen){
+                设 comma = find_char(vals, ",", idx);
+                如果(comma < 0){
+                    count = count + 1;
+                    跳出;
+                }否则{
+                    count = count + 1;
+                    idx = comma + 1;
+                };
+            };
+            count = count * 8;
+            如果(cur_section == 0){ text_off = text_off + count; };
+            如果(cur_section == 1){ data_off = data_off + count; };
+            i = i + 1;
+            继续;
+        };
+
+        如果(starts_with(code, "resq ")){
+            设 cnt = parse_int(trim(code.子字符串(5, code.长度())));
+            设 sz = cnt * 8;
+            如果(cur_section == 2){ bss_off = bss_off + sz; };
+            i = i + 1;
+            继续;
+        };
+
+        如果(starts_with(code, "resb ")){
+            设 cnt = parse_int(trim(code.子字符串(5, code.长度())));
+            如果(cur_section == 2){ bss_off = bss_off + cnt; };
+            i = i + 1;
+            继续;
+        };
+        如果(starts_with(code, "resd ")){
+            设 cnt = parse_int(trim(code.子字符串(5, code.长度())));
+            设 sz = cnt * 4;
+            如果(cur_section == 2){ bss_off = bss_off + sz; };
+            i = i + 1;
+            继续;
+        };
+
+        g_enc_parts = parse_insn_line(code);
+        如果(g_enc_parts.长度() > 0){
+            设 ilen = insn_length();
+            如果(cur_section == 0){ text_off = text_off + ilen; };
+            如果(g_debug_mode == 1){
+                如果((i % 500) == 0){ 错误打印("P1@" + i + ":" + code); };
+            };
+        };
+        如果((i & 8191) == 0){ 内存报告("asm-p1-insn"); };
+        p1_offs.添加(text_off);
+
+        i = i + 1;
+    };
+    内存报告("asm-p1dbg-insn-block");
+    内存报告("asm-p1");
+
+    i = 0;
+    循环(i < nlines){
+        设 line = lines.获取(i);
+        设 sc = find_char(line, ";", 0);
+        设 code = line;
+        如果(sc >= 0){ code = line.子字符串(0, sc); };
+        code = trim(code);
+        如果(starts_with(code, "global ")){
+            设 gname = trim(code.子字符串(7, code.长度()));
+
+            设 j = 0;
+            循环(j < result.symbols.长度()){
+                创建 AsmSymbol:sym;
+                sym = result.symbols.获取(j);
+                如果(sym.name == gname){
+                    sym.is_global = 1;
+                };
+                j = j + 1;
+            };
+        };
+        i = i + 1;
+    };
+
+    cur_section = 0;
+    text_off = 0;
+    data_off = 0;
+    bss_off = 0;
+    设 p2n = 0;
+    设 label_idx = 0;
+
+    i = 0;
+    循环(i < nlines){
+        如果((i & 8191) == 0){ 内存报告("asm-p2-line"); };
+        设 line = lines.获取(i);
+        设 sc = find_char(line, ";", 0);
+        设 code = line;
+        如果(sc >= 0){ code = line.子字符串(0, sc); };
+        code = trim(code);
+        如果(code.长度() == 0){ i = i + 1; 继续; };
+
+        如果(starts_with(code, "section .text")){ cur_section = 0; i = i + 1; 继续; };
+        如果(starts_with(code, "section .data")){ cur_section = 1; i = i + 1; 继续; };
+        如果(starts_with(code, "section .bss")){ cur_section = 2; i = i + 1; 继续; };
+
+        如果(starts_with(code, "default")){ i = i + 1; 继续; };
+        如果(starts_with(code, "global ")){ i = i + 1; 继续; };
+        如果(starts_with(code, "extern ")){ i = i + 1; 继续; };
+
+        设 colon = -1;
+        如果(!starts_with(code, "db ") && !starts_with(code, "dq ") &&
+           !starts_with(code, "resq ") && !starts_with(code, "resb ") &&
+           !starts_with(code, "resd ")){
+            colon = find_char(code, ":", 0);
+        };
+        如果(colon >= 0){
+            设 rest = trim(code.子字符串(colon + 1, code.长度()));
+            如果(rest.长度() == 0){
+
+                设 lb_name = trim(code.子字符串(0, colon));
+
+                如果(lb_name.以开始(".")){
+                    lb_name = g_cur_global + lb_name;
+                }否则{
+                    g_cur_global = lb_name;
+                };
+
+                设 best_off = -1;
+                如果(label_idx < label_offs.长度()){ best_off = label_offs.获取(label_idx); };
+                label_idx = label_idx + 1;
+                如果(best_off >= 0 && best_off != text_off && cur_section == 0){
+                    错误打印("P1P2-DIFF L" + i + " [" + lb_name + "] p1=" + best_off + " p2=" + text_off);
+                };
+                i = i + 1;
+                继续;
+            };
+
+        设 lb2 = trim(code.子字符串(0, colon));
+        如果(lb2.以开始(".")){
+            lb2 = g_cur_global + lb2;
+        }否则{
+            g_cur_global = lb2;
+        };
+        code = rest;
+        };
+
+        如果(starts_with(code, "db ")){
+            设 vals = trim(code.子字符串(3, code.长度()));
+
+            设 idx = 0;
+            设 vlen = vals.长度();
+            循环(idx < vlen){
+                如果(vals.子字符串(idx, idx + 1) == "'"){
+
+                    设 end_q = find_char(vals, "'", idx + 1);
+                    如果(end_q < 0){ end_q = vlen; };
+                    设 content = vals.子字符串(idx + 1, end_q);
+
+                    设 ci2 = 0;
+                    循环(ci2 < 4096){
+                        设 cb2 = content.字节(ci2);
+                        如果(cb2 == 0){ 跳出; };
+                        ci2 = ci2 + 1;
+                    };
+                    设 clen = ci2;
+                    设 ci = 0;
+                    循环(ci < clen){
+                        设 cb = content.字节(ci);
+                        如果(cur_section == 0){ result.text_bytes.添加(cb); text_off = text_off + 1; };
+                        如果(cur_section == 1){ result.data_bytes.添加(cb); data_off = data_off + 1; };
+                        ci = ci + 1;
+                    };
+                    idx = end_q + 1;
+                    如果(idx < vlen && vals.子字符串(idx, idx + 1) == ","){ idx = idx + 1; };
+                    继续;
+                };
+
+                设 comma = find_char(vals, ",", idx);
+                设 val_str = "";
+                如果(comma < 0){
+                    val_str = trim(vals.子字符串(idx, vlen));
+                    idx = vlen;
+                }否则{
+                    val_str = trim(vals.子字符串(idx, comma));
+                    idx = comma + 1;
+                };
+                设 b = parse_int(val_str);
+                如果(b < 0){ b = b + 256; };
+                如果(cur_section == 0){ result.text_bytes.添加(b); text_off = text_off + 1; };
+                如果(cur_section == 1){ result.data_bytes.添加(b); data_off = data_off + 1; };
+            };
+            i = i + 1;
+            继续;
+        };
+
+        如果(starts_with(code, "dw ")){
+            设 vals = trim(code.子字符串(3, code.长度()));
+            设 idx = 0;
+            设 vlen = vals.长度();
+            循环(idx < vlen){
+                设 comma = find_char(vals, ",", idx);
+                设 val_str = "";
+                如果(comma < 0){
+                    val_str = trim(vals.子字符串(idx, vlen));
+                    idx = vlen;
+                }否则{
+                    val_str = trim(vals.子字符串(idx, comma));
+                    idx = comma + 1;
+                };
+                设 wv = 0;
+                如果(trim(val_str).以开始("0x") || trim(val_str).以开始("0X")){
+                    wv = parse_hex64(trim(val_str));
+                }否则{
+                    wv = parse_int(val_str);
+                };
+                如果(cur_section == 0){
+                    result.text_bytes.添加(wv & 255);
+                    result.text_bytes.添加((wv / 256) & 255);
+                    text_off = text_off + 2;
+                };
+                如果(cur_section == 1){
+                    result.data_bytes.添加(wv & 255);
+                    result.data_bytes.添加((wv / 256) & 255);
+                    data_off = data_off + 2;
+                };
+            };
+            i = i + 1;
+            继续;
+        };
+
+        如果(starts_with(code, "dq ")){
+            设 vals = trim(code.子字符串(3, code.长度()));
+
+            设 idx = 0;
+            设 vlen = vals.长度();
+            循环(idx < vlen){
+                设 comma = find_char(vals, ",", idx);
+                设 val_str = "";
+                如果(comma < 0){
+                    val_str = trim(vals.子字符串(idx, vlen));
+                    idx = vlen;
+                }否则{
+                    val_str = trim(vals.子字符串(idx, comma));
+                    idx = comma + 1;
+                };
+                设 ch0 = trim(val_str).子字符串(0, 1);
+                设 is_num = 0;
+                如果(ch0 == "0" || ch0 == "1" || ch0 == "2" || ch0 == "3" || ch0 == "4" ||
+                   ch0 == "5" || ch0 == "6" || ch0 == "7" || ch0 == "8" || ch0 == "9" ||
+                   ch0 == "-" || ch0 == "+"){ is_num = 1; };
+
+                如果(trim(val_str).以开始("0x") || trim(val_str).以开始("0X")){
+                    设 hexv = parse_hex64(trim(val_str));
+                    如果(cur_section == 0){
+                        result.text_bytes.添加(hexv & 255);
+                        result.text_bytes.添加((hexv / 256) & 255);
+                        result.text_bytes.添加((hexv / 65536) & 255);
+                        result.text_bytes.添加((hexv / 16777216) & 255);
+                        result.text_bytes.添加((hexv / 4294967296) & 255);
+                        result.text_bytes.添加((hexv / 1099511627776) & 255);
+                        result.text_bytes.添加((hexv / 281474976710656) & 255);
+                        result.text_bytes.添加((hexv / 72057594037927936) & 255);
+                        text_off = text_off + 8;
+                    };
+                    如果(cur_section == 1){
+                        result.data_bytes.添加(hexv & 255);
+                        result.data_bytes.添加((hexv / 256) & 255);
+                        result.data_bytes.添加((hexv / 65536) & 255);
+                        result.data_bytes.添加((hexv / 16777216) & 255);
+                        result.data_bytes.添加((hexv / 4294967296) & 255);
+                        result.data_bytes.添加((hexv / 1099511627776) & 255);
+                        result.data_bytes.添加((hexv / 281474976710656) & 255);
+                        result.data_bytes.添加((hexv / 72057594037927936) & 255);
+                        data_off = data_off + 8;
+                    };
+                    继续;
+                };
+
+                设 dot_pos = find_char(trim(val_str), ".", 0);
+                如果(dot_pos >= 0){
+                    设 fv = parse_float_dq(trim(val_str));
+                    如果(fv < 0){ fv = fv + 18446744073709551616; };
+                    设 fb0 = fv & 255;
+                    设 fb1 = (fv / 256) & 255;
+                    设 fb2 = (fv / 65536) & 255;
+                    设 fb3 = (fv / 16777216) & 255;
+                    设 fb4 = (fv / 4294967296) & 255;
+                    设 fb5 = (fv / 1099511627776) & 255;
+                    设 fb6 = (fv / 281474976710656) & 255;
+                    设 fb7 = (fv / 72057594037927936) & 255;
+                    如果(cur_section == 0){
+                        result.text_bytes.添加(fb0); result.text_bytes.添加(fb1);
+                        result.text_bytes.添加(fb2); result.text_bytes.添加(fb3);
+                        result.text_bytes.添加(fb4); result.text_bytes.添加(fb5);
+                        result.text_bytes.添加(fb6); result.text_bytes.添加(fb7);
+                        text_off = text_off + 8;
+                    };
+                    如果(cur_section == 1){
+                        result.data_bytes.添加(fb0); result.data_bytes.添加(fb1);
+                        result.data_bytes.添加(fb2); result.data_bytes.添加(fb3);
+                        result.data_bytes.添加(fb4); result.data_bytes.添加(fb5);
+                        result.data_bytes.添加(fb6); result.data_bytes.添加(fb7);
+                        data_off = data_off + 8;
+                    };
+                    继续;
+                };
+                如果(is_num == 0){
+
+                    创建 AsmReloc:rel;
+                    rel.section = cur_section;
+                    rel.offset = data_off;
+                    如果(cur_section == 0){ rel.offset = text_off; };
+                    rel.sym_name = trim(val_str);
+                    rel.type = RELOC_ADDR64;
+                    result.relocs.添加(rel);
+                    如果(cur_section == 0){
+                        result.text_bytes.添加(0); result.text_bytes.添加(0);
+                        result.text_bytes.添加(0); result.text_bytes.添加(0);
+                        result.text_bytes.添加(0); result.text_bytes.添加(0);
+                        result.text_bytes.添加(0); result.text_bytes.添加(0);
+                        text_off = text_off + 8;
+                    };
+                    如果(cur_section == 1){
+                        result.data_bytes.添加(0); result.data_bytes.添加(0);
+                        result.data_bytes.添加(0); result.data_bytes.添加(0);
+                        result.data_bytes.添加(0); result.data_bytes.添加(0);
+                        result.data_bytes.添加(0); result.data_bytes.添加(0);
+                        data_off = data_off + 8;
+                    };
+                    继续;
+                };
+                设 v = parse_int(val_str);
+                如果(v < 0){ v = v + 18446744073709551616; };
+                设 b0 = v & 255;
+                设 b1 = (v / 256) & 255;
+                设 b2 = (v / 65536) & 255;
+                设 b3 = (v / 16777216) & 255;
+                设 b4 = (v / 4294967296) & 255;
+                设 b5 = (v / 1099511627776) & 255;
+                设 b6 = (v / 281474976710656) & 255;
+                设 b7 = (v / 72057594037927936) & 255;
+                如果(cur_section == 0){
+                    result.text_bytes.添加(b0); result.text_bytes.添加(b1);
+                    result.text_bytes.添加(b2); result.text_bytes.添加(b3);
+                    result.text_bytes.添加(b4); result.text_bytes.添加(b5);
+                    result.text_bytes.添加(b6); result.text_bytes.添加(b7);
+                    text_off = text_off + 8;
+                };
+                如果(cur_section == 1){
+                    result.data_bytes.添加(b0); result.data_bytes.添加(b1);
+                    result.data_bytes.添加(b2); result.data_bytes.添加(b3);
+                    result.data_bytes.添加(b4); result.data_bytes.添加(b5);
+                    result.data_bytes.添加(b6); result.data_bytes.添加(b7);
+                    data_off = data_off + 8;
+                };
+            };
+            i = i + 1;
+            继续;
+        };
+
+        如果(starts_with(code, "resq ")){
+            设 cnt = parse_int(trim(code.子字符串(5, code.长度())));
+            bss_off = bss_off + cnt * 8;
+            i = i + 1;
+            继续;
+        };
+
+        如果(starts_with(code, "resb ")){
+            设 cnt = parse_int(trim(code.子字符串(5, code.长度())));
+            bss_off = bss_off + cnt;
+            i = i + 1;
+            继续;
+        };
+        如果(starts_with(code, "resd ")){
+            设 cnt = parse_int(trim(code.子字符串(5, code.长度())));
+            bss_off = bss_off + cnt * 4;
+            i = i + 1;
+            继续;
+        };
+
+        g_enc_parts = parse_insn_line(code);
+        g_enc_symbols = result.symbols;
+        g_enc_relocs = result.relocs;
+        设 plen = g_enc_parts.长度();
+        如果(plen > 0){
+            创建 ArrayList:encoded;
+            设 cur_off = text_off;
+            如果(cur_section == 0){
+                设 chk_len = insn_length();
+                encoded = encode_insn(cur_section, cur_off);
+                如果(chk_len != encoded.长度()){
+                    错误打印("LENMISMATCH @" + cur_off + " L" + i + " [" + code + "] il=" + chk_len + " enc=" + encoded.长度());
+                };
+                设 j = 0;
+                循环(j < encoded.长度()){
+                    result.text_bytes.添加(encoded.获取(j));
+                    j = j + 1;
+                };
+                text_off = text_off + encoded.长度();
+            };
+        };
+
+        如果(p2n < p1_offs.长度() && p1_offs.获取(p2n) != text_off){
+            错误打印("P12-DIFF L" + i + " [" + code + "] p1=" + p1_offs.获取(p2n) + " p2=" + text_off);
+        };
+        p2n = p2n + 1;
+
+        i = i + 1;
+    };
+
+    result.bss_size = bss_off;
+    返回值 result;
+};
+
+声明 write_coff(result, filename){
+
+    创建 AsmResult:rr;
+    rr = result;
+    如果(g_debug_mode == 1){ 打印("WC-ENTER"); };
+
+    设 text_len = rr.text_bytes.长度();
+    设 data_len = rr.data_bytes.长度();
+    设 bss_len = rr.bss_size;
+
+    创建 ArrayList:sym_names;
+    创建 ArrayList:sym_secs;
+    创建 ArrayList:sym_vals;
+    创建 ArrayList:sym_cls;
+    设 sym_dict = [];
+    sym_names.添加(".text"); sym_secs.添加(1); sym_vals.添加(0); sym_cls.添加(3);
+    字典设置(sym_dict, ".text", 0);
+    sym_names.添加(".data"); sym_secs.添加(2); sym_vals.添加(0); sym_cls.添加(3);
+    字典设置(sym_dict, ".data", 1);
+    sym_names.添加(".bss");  sym_secs.添加(3); sym_vals.添加(0); sym_cls.添加(3);
+    字典设置(sym_dict, ".bss", 2);
+    设 n_syms = rr.symbols.长度();
+    设 si = 0;
+    循环(si < n_syms){
+        创建 AsmSymbol:asym;
+        asym = rr.symbols.获取(si);
+        如果(sym_dict.存在键(asym.name) == 0){
+            设 nidx = sym_names.长度();
+            sym_names.添加(asym.name);
+            如果(asym.is_extern == 1){
+                sym_secs.添加(0); sym_vals.添加(0); sym_cls.添加(2);
+            }否则{
+                sym_secs.添加(asym.section + 1); sym_vals.添加(asym.offset);
+
+                如果(asym.is_global == 1){
+                    sym_cls.添加(2);
+                }否则{
+                    sym_cls.添加(3);
+                };
+            };
+            字典设置(sym_dict, asym.name, nidx);
+        };
+        si = si + 1;
+    };
+    设 nsyms = sym_names.长度();
+
+    设 strtab_len = 4;
+    设 si2 = 0;
+    循环(si2 < nsyms){
+        设 nm = sym_names.获取(si2);
+        如果(nm.长度() > 8){
+            strtab_len = strtab_len + nm.长度() + 1;
+        };
+        si2 = si2 + 1;
+    };
+
+    设 nrel_text = 0;
+    设 nrel_data = 0;
+    设 nr = rr.relocs.长度();
+    设 ri = 0;
+    循环(ri < nr){
+        创建 AsmReloc:arel;
+        arel = rr.relocs.获取(ri);
+        如果(arel.section == 0){ nrel_text = nrel_text + 1; };
+        如果(arel.section == 1){ nrel_data = nrel_data + 1; };
+        ri = ri + 1;
+    };
+
+    设 ovf_text = 0;
+    如果(nrel_text >= 0xFFFF){ ovf_text = 1; };
+    设 ovf_data = 0;
+    如果(nrel_data >= 0xFFFF){ ovf_data = 1; };
+
+    设 total = 20 + 120 + text_len + data_len + (nrel_text + nrel_data + ovf_text + ovf_data) * 10 + nsyms * 18 + strtab_len;
+    设 buf = 分配(total);
+    设 raw_off = 140;
+
+    内存.写字节(buf, 0, 0x64); 内存.写字节(buf, 1, 0x86);
+    内存.写字节(buf, 2, 3); 内存.写字节(buf, 3, 0);
+    内存.写字节(buf, 4, 0); 内存.写字节(buf, 5, 0);
+    内存.写字节(buf, 6, 0); 内存.写字节(buf, 7, 0);
+    内存.写字节(buf, 16, 0); 内存.写字节(buf, 17, 0);
+    内存.写字节(buf, 18, 0); 内存.写字节(buf, 19, 0);
+
+    内存.写字节(buf, 20, 46); 内存.写字节(buf, 21, 116);
+    内存.写字节(buf, 22, 101); 内存.写字节(buf, 23, 120);
+    内存.写字节(buf, 24, 116); 内存.写字节(buf, 25, 0);
+    内存.写字节(buf, 26, 0); 内存.写字节(buf, 27, 0);
+    write_u32_asm(buf, 28, text_len);
+    write_u32_asm(buf, 32, 0);
+    write_u32_asm(buf, 36, text_len);
+    write_u32_asm(buf, 40, raw_off);
+    设 text_reloc_ptr = raw_off + text_len + data_len;
+    write_u32_asm(buf, 44, text_reloc_ptr);
+    write_u32_asm(buf, 48, 0);
+    如果(ovf_text == 1){
+        内存.写字节(buf, 52, 0xFF); 内存.写字节(buf, 53, 0xFF);
+        内存.写字节(buf, 54, 0); 内存.写字节(buf, 55, 0);
+        write_u32_asm(buf, 56, 0x61000020);
+    }否则{
+        内存.写字节(buf, 52, nrel_text & 255); 内存.写字节(buf, 53, (nrel_text / 256) & 255);
+        内存.写字节(buf, 54, 0); 内存.写字节(buf, 55, 0);
+        write_u32_asm(buf, 56, 0x60000020);
+    };
+
+    设 data_raw_off = raw_off + text_len;
+    内存.写字节(buf, 60, 46); 内存.写字节(buf, 61, 100);
+    内存.写字节(buf, 62, 97); 内存.写字节(buf, 63, 116);
+    内存.写字节(buf, 64, 97); 内存.写字节(buf, 65, 0);
+    内存.写字节(buf, 66, 0); 内存.写字节(buf, 67, 0);
+    write_u32_asm(buf, 68, data_len);
+    write_u32_asm(buf, 72, 0);
+    write_u32_asm(buf, 76, data_len);
+    write_u32_asm(buf, 80, data_raw_off);
+    write_u32_asm(buf, 84, text_reloc_ptr + (nrel_text + ovf_text) * 10);
+    write_u32_asm(buf, 88, 0);
+    如果(ovf_data == 1){
+        内存.写字节(buf, 92, 0xFF); 内存.写字节(buf, 93, 0xFF);
+        内存.写字节(buf, 94, 0); 内存.写字节(buf, 95, 0);
+        write_u32_asm(buf, 96, 0xD0000040);
+    }否则{
+        内存.写字节(buf, 92, nrel_data & 255); 内存.写字节(buf, 93, (nrel_data / 256) & 255);
+        内存.写字节(buf, 94, 0); 内存.写字节(buf, 95, 0);
+        write_u32_asm(buf, 96, 0xC0000040);
+    };
+
+    内存.写字节(buf, 100, 46); 内存.写字节(buf, 101, 98);
+    内存.写字节(buf, 102, 115); 内存.写字节(buf, 103, 115);
+    内存.写字节(buf, 104, 0); 内存.写字节(buf, 105, 0);
+    内存.写字节(buf, 106, 0); 内存.写字节(buf, 107, 0);
+    write_u32_asm(buf, 108, bss_len);
+    write_u32_asm(buf, 112, 0);
+    write_u32_asm(buf, 116, 0);
+    write_u32_asm(buf, 120, 0);
+    write_u32_asm(buf, 124, 0);
+    write_u32_asm(buf, 128, 0);
+    内存.写字节(buf, 132, 0); 内存.写字节(buf, 133, 0);
+    内存.写字节(buf, 134, 0); 内存.写字节(buf, 135, 0);
+    write_u32_asm(buf, 136, 0xC0000080);
+
+    设 ti = 0;
+    循环(ti < text_len){
+        内存.写字节(buf, raw_off + ti, rr.text_bytes.获取(ti));
+        ti = ti + 1;
+    };
+    设 di = 0;
+    循环(di < data_len){
+        内存.写字节(buf, data_raw_off + di, rr.data_bytes.获取(di));
+        di = di + 1;
+    };
+
+    设 reloc_off = text_reloc_ptr;
+    如果(ovf_text == 1){
+
+        write_u32_asm(buf, reloc_off, nrel_text);
+        write_u32_asm(buf, reloc_off + 4, 0);
+        内存.写字节(buf, reloc_off + 8, 0); 内存.写字节(buf, reloc_off + 9, 0);
+        reloc_off = reloc_off + 10;
+    };
+    设 ri2 = 0;
+    循环(ri2 < nr){
+        创建 AsmReloc:r2;
+        r2 = rr.relocs.获取(ri2);
+        如果(r2.section == 0){
+            write_u32_asm(buf, reloc_off, r2.offset);
+            设 sfound = -1;
+            设 sidx = 字典获取(sym_dict, r2.sym_name);
+            如果(sidx == 空){
+
+                错误打印("RELOC 符号缺失: [" + r2.sym_name + "] @" + r2.offset + " keylen=" + r2.sym_name.长度() + " dictlen=" + sym_dict.长度());
+                sfound = 0;
+            }否则{
+                sfound = sidx;
+            };
+            write_u32_asm(buf, reloc_off + 4, sfound);
+            设 rtype = 4;
+            如果(r2.type == 2){ rtype = 1; };
+            又如果(r2.type == 3){ rtype = 5; };
+            又如果(r2.type == 4){ rtype = 8; };
+            内存.写字节(buf, reloc_off + 8, rtype & 255);
+            内存.写字节(buf, reloc_off + 9, (rtype / 256) & 255);
+            reloc_off = reloc_off + 10;
+        };
+        ri2 = ri2 + 1;
+    };
+    如果(ovf_data == 1){
+        write_u32_asm(buf, reloc_off, nrel_data);
+        write_u32_asm(buf, reloc_off + 4, 0);
+        内存.写字节(buf, reloc_off + 8, 0); 内存.写字节(buf, reloc_off + 9, 0);
+        reloc_off = reloc_off + 10;
+    };
+    设 ri3 = 0;
+    循环(ri3 < nr){
+        创建 AsmReloc:r3;
+        r3 = rr.relocs.获取(ri3);
+        如果(r3.section == 1){
+            write_u32_asm(buf, reloc_off, r3.offset);
+            设 sfound2 = -1;
+            设 sidx2 = 字典获取(sym_dict, r3.sym_name);
+            如果(sidx2 == 空){
+                错误打印("RELOC 符号缺失: [" + r3.sym_name + "] @" + r3.offset);
+                sfound2 = 0;
+            }否则{
+                sfound2 = sidx2;
+            };
+            write_u32_asm(buf, reloc_off + 4, sfound2);
+            设 rtype2 = 4;
+            如果(r3.type == 2){ rtype2 = 1; };
+            又如果(r3.type == 3){ rtype2 = 5; };
+            又如果(r3.type == 4){ rtype2 = 8; };
+            内存.写字节(buf, reloc_off + 8, rtype2 & 255);
+            内存.写字节(buf, reloc_off + 9, (rtype2 / 256) & 255);
+            reloc_off = reloc_off + 10;
+        };
+        ri3 = ri3 + 1;
+    };
+
+    设 sym_off = reloc_off;
+    设 sym_start = sym_off;
+    设 str_off = 4;
+    设 si3 = 0;
+    循环(si3 < nsyms){
+        设 nm = sym_names.获取(si3);
+        设 nm_len = nm.长度();
+        如果(nm_len <= 8){
+            设 c = 0;
+            循环(c < 8){
+                如果(c < nm_len){
+                    内存.写字节(buf, sym_off + c, nm.字节(c));
+                }否则{
+                    内存.写字节(buf, sym_off + c, 0);
+                };
+                c = c + 1;
+            };
+        }否则{
+            write_u32_asm(buf, sym_off, 0);
+            write_u32_asm(buf, sym_off + 4, str_off);
+            str_off = str_off + nm_len + 1;
+        };
+        write_u32_asm(buf, sym_off + 8, sym_vals.获取(si3));
+        内存.写字节(buf, sym_off + 12, sym_secs.获取(si3) & 255);
+        内存.写字节(buf, sym_off + 13, (sym_secs.获取(si3) / 256) & 255);
+        内存.写字节(buf, sym_off + 14, 0); 内存.写字节(buf, sym_off + 15, 0);
+        内存.写字节(buf, sym_off + 16, sym_cls.获取(si3));
+        内存.写字节(buf, sym_off + 17, 0);
+        sym_off = sym_off + 18;
+        si3 = si3 + 1;
+    };
+
+    write_u32_asm(buf, sym_off, strtab_len);
+    设 sti = 0;
+    设 stw = 0;
+    循环(sti < nsyms){
+        设 nm2 = sym_names.获取(sti);
+        设 nl2 = nm2.长度();
+        如果(nl2 > 8){
+            设 ci2 = 0;
+            循环(ci2 < nl2){
+                内存.写字节(buf, sym_off + 4 + stw, nm2.字节(ci2));
+                stw = stw + 1;
+                ci2 = ci2 + 1;
+            };
+            内存.写字节(buf, sym_off + 4 + stw, 0);
+            stw = stw + 1;
+        };
+        sti = sti + 1;
+    };
+
+    write_u32_asm(buf, 8, sym_start);
+    write_u32_asm(buf, 12, nsyms);
+
+    设 h = win_create_file(filename);
+    如果(h == 0){ 释放(buf); 返回值 -1; };
+    设 wr = win_write_file(h, buf, total);
+    win_close_handle(h);
+    释放(buf);
+    返回值 wr;
+};
+
+声明 write_u32_asm(buf, off, val){
+    内存.写字节(buf, off, val & 255);
+    内存.写字节(buf, off + 1, (val / 256) & 255);
+    内存.写字节(buf, off + 2, (val / 65536) & 255);
+    内存.写字节(buf, off + 3, (val / 16777216) & 255);
+    返回值 0;
+};
+
+声明 parse_hex64(s0){
+    设 t = trim(s0);
+    设 start = 2;
+    如果(t.长度() >= 3 && (t.子字符串(0, 2) == "0x" || t.子字符串(0, 2) == "0X")){
+        start = 2;
+    }否则{
+        返回值 0;
+    };
+    设 acc = 0;
+    设 i = start;
+    设 len = t.长度();
+    循环(i < len){
+        acc = acc * 16;
+        设 ch = t.字节(i);
+        如果(ch >= 48 && ch <= 57){ acc = acc + (ch - 48); };
+        又如果(ch >= 65 && ch <= 70){ acc = acc + (ch - 55); };
+        又如果(ch >= 97 && ch <= 102){ acc = acc + (ch - 87); };
+        i = i + 1;
+    };
+    返回值 acc;
+};

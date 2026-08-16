@@ -1,0 +1,975 @@
+引用.文件(./atl_ds.at);
+引用.文件(./atl_lexer.at);
+引用.文件(./atl_parser.at);
+引用.文件(./atl_semantic.at);
+引用.文件(./atl_codegen.at);
+引用.文件(./atl_runtime.at);
+引用.文件(./atl_assembler.at);
+引用.文件(./atl_linker.at);
+
+设 g_argv0_dir = "";
+
+设 g_debug_mode = 0;
+
+设 g_pkg_paths = "";
+
+类 Atlv1编译器 {
+公开:
+
+    声明 获取命令行(){
+        如果(g_thunk_code == 0){ init_win32_thunk(); };
+        设 fn = 系统.获取函数("kernel32.dll", "GetCommandLineW");
+        write_u64(g_thunk_params, 0, 0);
+        write_u64(g_thunk_params, 8, 0);
+        write_u64(g_thunk_params, 16, 0);
+        write_u64(g_thunk_params, 24, 0);
+        write_u64(g_thunk_params, 32, 0);
+        write_u64(g_thunk_params, 40, 0);
+        write_u64(g_thunk_params, 48, 0);
+        write_u64(g_thunk_params, 56, fn);
+        返回值 内存.执行(g_thunk_code);
+    };
+
+    声明 读码点(addr, idx){
+        设 lo = 内存.读字节(addr, idx * 2);
+        设 hi = 内存.读字节(addr, idx * 2 + 1);
+        返回值 lo + hi * 256;
+    };
+    声明 解析参数(cmdline_addr){
+        创建 ArrayList:args;
+        设 i = 0;
+        设 maxlen = 4096;
+
+        设 a0 = "";
+        设 a0_dir_len = -1;
+        设 i0 = 0;
+        设 q0 = 读码点(cmdline_addr, 0);
+        如果(q0 == 0x22){
+            i0 = 1;
+            循环(i0 < maxlen){
+                设 c2 = 读码点(cmdline_addr, i0);
+                如果(c2 == 0x22 || c2 == 0){ 跳出; };
+                如果(c2 == 0x5C || c2 == 0x2F){ a0_dir_len = a0.长度() + 1; };
+                a0 = a0 + 字符(c2);
+                i0 = i0 + 1;
+            };
+        }否则{
+            循环(i0 < maxlen){
+                设 c2 = 读码点(cmdline_addr, i0);
+                如果(c2 == 0x20 || c2 == 0){ 跳出; };
+                如果(c2 == 0x5C || c2 == 0x2F){ a0_dir_len = a0.长度() + 1; };
+                a0 = a0 + 字符(c2);
+                i0 = i0 + 1;
+            };
+        };
+        如果(a0_dir_len < 0){
+            g_argv0_dir = "";
+        }否则{
+            g_argv0_dir = a0.子字符串(0, a0_dir_len);
+        };
+
+        设 first_char = 读码点(cmdline_addr, 0);
+        如果(first_char == 0x22){
+
+            i = 1;
+            循环(i < maxlen){
+                设 c = 读码点(cmdline_addr, i);
+                如果(c == 0x22 || c == 0){ 跳出; };
+                i = i + 1;
+            };
+            i = i + 1;
+        }否则{
+
+            循环(i < maxlen){
+                设 c = 读码点(cmdline_addr, i);
+                如果(c == 0x20 || c == 0){ 跳出; };
+                i = i + 1;
+            };
+        };
+
+        循环(i < maxlen){
+            设 c = 读码点(cmdline_addr, i);
+            如果(c == 0){ 跳出; };
+            如果(c != 0x20){ 跳出; };
+            i = i + 1;
+        };
+
+        循环(i < maxlen){
+            设 c = 读码点(cmdline_addr, i);
+            如果(c == 0){ 跳出; };
+            如果(c == 0x20){ i = i + 1; 继续; };
+
+            设 arg = "";
+            设 in_quote = 0;
+            循环(i < maxlen){
+                设 ch = 读码点(cmdline_addr, i);
+                如果(ch == 0){ 跳出; };
+                如果(ch == 0x22){ in_quote = 1 - in_quote; i = i + 1; 继续; };
+                如果(ch == 0x20 && in_quote == 0){ 跳出; };
+                arg = arg + 字符(ch);
+                i = i + 1;
+            };
+            args.添加(arg);
+        };
+
+        返回值 args;
+    };
+
+    声明 提取exe目录(){
+        返回值 g_argv0_dir;
+    };
+    声明 rt路径(){
+        设 full = 提取exe目录() + "atl_rt.obj";
+        设 hh = 打开文件(full);
+        如果(hh == 0){ 返回值 "atl_rt.obj"; };
+        关闭文件(hh);
+        返回值 full;
+    };
+
+    声明 匹配引用文件(src, i){
+        如果(src.字节(i) != 0xE5){ 返回值 0; };
+        如果(src.字节(i + 1) != 0xBC){ 返回值 0; };
+        如果(src.字节(i + 2) != 0x95){ 返回值 0; };
+        如果(src.字节(i + 3) != 0xE7){ 返回值 0; };
+        如果(src.字节(i + 4) != 0x94){ 返回值 0; };
+        如果(src.字节(i + 5) != 0xA8){ 返回值 0; };
+        如果(src.字节(i + 6) != 0x2E){ 返回值 0; };
+        如果(src.字节(i + 7) != 0xE6){ 返回值 0; };
+        如果(src.字节(i + 8) != 0x96){ 返回值 0; };
+        如果(src.字节(i + 9) != 0x87){ 返回值 0; };
+        如果(src.字节(i + 10) != 0xE4){ 返回值 0; };
+        如果(src.字节(i + 11) != 0xBB){ 返回值 0; };
+        如果(src.字节(i + 12) != 0xB6){ 返回值 0; };
+        如果(src.字节(i + 13) != 0x28){ 返回值 0; };
+        返回值 1;
+    };
+
+    声明 匹配模块导入(src, i){
+        如果(src.字节(i) != 0xE5){ 返回值 0; };
+        如果(src.字节(i + 1) != 0xBC){ 返回值 0; };
+        如果(src.字节(i + 2) != 0x95){ 返回值 0; };
+        如果(src.字节(i + 3) != 0xE7){ 返回值 0; };
+        如果(src.字节(i + 4) != 0x94){ 返回值 0; };
+        如果(src.字节(i + 5) != 0xA8){ 返回值 0; };
+        如果(src.字节(i + 6) != 0x2E){ 返回值 0; };
+        如果(src.字节(i + 7) != 0xE6){ 返回值 0; };
+        如果(src.字节(i + 8) != 0xA8){ 返回值 0; };
+        如果(src.字节(i + 9) != 0xA1){ 返回值 0; };
+        如果(src.字节(i + 10) != 0xE5){ 返回值 0; };
+        如果(src.字节(i + 11) != 0x9D){ 返回值 0; };
+        如果(src.字节(i + 12) != 0x97){ 返回值 0; };
+        如果(src.字节(i + 13) != 0xE5){ 返回值 0; };
+        如果(src.字节(i + 14) != 0xAF){ 返回值 0; };
+        如果(src.字节(i + 15) != 0xBC){ 返回值 0; };
+        如果(src.字节(i + 16) != 0xE5){ 返回值 0; };
+        如果(src.字节(i + 17) != 0x85){ 返回值 0; };
+        如果(src.字节(i + 18) != 0xA5){ 返回值 0; };
+        如果(src.字节(i + 19) != 0x28){ 返回值 0; };
+        返回值 1;
+    };
+
+    声明 行首检查(src, i){
+        设 j = i;
+        循环(j > 0 && src.字节(j - 1) != 10){
+            设 c = src.字节(j - 1);
+            如果(c != 32 && c != 9){ 返回值 0; };
+            j = j - 1;
+        };
+        返回值 1;
+    };
+
+    声明 码点长度(b){
+        如果(b < 0x80){ 返回值 1; };
+        如果((b & 0xE0) == 0xC0){ 返回值 2; };
+        如果((b & 0xF0) == 0xE0){ 返回值 3; };
+        返回值 4;
+    };
+
+    声明 字节长度(s){
+        设 i = 0;
+        循环(s.字节(i) != 0){ i = i + 1; };
+        返回值 i;
+    };
+
+    声明 读码点utf8(src, pos){
+        设 b = src.字节(pos);
+        如果(b < 0x80){ 返回值 b; };
+        如果((b & 0xE0) == 0xC0){
+            设 b2 = src.字节(pos + 1);
+            返回值 ((b & 0x1F) << 6) | (b2 & 0x3F);
+        };
+        如果((b & 0xF0) == 0xE0){
+            设 b2 = src.字节(pos + 1);
+            设 b3 = src.字节(pos + 2);
+            返回值 ((b & 0x0F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F);
+        };
+        设 b2 = src.字节(pos + 1);
+        设 b3 = src.字节(pos + 2);
+        设 b4 = src.字节(pos + 3);
+        返回值 ((b & 0x07) << 18) | ((b2 & 0x3F) << 12) | ((b3 & 0x3F) << 6) | (b4 & 0x3F);
+    };
+
+    声明 路径拼接(dir, name){
+        如果(字节长度(name) >= 2 && name.字节(1) == 58){ 返回值 name; };
+        如果(字节长度(name) >= 1 && (name.字节(0) == 47 || name.字节(0) == 92)){ 返回值 name; };
+        返回值 dir + name;
+    };
+
+    声明 取目录(path){
+        设 last = -1;
+        设 n = 字节长度(path);
+        设 i = 0;
+        循环(i < n){
+            设 c = path.字节(i);
+            如果(c == 47 || c == 92){ last = i; };
+            i = i + 1;
+        };
+        如果(last < 0){ 返回值 "./"; };
+        返回值 path.字节子串(0, last + 1);
+    };
+
+    声明 提取行(content, start, 末尾){
+        创建 StringBuffer:out;
+        设 line = 1;
+        设 n = 字节长度(content);
+        设 i = 0;
+        循环(i < n && line <= 末尾){
+            设 ls = i;
+            循环(i < n && content.字节(i) != 10){ i = i + 1; };
+            如果(i < n){ i = i + 1; };
+            如果(line >= start){
+                out.追加(content.字节子串(ls, i));
+            };
+            line = line + 1;
+        };
+        返回值 out.构建();
+    };
+
+    声明 展开引用(src, base_dir, stack, depth){
+        创建 StringBuffer:out;
+        设 slen = 字节长度(src);
+        设 i = 0;
+        设 copy_start = 0;
+        循环(i < slen){
+            如果(行首检查(src, i) && i + 14 <= slen && 匹配引用文件(src, i)){
+                out.追加(src.字节子串(copy_start, i));
+                设 pos = i + 14;
+
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                设 path = "";
+                如果(pos < slen && (src.字节(pos) == 34 || src.字节(pos) == 39)){
+                    设 quote = src.字节(pos);
+                    pos = pos + 1;
+                    循环(pos < slen && src.字节(pos) != quote){
+                        path = path + 字符(读码点utf8(src, pos));
+                        pos = pos + 码点长度(src.字节(pos));
+                    };
+                    如果(pos < slen){ pos = pos + 1; };
+                }否则{
+                    循环(pos < slen && src.字节(pos) != 91 && src.字节(pos) != 41 && src.字节(pos) != 32 && src.字节(pos) != 9){
+                        path = path + 字符(读码点utf8(src, pos));
+                        pos = pos + 码点长度(src.字节(pos));
+                    };
+                };
+
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                设 range_start = -1;
+                设 range_end = -1;
+                如果(pos < slen && src.字节(pos) == 91){
+                    pos = pos + 1;
+                    设 s = 0;
+                    循环(pos < slen && src.字节(pos) >= 48 && src.字节(pos) <= 57){ s = s * 10 + src.字节(pos) - 48; pos = pos + 1; };
+                    range_start = s;
+                    如果(pos < slen && src.字节(pos) == 126){ pos = pos + 1; };
+                    设 e = 0;
+                    循环(pos < slen && src.字节(pos) >= 48 && src.字节(pos) <= 57){ e = e * 10 + src.字节(pos) - 48; pos = pos + 1; };
+                    range_end = e;
+                    如果(pos < slen && src.字节(pos) == 93){ pos = pos + 1; };
+                };
+
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                如果(pos >= slen || src.字节(pos) != 41){
+                    报错("引用.文件() 缺少 ) (路径=" + path + ")");
+                    返回值 out.构建();
+                };
+                pos = pos + 1;
+
+                如果(pos < slen && src.字节(pos) == 59){ pos = pos + 1; };
+
+                设 full = 路径拼接(base_dir, path);
+                如果(depth >= 64){
+                    报错("包含嵌套过深(超过 64 层): " + full);
+                    返回值 out.构建();
+                };
+                如果(stack.查找(full) >= 0){
+                    报错("检测到循环包含: " + full);
+                    返回值 out.构建();
+                };
+
+                设 inc = 字节读取(full, 0, 67108864);
+                如果(inc.长度 == 0){
+                    报错("包含文件为空或不存在: " + full);
+                    返回值 out.构建();
+                };
+                如果(range_start > 0 && range_end > 0){
+                    inc = 提取行(inc, range_start, range_end);
+                };
+                stack.添加(full);
+                设 rec = 展开引用(inc, 取目录(full), stack, depth + 1);
+                stack.弹出();
+                out.追加(rec);
+                out.追加("\n");
+                copy_start = pos;
+                i = pos;
+                继续;
+            };
+            i = i + 1;
+        };
+        out.追加(src.字节子串(copy_start, slen));
+        返回值 out.构建();
+    };
+
+    声明 提取引子(src){
+        创建 StringBuffer:out;
+        设 slen = 字节长度(src);
+        设 i = 0;
+        循环(i < slen){
+            如果(行首检查(src, i) && i + 12 <= slen &&
+               src.字节(i) == 0xE5 && src.字节(i + 1) == 0x88 && src.字节(i + 2) == 0x9B &&
+               src.字节(i + 3) == 0xE5 && src.字节(i + 4) == 0xBB && src.字节(i + 5) == 0xBA &&
+               src.字节(i + 6) == 0xE5 && src.字节(i + 7) == 0xBC && src.字节(i + 8) == 0x95 &&
+               src.字节(i + 9) == 0xE5 && src.字节(i + 10) == 0xAD && src.字节(i + 11) == 0x90){
+                设 hook_start = i;
+                设 pos = i + 12;
+
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                循环(pos < slen && src.字节(pos) != 40 && src.字节(pos) != 32 && src.字节(pos) != 9 && src.字节(pos) != 10){ pos = pos + 1; };
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                如果(pos < slen && src.字节(pos) == 40){
+                    设 d = 1;
+                    pos = pos + 1;
+                    循环(pos < slen && d > 0){
+                        如果(src.字节(pos) == 40){ d = d + 1; };
+                        如果(src.字节(pos) == 41){ d = d - 1; };
+                        pos = pos + 1;
+                    };
+                };
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                如果(pos < slen && src.字节(pos) == 123){
+                    设 d = 1;
+                    pos = pos + 1;
+                    循环(pos < slen && d > 0){
+                        如果(src.字节(pos) == 123){ d = d + 1; };
+                        如果(src.字节(pos) == 125){ d = d - 1; };
+                        pos = pos + 1;
+                    };
+                };
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                如果(pos < slen && src.字节(pos) == 59){ pos = pos + 1; };
+                out.追加(src.字节子串(hook_start, pos));
+                out.追加("\n");
+                i = pos;
+            }否则{
+                i = i + 1;
+            };
+        };
+        返回值 out.构建();
+    };
+
+    声明 展开模块导入(src, base_dir, stack, depth){
+        创建 StringBuffer:out;
+        设 slen = 字节长度(src);
+        设 i = 0;
+        设 copy_start = 0;
+        循环(i < slen){
+            如果(行首检查(src, i) && i + 20 <= slen && 匹配模块导入(src, i)){
+                out.追加(src.字节子串(copy_start, i));
+                设 pos = i + 20;
+
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                设 path = "";
+                如果(pos < slen && (src.字节(pos) == 34 || src.字节(pos) == 39)){
+                    设 quote = src.字节(pos);
+                    pos = pos + 1;
+                    循环(pos < slen && src.字节(pos) != quote){
+                        path = path + 字符(读码点utf8(src, pos));
+                        pos = pos + 码点长度(src.字节(pos));
+                    };
+                    如果(pos < slen){ pos = pos + 1; };
+                }否则{
+                    循环(pos < slen && src.字节(pos) != 41 && src.字节(pos) != 32 && src.字节(pos) != 9){
+                        path = path + 字符(读码点utf8(src, pos));
+                        pos = pos + 码点长度(src.字节(pos));
+                    };
+                };
+
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                如果(pos >= slen || src.字节(pos) != 41){
+                    报错("引用.模块导入() 缺少 ) (路径=" + path + ")");
+                    返回值 out.构建();
+                };
+                pos = pos + 1;
+
+                如果(pos < slen && src.字节(pos) == 59){ pos = pos + 1; };
+
+                设 full = 路径拼接(base_dir, path);
+                如果(depth >= 64){
+                    报错("模块导入嵌套过深(超过 64 层): " + full);
+                    返回值 out.构建();
+                };
+                如果(stack.查找(full) >= 0){
+                    报错("检测到循环模块导入: " + full);
+                    返回值 out.构建();
+                };
+
+                设 hh = 打开文件(full);
+                如果(hh == 0){
+                    错误打印("atlanage: 警告~ 模块导入文件不存在: " + full + "（保留原语句）");
+                    out.追加(src.字节子串(i, pos));
+                    copy_start = pos;
+                    i = pos;
+                    继续;
+                };
+                关闭文件(hh);
+                设 inc = 字节读取(full, 0, 67108864);
+                stack.添加(full);
+                设 hooks = 提取引子(inc);
+                设 rec = 展开模块导入(hooks, 取目录(full), stack, depth + 1);
+                stack.弹出();
+                out.追加(rec);
+                out.追加("\n");
+                copy_start = pos;
+                i = pos;
+                继续;
+            };
+            i = i + 1;
+        };
+        out.追加(src.字节子串(copy_start, slen));
+        返回值 out.构建();
+    };
+
+    声明 匹配包导入(src, i){
+        如果(src.字节(i) != 0xE5){ 返回值 0; };
+        如果(src.字节(i + 1) != 0xBC){ 返回值 0; };
+        如果(src.字节(i + 2) != 0x95){ 返回值 0; };
+        如果(src.字节(i + 3) != 0xE7){ 返回值 0; };
+        如果(src.字节(i + 4) != 0x94){ 返回值 0; };
+        如果(src.字节(i + 5) != 0xA8){ 返回值 0; };
+        如果(src.字节(i + 6) != 0x2E){ 返回值 0; };
+        如果(src.字节(i + 7) != 0xE5){ 返回值 0; };
+        如果(src.字节(i + 8) != 0x8C){ 返回值 0; };
+        如果(src.字节(i + 9) != 0x85){ 返回值 0; };
+        如果(src.字节(i + 10) != 0xE5){ 返回值 0; };
+        如果(src.字节(i + 11) != 0xAF){ 返回值 0; };
+        如果(src.字节(i + 12) != 0xBC){ 返回值 0; };
+        如果(src.字节(i + 13) != 0xE5){ 返回值 0; };
+        如果(src.字节(i + 14) != 0x85){ 返回值 0; };
+        如果(src.字节(i + 15) != 0xA5){ 返回值 0; };
+        如果(src.字节(i + 16) != 0x28){ 返回值 0; };
+        返回值 1;
+    };
+
+    声明 包名禁用(name){
+        如果(name == "网络" || name == "进程" || name == "同步" || name == "原子" ||
+           name == "内存" || name == "系统" || name == "数学" || name == "JSON" ||
+           name == "正则" || name == "字符串构建" || name == "字符串" || name == "图形" ||
+           name == "图像" || name == "文件" || name == "线程" || name == "通道" ||
+           name == "道" || name == "引用" || name == "GL" || name == "VK" || name == "输入"){ 返回值 1; };
+        返回值 0;
+    };
+
+    声明 版本段值(s, 段){
+        设 cur = 0;
+        设 seg = 0;
+        设 n = s.长度();
+        设 i = 0;
+        循环(i < n){
+            设 c = s.字节(i);
+            如果(c >= 48 && c <= 57){
+                cur = cur * 10 + c - 48;
+            }又如果(c == 46){
+                如果(seg == 段){ 返回值 cur; };
+                seg = seg + 1;
+                cur = 0;
+            }否则{
+                跳出;
+            };
+            i = i + 1;
+        };
+        如果(seg == 段){ 返回值 cur; };
+        返回值 0;
+    };
+    声明 版本相等(a, b){
+        设 i = 0;
+        循环(i < 3){
+            如果(版本段值(a, i) != 版本段值(b, i)){ 返回值 0; };
+            i = i + 1;
+        };
+        返回值 1;
+    };
+
+    声明 版本比较(a, b){
+        设 i = 0;
+        循环(i < 3){
+            设 av = 版本段值(a, i);
+            设 bv = 版本段值(b, i);
+            如果(av < bv){ 返回值 -1; };
+            如果(av > bv){ 返回值 1; };
+            i = i + 1;
+        };
+        返回值 0;
+    };
+
+    声明 版本满足(req, act){
+        如果(req.长度() == 0 || req == "latest"){ 返回值 1; };
+        设 c0 = req.字节(0);
+        如果(c0 == 94){
+            设 sub = req.字节子串(1, req.长度());
+            如果(版本段值(act, 0) != 版本段值(sub, 0)){ 返回值 0; };
+            如果(版本比较(act, sub) < 0){ 返回值 0; };
+            返回值 1;
+        };
+        如果(c0 == 62){
+            如果(req.字节(1) == 61){
+                设 sub2 = req.字节子串(2, req.长度());
+                如果(版本比较(act, sub2) >= 0){ 返回值 1; };
+                返回值 0;
+            };
+        };
+        返回值 版本相等(act, req);
+    };
+
+    声明 清单取值(content, key){
+        设 n = 字节长度(content);
+        设 i = 0;
+        循环(i < n){
+            设 ls = i;
+            循环(i < n && content.字节(i) != 10){ i = i + 1; };
+            设 le = i;
+            如果(i < n){ i = i + 1; };
+
+            设 j = ls;
+            循环(j < le && (content.字节(j) == 32 || content.字节(j) == 9)){ j = j + 1; };
+
+            如果(j < le && content.字节(j) == 35){ 继续; };
+
+            设 klen = 字节长度(key);
+            如果(j + klen < le && content.字节(j + klen) == 58){
+                设 match = 1;
+                设 k = 0;
+                循环(k < klen){
+                    如果(content.字节(j + k) != key.字节(k)){ match = 0; };
+                    k = k + 1;
+                };
+                如果(match == 1){
+
+                    设 v = j + klen + 1;
+                    循环(v < le && (content.字节(v) == 32 || content.字节(v) == 9)){ v = v + 1; };
+                    设 ve = le;
+                    循环(ve > v && (content.字节(ve - 1) == 32 || content.字节(ve - 1) == 9 || content.字节(ve - 1) == 13)){ ve = ve - 1; };
+                    返回值 content.字节子串(v, ve);
+                };
+            };
+        };
+        返回值 "";
+    };
+
+    声明 展开包导入(src, base_dir, stack, depth, pkg_names){
+        创建 StringBuffer:out;
+        设 slen = 字节长度(src);
+        设 i = 0;
+        设 copy_start = 0;
+        循环(i < slen){
+            如果(行首检查(src, i) && i + 17 <= slen && 匹配包导入(src, i)){
+                out.追加(src.字节子串(copy_start, i));
+                设 pos = i + 17;
+
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+
+                设 name = "";
+                如果(pos < slen && (src.字节(pos) == 34 || src.字节(pos) == 39)){
+                    设 quote = src.字节(pos);
+                    pos = pos + 1;
+                    循环(pos < slen && src.字节(pos) != quote){
+                        name = name + 字符(读码点utf8(src, pos));
+                        pos = pos + 码点长度(src.字节(pos));
+                    };
+                    如果(pos < slen){ pos = pos + 1; };
+                }否则{
+                    循环(pos < slen && src.字节(pos) != 41 && src.字节(pos) != 32 && src.字节(pos) != 9){
+                        name = name + 字符(读码点utf8(src, pos));
+                        pos = pos + 码点长度(src.字节(pos));
+                    };
+                };
+
+                设 ver = "";
+                循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+                如果(pos < slen && src.字节(pos) == 44){
+                    pos = pos + 1;
+                    循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+                    如果(pos < slen && (src.字节(pos) == 34 || src.字节(pos) == 39)){
+                        设 q = src.字节(pos);
+                        pos = pos + 1;
+                        循环(pos < slen && src.字节(pos) != q){
+                            ver = ver + 字符(读码点utf8(src, pos));
+                            pos = pos + 码点长度(src.字节(pos));
+                        };
+                        如果(pos < slen){ pos = pos + 1; };
+                    };
+                    循环(pos < slen && (src.字节(pos) == 32 || src.字节(pos) == 9)){ pos = pos + 1; };
+                };
+
+                如果(pos >= slen || src.字节(pos) != 41){
+                    报错("引用.包导入() 缺少 ) (包名=" + name + ")");
+                    返回值 out.构建();
+                };
+                pos = pos + 1;
+                如果(pos < slen && src.字节(pos) == 59){ pos = pos + 1; };
+
+                如果(包名禁用(name)){
+                    报错("包名 '" + name + "' 与内置模块/库同名,无法作为包名");
+                    返回值 out.构建();
+                };
+
+                设 pkg_dir = "";
+                设 base_pkg = 路径拼接(base_dir, "包/") + name;
+                设 man_path = base_pkg + "/atp.json";
+                设 hh = 打开文件(man_path);
+                如果(hh != 0){
+                    关闭文件(hh);
+                    pkg_dir = base_pkg;
+                }否则{
+
+                    设 dep_pkg = 路径拼接(base_dir, "依赖/") + name;
+                    设 man2 = dep_pkg + "/atp.json";
+                    设 h2 = 打开文件(man2);
+                    如果(h2 != 0){
+                        关闭文件(h2);
+                        pkg_dir = dep_pkg;
+                    }否则{
+
+                        设 rest = g_pkg_paths;
+                        循环(rest.长度() > 0){
+                            设 sep = -1;
+                            设 k = 0;
+                            循环(k < 字节长度(rest)){
+                                如果(rest.字节(k) == 59){ sep = k; 跳出; };
+                                k = k + 1;
+                            };
+                            设 root = "";
+
+                            如果(sep < 0){ root = rest; rest = ""; }否则{ root = rest.字节子串(0, sep); rest = rest.字节子串(sep + 1, 字节长度(rest)); };
+
+                            如果(字节长度(root) > 0 && root.字节(字节长度(root) - 1) != 47 && root.字节(字节长度(root) - 1) != 92){ root = root + "/"; };
+                            设 m2 = root + name + "/atp.json";
+                            设 h2 = 打开文件(m2);
+                            如果(h2 != 0){
+                                关闭文件(h2);
+                                pkg_dir = root + name;
+                                跳出;
+                            };
+                        };
+                    };
+                };
+
+                如果(pkg_dir.长度() == 0){
+                    报错("包不存在: " + name + "（搜索 <文件目录>/包/<包名>/ 及 -包路径= 目录）");
+                    返回值 out.构建();
+                };
+
+                设 man = 字节读取(pkg_dir + "/atp.json", 0, 1048576);
+                如果(man.长度() == 0){
+                    报错("包 '" + name + "' 缺少清单 atp.json 或清单为空");
+                    返回值 out.构建();
+                };
+                设 m_name = 清单取值(man, "包名");
+                设 m_entry = 清单取值(man, "入口");
+                如果(m_name != name){
+                    报错("包 '" + name + "' 的清单 包名 缺失或不符（清单 包名: " + m_name + "）");
+                    返回值 out.构建();
+                };
+
+                如果(ver.长度() > 0){
+                    设 m_ver = 清单取值(man, "版本");
+                    如果(m_ver.长度() == 0){
+                        报错("包 '" + name + "' 的清单缺少 版本（导入声明版本 " + ver + "）");
+                        返回值 out.构建();
+                    };
+                    如果(版本满足(ver, m_ver) == 0){
+                        报错("包 '" + name + "' 版本不符: 导入要求 " + ver + ", 清单版本 " + m_ver);
+                        返回值 out.构建();
+                    };
+                };
+                如果(m_entry.长度() == 0){
+                    报错("包 '" + name + "' 的清单缺少 入口");
+                    返回值 out.构建();
+                };
+
+                设 entry_path = 路径拼接(pkg_dir + "/", m_entry);
+                如果(depth >= 64){
+                    报错("包导入嵌套过深(超过 64 层): " + entry_path);
+                    返回值 out.构建();
+                };
+                如果(stack.查找(entry_path) >= 0){
+                    报错("检测到循环包导入: " + entry_path);
+                    返回值 out.构建();
+                };
+                设 dup = 0;
+                设 dn = 0;
+                循环(dn < pkg_names.长度()){
+                    如果(pkg_names.获取(dn) == name){ dup = 1; };
+                    dn = dn + 1;
+                };
+                如果(dup == 1){
+                    错误打印("atlanage: 警告~ 包 '" + name + "' 已被导入,跳过重复导入");
+                    copy_start = pos;
+                    i = pos;
+                    继续;
+                };
+
+                设 entry_content = 字节读取(entry_path, 0, 67108864);
+                如果(entry_content.长度() == 0){
+                    报错("包 '" + name + "' 的入口文件不存在或为空: " + entry_path);
+                    返回值 out.构建();
+                };
+
+                stack.添加(entry_path);
+                pkg_names.添加(name);
+                设 wrapped = "包 " + name + " {\n" + entry_content + "\n}\n";
+                设 rec = 展开包导入(wrapped, 取目录(entry_path), stack, depth + 1, pkg_names);
+                设 rec2 = 展开模块导入(rec, 取目录(entry_path), stack, depth + 1);
+                stack.弹出();
+
+                out.追加(rec2);
+                out.追加("\n");
+                copy_start = pos;
+                i = pos;
+                继续;
+            };
+            i = i + 1;
+        };
+        out.追加(src.字节子串(copy_start, slen));
+        返回值 out.构建();
+    };
+
+    声明 运行(){
+
+        设 cmdline_addr = 获取命令行();
+        创建 ArrayList:args;
+        args = 解析参数(cmdline_addr);
+        设 nargs = args.长度();
+
+        设 no_extern = 0;
+        设 exe_mode = 0;
+        设 obj_mode = 0;
+        设 link_mode = 0;
+        设 al_mode = 0;
+        设 input_file = "_b7_input.at";
+        设 output_file = "a.exe";
+        设 out_given = 0;
+        设 i = 0;
+        循环(i < nargs){
+            设 arg = args.获取(i);
+            设 flag = arg;
+            如果(arg.以开始("--")){
+                flag = arg.子字符串(2, arg.长度());
+            }又如果(arg.以开始("-")){
+                flag = arg.子字符串(1, arg.长度());
+            };
+            如果(flag == "no-extern"){
+                no_extern = 1;
+            }又如果(flag == "exe1"){
+
+                exe_mode = 1;
+                g_debug_mode = 1;
+            }又如果(flag == "exe"){
+                exe_mode = 1;
+            }又如果(flag == "obj"){
+                obj_mode = 1;
+            }又如果(flag == "link"){
+                link_mode = 1;
+            }又如果(flag == "al"){
+                al_mode = 1;
+            }又如果(flag.以开始("out=")){
+                output_file = flag.子字符串(4, flag.长度());
+                out_given = 1;
+            }又如果(flag.以开始("包路径=")){
+
+                g_pkg_paths = flag.子字符串(4, flag.长度());
+            }否则{
+                input_file = arg;
+            };
+            i = i + 1;
+        };
+
+        如果(exe_mode == 1 && out_given == 0){
+            output_file = input_file;
+            如果(output_file.长度() > 3 && output_file.以结束(".at")){
+                output_file = output_file.子字符串(0, output_file.长度() - 3);
+            };
+            output_file = output_file + ".exe";
+        };
+
+        如果(obj_mode == 1){
+            如果(g_debug_mode == 1){ 打印("OBJ-ENTER"); };
+            设 asm_src = 字节读取(input_file, 0, 67108864);
+            内存报告("obj-read");
+            尝试{
+                创建 AsmResult:ar2;
+                ar2 = assemble(asm_src);
+                如果(g_debug_mode == 1){ 打印("OBJ-ASM-DONE"); };
+                内存报告("obj-assemble");
+                设 wrc = write_coff(ar2, output_file);
+                内存报告("obj-write");
+                如果(wrc < 0){
+                    错误打印("写 obj 失败: " + output_file);
+                    返回值 1;
+                };
+            }捕获(错误){
+                错误打印("obj 汇编炸了: 信息=" + 错误.信息 + " 行号=" + 错误.行号);
+                返回值 1;
+            };
+            返回值 0;
+        };
+
+        如果(link_mode == 1){
+            创建 ArrayList:obj_files;
+            obj_files.添加(rt路径());
+            尝试{
+                创建 LinkModule:umod;
+                umod = parse_coff(input_file);
+                内存报告("link-read");
+                link(umod, obj_files, output_file);
+                内存报告("link-done");
+            }捕获(错误){
+                错误打印("link 炸了: 信息=" + 错误.信息 + " 行号=" + 错误.行号);
+                返回值 1;
+            };
+            返回值 0;
+        };
+
+        如果(al_mode == 1){
+            设 asm_src = 字节读取(input_file, 0, 67108864);
+            尝试{
+                创建 AsmResult:ar3;
+                ar3 = assemble(asm_src);
+                内存报告("al-assemble");
+                创建 LinkModule:umod3;
+                umod3 = asmresult_to_module(ar3);
+                内存报告("al-module");
+                创建 ArrayList:obj_files3;
+                obj_files3.添加("atl_rt.obj");
+                link(umod3, obj_files3, output_file);
+                内存报告("al-link");
+            }捕获(错误){
+                错误打印("al 炸了: 信息=" + 错误.信息 + " 行号=" + 错误.行号);
+                返回值 1;
+            };
+            返回值 0;
+        };
+
+        设 src = 字节读取(input_file, 0, 67108864);
+        内存报告("after-read");
+
+        如果(src == 空 || src.长度() == 0){
+            报错("输入文件 '" + input_file + "' 不存在或为空——检查路径是否正确");
+        };
+
+        创建 ArrayList:inc_stack;
+        src = 展开引用(src, 取目录(input_file), inc_stack, 0);
+        内存报告("after-include");
+
+        创建 ArrayList:pkg_names;
+        src = 展开包导入(src, 取目录(input_file), inc_stack, 0, pkg_names);
+        内存报告("after-pkgimport");
+
+        src = 展开模块导入(src, 取目录(input_file), inc_stack, 0);
+        内存报告("after-modimport");
+
+        如果(g_error_count > 0){
+            错误打印("杂鱼~ 一共 " + g_error_count + " 个错误。欧尼酱,就这?回去重修吧");
+            汇编("extern atl_sys_exit");
+            汇编("mov rcx, 1");
+            汇编("sub rsp, 32");
+            汇编("call atl_sys_exit");
+            返回值 1;
+        };
+
+        创建 ArrayList:tokens;
+        tokens = lex(src);
+        内存报告("after-lex");
+
+        创建 Parser:p(tokens);
+        创建 ArrayList:decls;
+        decls = p.parse_program();
+        内存报告("after-parse");
+
+        如果(decls.长度() == 0){
+            报错("第1行: 一个声明都没有,这文件是空的吗?欧尼酱是不是传错文件了");
+        };
+
+        sem_analyze(decls);
+        内存报告("after-sem");
+
+        codegen_reset();
+        codegen_emit();
+        内存报告("after-codegen");
+
+        设 asm_out = codegen_get_output();
+
+        如果(no_extern == 1 || exe_mode == 1){
+
+            内存报告("before-assemble");
+            尝试{
+                创建 AsmResult:ar;
+                ar = assemble(asm_out);
+                内存报告("after-assemble");
+                设 wrc2 = write_coff(ar, "_b7_exe_tmp.obj");
+                内存报告("after-writecoff");
+                如果(wrc2 < 0){
+                    错误打印("写临时 obj 失败");
+                    返回值 1;
+                };
+
+                创建 LinkModule:umod;
+                umod = parse_coff("_b7_exe_tmp.obj");
+                内存报告("after-to-module");
+
+                创建 ArrayList:obj_files;
+                obj_files.添加(rt路径());
+
+                link(umod, obj_files, output_file);
+                内存报告("after-link");
+            }捕获(错误){
+                错误打印("哎~ 编译器炸了: 信息=" + 错误.信息 + " 行号=" + 错误.行号 + " —— 欧尼酱,这可不赖我");
+            };
+        }否则{
+
+            打印(asm_out);
+        };
+
+        如果(g_error_count > 0){
+            错误打印("杂鱼~ 一共 " + g_error_count + " 个错误。欧尼酱,就这?回去重修吧");
+            汇编("extern atl_sys_exit");
+            汇编("mov rcx, 1");
+            汇编("sub rsp, 32");
+            汇编("call atl_sys_exit");
+            返回值 1;
+        };
+
+        汇编("extern atl_sys_exit");
+        汇编("xor rcx, rcx");
+        汇编("sub rsp, 32");
+        汇编("call atl_sys_exit");
+        返回值 0;
+    };
+};

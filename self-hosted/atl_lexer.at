@@ -1,0 +1,940 @@
+设 TOK_EOF = 0;
+设 TOK_INT = 1;
+设 TOK_FLOAT = 2;
+设 TOK_STRING = 3;
+设 TOK_IDENT = 4;
+
+设 TOK_SET = 10;
+设 TOK_EXIST = 11;
+设 TOK_IF = 12;
+设 TOK_ELIF = 13;
+设 TOK_ELSE = 14;
+设 TOK_SELECT = 15;
+设 TOK_CASE = 16;
+设 TOK_DEFAULT = 17;
+设 TOK_BREAK = 18;
+设 TOK_CONTINUE = 19;
+设 TOK_LOOP = 20;
+设 TOK_RETURN = 21;
+设 TOK_DECLARE = 22;
+设 TOK_FUNC = 23;
+设 TOK_CLASS = 24;
+设 TOK_EXTENDS = 25;
+设 TOK_CREATE = 26;
+设 TOK_PUBLIC = 27;
+设 TOK_PRIVATE = 28;
+设 TOK_PROTECTED = 29;
+设 TOK_LIST = 30;
+设 TOK_ARRAY = 31;
+设 TOK_GROUP = 32;
+设 TOK_PACKAGE = 33;
+设 TOK_CTOR = 34;
+设 TOK_HOOK = 35;
+设 TOK_ASM = 36;
+设 TOK_SHOW = 37;
+设 TOK_WAIT = 38;
+设 TOK_TRUE = 39;
+设 TOK_FALSE = 40;
+设 TOK_NULL = 41;
+设 TOK_SEC = 42;
+设 TOK_MIN = 43;
+设 TOK_HOUR = 44;
+设 TOK_END = 45;
+设 TOK_READFILE = 46;
+
+设 TOK_PLUS = 50;
+设 TOK_MINUS = 51;
+设 TOK_STAR = 52;
+设 TOK_SLASH = 53;
+设 TOK_PERCENT = 54;
+设 TOK_ASSIGN = 55;
+设 TOK_EQ = 56;
+设 TOK_NE = 57;
+设 TOK_LT = 58;
+设 TOK_GT = 59;
+设 TOK_LE = 60;
+设 TOK_GE = 61;
+设 TOK_AND = 62;
+设 TOK_OR = 63;
+设 TOK_NOT = 64;
+设 TOK_AMP = 65;
+设 TOK_BOR = 66;
+设 TOK_BXOR = 67;
+设 TOK_TILDE = 68;
+设 TOK_SHL = 69;
+设 TOK_SHR = 70;
+设 TOK_INC = 71;
+设 TOK_DEC = 72;
+设 TOK_PLUSEQ = 73;
+设 TOK_MINUSEQ = 74;
+
+设 TOK_LPAREN = 80;
+设 TOK_RPAREN = 81;
+设 TOK_LBRACE = 82;
+设 TOK_RBRACE = 83;
+设 TOK_LBRACKET = 84;
+设 TOK_RBRACKET = 85;
+设 TOK_SEMI = 86;
+设 TOK_COMMA = 87;
+设 TOK_DOT = 88;
+设 TOK_COLON = 89;
+设 TOK_ENUM_KW = 90;
+设 TOK_STRUCT_KW = 91;
+设 TOK_LISTEN = 92;
+设 TOK_GAMES = 93;
+设 TOK_WHEN = 110;
+设 TOK_TIME_KW = 94;
+设 TOK_DESTROY = 95;
+设 TOK_THROW = 96;
+设 TOK_TRY = 97;
+设 TOK_CATCH = 98;
+设 TOK_FINALLY = 99;
+设 TOK_CONST = 100;
+设 TOK_INTERFACE = 101;
+设 TOK_IMPLEMENTS = 102;
+设 TOK_STATIC = 103;
+设 TOK_UNTIL = 104;
+设 TOK_OPT_ACCESS = 105;
+设 TOK_IS = 106;
+设 TOK_ASYNC = 107;
+设 TOK_QUESTION = 108;
+设 TOK_BACKSLASH = 109;
+
+类 Token {
+公开:
+    设 type 存在;
+    设 text 存在;
+    设 line 存在;
+    设 col 存在;
+    设 ival 存在;
+    设 fval 存在;
+    设 interp 存在;
+
+    构造(t, txt, l, c){
+        type = t;
+        text = txt;
+        line = l;
+        col = c;
+        ival = 0;
+        fval = 0;
+        interp = 空;
+    };
+};
+
+设 g_keywords = 空;
+
+声明 init_keywords(){
+    如果(g_keywords != 空){
+        返回值 0;
+    };
+    g_keywords = [];
+    字典设置(g_keywords, "设", TOK_SET);
+    字典设置(g_keywords, "存在", TOK_EXIST);
+    字典设置(g_keywords, "如果", TOK_IF);
+    字典设置(g_keywords, "又如果", TOK_ELIF);
+    字典设置(g_keywords, "否则", TOK_ELSE);
+    字典设置(g_keywords, "选择", TOK_SELECT);
+    字典设置(g_keywords, "情况", TOK_CASE);
+    字典设置(g_keywords, "默认", TOK_DEFAULT);
+    字典设置(g_keywords, "跳出", TOK_BREAK);
+    字典设置(g_keywords, "继续", TOK_CONTINUE);
+    字典设置(g_keywords, "循环", TOK_LOOP);
+    字典设置(g_keywords, "返回值", TOK_RETURN);
+    字典设置(g_keywords, "声明", TOK_DECLARE);
+    字典设置(g_keywords, "函数", TOK_FUNC);
+    字典设置(g_keywords, "类", TOK_CLASS);
+    字典设置(g_keywords, "继承", TOK_EXTENDS);
+    字典设置(g_keywords, "创建", TOK_CREATE);
+    字典设置(g_keywords, "公开", TOK_PUBLIC);
+    字典设置(g_keywords, "私有", TOK_PRIVATE);
+    字典设置(g_keywords, "私有的", TOK_PRIVATE);
+    字典设置(g_keywords, "受保护的", TOK_PROTECTED);
+    字典设置(g_keywords, "列表", TOK_LIST);
+    字典设置(g_keywords, "数组", TOK_ARRAY);
+    字典设置(g_keywords, "组集", TOK_GROUP);
+    字典设置(g_keywords, "包", TOK_PACKAGE);
+    字典设置(g_keywords, "构造", TOK_CTOR);
+    字典设置(g_keywords, "创建引子", TOK_HOOK);
+    字典设置(g_keywords, "汇编", TOK_ASM);
+    字典设置(g_keywords, "显示", TOK_SHOW);
+    字典设置(g_keywords, "等待", TOK_WAIT);
+    字典设置(g_keywords, "读取文件", TOK_READFILE);
+    字典设置(g_keywords, "真", TOK_TRUE);
+    字典设置(g_keywords, "假", TOK_FALSE);
+    字典设置(g_keywords, "空", TOK_NULL);
+    字典设置(g_keywords, "秒", TOK_SEC);
+    字典设置(g_keywords, "分", TOK_MIN);
+    字典设置(g_keywords, "时", TOK_HOUR);
+    字典设置(g_keywords, "end", TOK_END);
+    字典设置(g_keywords, "Token类型", TOK_ENUM_KW);
+    字典设置(g_keywords, "Token结构", TOK_STRUCT_KW);
+    字典设置(g_keywords, "监听", TOK_LISTEN);
+    字典设置(g_keywords, "games", TOK_GAMES);
+    字典设置(g_keywords, "当", TOK_WHEN);
+    字典设置(g_keywords, "每帧", TOK_GAMES);
+    字典设置(g_keywords, "时间", TOK_TIME_KW);
+    字典设置(g_keywords, "销毁", TOK_DESTROY);
+    字典设置(g_keywords, "抛出", TOK_THROW);
+    字典设置(g_keywords, "尝试", TOK_TRY);
+    字典设置(g_keywords, "捕获", TOK_CATCH);
+    字典设置(g_keywords, "最终", TOK_FINALLY);
+    字典设置(g_keywords, "固定", TOK_CONST);
+    字典设置(g_keywords, "接口", TOK_INTERFACE);
+    字典设置(g_keywords, "实现", TOK_IMPLEMENTS);
+    字典设置(g_keywords, "静态", TOK_STATIC);
+    字典设置(g_keywords, "直到", TOK_UNTIL);
+
+    字典设置(g_keywords, "且", TOK_AND);
+    字典设置(g_keywords, "或", TOK_OR);
+    字典设置(g_keywords, "非", TOK_NOT);
+
+    字典设置(g_keywords, "位与", TOK_AMP);
+    字典设置(g_keywords, "位或", TOK_BOR);
+    字典设置(g_keywords, "异或", TOK_BXOR);
+    字典设置(g_keywords, "左移", TOK_SHL);
+    字典设置(g_keywords, "右移", TOK_SHR);
+    字典设置(g_keywords, "取反", TOK_TILDE);
+    字典设置(g_keywords, "是", TOK_IS);
+    字典设置(g_keywords, "异步", TOK_ASYNC);
+    字典设置(g_keywords, "True", TOK_TRUE);
+    字典设置(g_keywords, "False", TOK_FALSE);
+
+    如果(g_keywords.个数() < 10){
+        报错("内部断言: 关键字表异常");
+    };
+    返回值 0;
+};
+
+声明 is_alpha(cp){
+    如果(cp >= 97 && cp <= 122){ 返回值 1; };
+    如果(cp >= 65 && cp <= 90){ 返回值 1; };
+    如果(cp == 95){ 返回值 1; };
+    返回值 0;
+};
+
+声明 is_digit(cp){
+    如果(cp >= 48 && cp <= 57){ 返回值 1; };
+    返回值 0;
+};
+
+声明 is_alnum(cp){
+    如果(is_alpha(cp) == 1){ 返回值 1; };
+    如果(is_digit(cp) == 1){ 返回值 1; };
+    返回值 0;
+};
+
+声明 is_ident_char(cp){
+    如果(is_alnum(cp) == 1){ 返回值 1; };
+    如果(cp >= 19968 && cp <= 40959){ 返回值 1; };
+    如果(cp >= 13312 && cp <= 19903){ 返回值 1; };
+    如果(cp >= 63744 && cp <= 64255){ 返回值 1; };
+    如果(cp >= 65280 && cp <= 65535){
+
+        如果(cp >= 65296 && cp <= 65305){ 返回值 1; };
+        如果(cp >= 65313 && cp <= 65338){ 返回值 1; };
+        如果(cp >= 65345 && cp <= 65370){ 返回值 1; };
+        返回值 0;
+    };
+    返回值 0;
+};
+
+声明 is_space(cp){
+    如果(cp == 32){ 返回值 1; };
+    如果(cp == 9){ 返回值 1; };
+    如果(cp == 13){ 返回值 1; };
+    如果(cp == 10){ 返回值 1; };
+    返回值 0;
+};
+
+声明 is_hex_digit(cp){
+    如果(is_digit(cp) == 1){ 返回值 1; };
+    如果(cp >= 97 && cp <= 102){ 返回值 1; };
+    如果(cp >= 65 && cp <= 70){ 返回值 1; };
+    返回值 0;
+};
+
+声明 src_to_chars(src){
+    创建 ArrayList:chars;
+    设 i = 0;
+    设 maxlen = 10000000;
+    循环(i < maxlen){
+        设 b = src.字节(i);
+        如果(b == 0){ 跳出; };
+        如果(b < 128){
+            chars.添加(b);
+            i = i + 1;
+        }又如果((b & 224) == 192){
+            设 b2 = src.字节(i + 1);
+            设 cp = ((b & 31) << 6) | (b2 & 63);
+            chars.添加(cp);
+            i = i + 2;
+        }又如果((b & 240) == 224){
+            设 b2 = src.字节(i + 1);
+            设 b3 = src.字节(i + 2);
+            设 cp = ((b & 15) << 12) | ((b2 & 63) << 6) | (b3 & 63);
+            chars.添加(cp);
+            i = i + 3;
+        }否则{
+            设 b2 = src.字节(i + 1);
+            设 b3 = src.字节(i + 2);
+            设 b4 = src.字节(i + 3);
+            设 cp = ((b & 7) << 18) | ((b2 & 63) << 12) | ((b3 & 63) << 6) | (b4 & 63);
+            chars.添加(cp);
+            i = i + 4;
+        };
+    };
+    返回值 chars;
+};
+
+声明 lex(src){
+    init_keywords();
+    创建 ArrayList:tokens;
+    创建 ArrayList:chars;
+    chars = src_to_chars(src);
+    设 pos = 0;
+    设 line = 1;
+    设 col = 1;
+    设 len = chars.长度();
+
+    如果(len > 0 && chars.获取(0) == 65279){
+        pos = 1;
+    };
+
+    循环(pos < len){
+        设 cp = chars.获取(pos);
+
+        如果(cp == 32 || cp == 9 || cp == 13){
+            pos = pos + 1;
+            col = col + 1;
+            继续;
+        };
+        如果(cp == 10){
+            pos = pos + 1;
+            line = line + 1;
+            col = 1;
+            继续;
+        };
+
+        如果(cp == 47 && pos + 1 < len){
+            设 ch2 = chars.获取(pos + 1);
+            设 cp2 = ch2;
+            如果(cp2 == 47){
+
+                循环(pos < len){
+                    设 c = chars.获取(pos);
+                    如果(c == 10){ 跳出; };
+                    pos = pos + 1;
+                };
+                继续;
+            };
+        };
+
+        如果(cp == 47 && pos + 1 < len){
+            设 ch2 = chars.获取(pos + 1);
+            设 cp2 = ch2;
+            如果(cp2 == 42){
+                pos = pos + 2;
+                循环(pos + 1 < len){
+                    设 c1 = chars.获取(pos);
+                    设 c2 = chars.获取(pos + 1);
+                    如果(c1 == 42 && c2 == 47){
+                        pos = pos + 2;
+                        跳出;
+                    };
+                    如果(c1 == 10){ line = line + 1; };
+                    pos = pos + 1;
+                };
+                继续;
+            };
+        };
+
+        如果(cp == 34 || cp == 8220){
+            设 闭合引号 = 34;
+            如果(cp == 8220){ 闭合引号 = 8221; };
+            pos = pos + 1;
+            col = col + 1;
+            创建 StringBuffer:sb;
+            创建 ArrayList:interp_list;
+            设 interp_depth = 0;
+            设 interp_sb = 空;
+            循环(pos < len){
+                设 c = chars.获取(pos);
+
+                如果(interp_depth > 0){
+                    如果(c == 34 || c == 8220){
+
+                        interp_sb.追加字符(c);
+                        pos = pos + 1;
+                        设 嵌套闭 = 34;
+                        如果(c == 8220){ 嵌套闭 = 8221; };
+                        循环(pos < len){
+                            设 c2 = chars.获取(pos);
+                            interp_sb.追加字符(c2);
+                            pos = pos + 1;
+                            如果(c2 == 92){
+                                如果(pos < len){
+                                    interp_sb.追加字符(chars.获取(pos));
+                                    pos = pos + 1;
+                                };
+                            }又如果(c2 == 嵌套闭){
+                                跳出;
+                            };
+                        };
+                    }否则{
+
+                        如果(c == 92 && pos + 1 < len){
+                            设 esc2 = chars.获取(pos + 1);
+                            设 matched2 = 0;
+                            如果(esc2 == 110){ interp_sb.追加("\n"); matched2 = 1; };
+                            如果(esc2 == 116){ interp_sb.追加("\t"); matched2 = 1; };
+                            如果(esc2 == 114){ interp_sb.追加("\r"); matched2 = 1; };
+                            如果(esc2 == 92){ interp_sb.追加("\\"); matched2 = 1; };
+                            如果(esc2 == 34){ interp_sb.追加("\""); matched2 = 1; };
+                            如果(esc2 == 8221){ interp_sb.追加("”"); matched2 = 1; };
+                            如果(esc2 == 8220){ interp_sb.追加("“"); matched2 = 1; };
+                            如果(esc2 == 35){ interp_sb.追加("#"); matched2 = 1; };
+                            设 pos_extra2 = 0;
+                            如果(esc2 == 120){
+                                设 hv2 = 0;
+                                设 nh2 = 0;
+                                循环(nh2 < 2){
+                                    如果(pos + 2 + nh2 >= len){ 跳出; };
+                                    设 hc2 = chars.获取(pos + 2 + nh2);
+                                    如果(hc2 >= 48 && hc2 <= 57){ hv2 = hv2 * 16 + (hc2 - 48); }
+                                    又如果(hc2 >= 97 && hc2 <= 102){ hv2 = hv2 * 16 + (hc2 - 87); }
+                                    又如果(hc2 >= 65 && hc2 <= 70){ hv2 = hv2 * 16 + (hc2 - 55); }
+                                    否则 { 跳出; };
+                                    nh2 = nh2 + 1;
+                                };
+                                如果(nh2 == 0){
+                                    interp_sb.追加("x");
+                                }否则{
+                                    interp_sb.追加字符(hv2);
+                                    pos_extra2 = nh2;
+                                };
+                                matched2 = 1;
+                            };
+                            如果(matched2 == 1){
+                                pos = pos + 2 + pos_extra2;
+                            }否则{
+
+                                interp_sb.追加("\\");
+                                pos = pos + 1;
+                            };
+                        }否则{
+                            interp_sb.追加字符(c);
+                            如果(c == 123){ interp_depth = interp_depth + 1; };
+                            如果(c == 125){ interp_depth = interp_depth - 1; };
+                            pos = pos + 1;
+                            如果(interp_depth == 0){
+
+                                interp_list.添加(interp_sb.构建());
+                                interp_sb = 空;
+                            };
+                        };
+                    };
+                    继续;
+                };
+                如果(c == 闭合引号){
+                    pos = pos + 1;
+                    跳出;
+                };
+                如果(c == 92 && pos + 1 < len){
+
+                    设 esc = chars.获取(pos + 1);
+                    设 matched = 0;
+                    如果(esc == 110){ sb.追加("\n"); matched = 1; };
+                    如果(esc == 116){ sb.追加("\t"); matched = 1; };
+                    如果(esc == 114){ sb.追加("\r"); matched = 1; };
+                    如果(esc == 92){ sb.追加("\\"); matched = 1; };
+                    如果(esc == 34){ sb.追加("\""); matched = 1; };
+                    如果(esc == 8221){ sb.追加("”"); matched = 1; };
+                    如果(esc == 8220){ sb.追加("“"); matched = 1; };
+                    如果(esc == 35){ sb.追加("#"); matched = 1; };
+                    设 pos_extra = 0;
+                    如果(esc == 120){
+
+                        设 hv = 0;
+                        设 nh = 0;
+                        循环(nh < 2){
+                            如果(pos + 2 + nh >= len){ 跳出; };
+                            设 hc = chars.获取(pos + 2 + nh);
+                            如果(hc >= 48 && hc <= 57){ hv = hv * 16 + (hc - 48); }
+                            又如果(hc >= 97 && hc <= 102){ hv = hv * 16 + (hc - 87); }
+                            又如果(hc >= 65 && hc <= 70){ hv = hv * 16 + (hc - 55); }
+                            否则 { 跳出; };
+                            nh = nh + 1;
+                        };
+                        如果(nh == 0){
+                            sb.追加("x");
+                        }否则{
+                            sb.追加字符(hv);
+                            pos_extra = nh;
+                        };
+                        matched = 1;
+                    };
+                    如果(matched == 1){
+                        pos = pos + 2 + pos_extra;
+                    }否则{
+
+                        sb.追加("\\");
+                        pos = pos + 1;
+                    };
+                }否则{
+
+                    如果(c == 35 && pos + 1 < len){
+                        设 nxt = chars.获取(pos + 1);
+                    如果(nxt == 123){
+                        interp_list.添加(sb.构建());
+                        sb.清空();
+                        interp_sb = 创建 StringBuffer;
+                            interp_depth = 1;
+                            pos = pos + 2;
+                            继续;
+                        };
+                    };
+                    sb.追加字符(chars.获取(pos));
+                    pos = pos + 1;
+                };
+            };
+            创建 Token:t(TOK_STRING, sb.构建(), line, col);
+            如果(interp_list.长度() > 0){
+                interp_list.添加(sb.构建());
+                t.interp = interp_list;
+            };
+            tokens.添加(t);
+            继续;
+        };
+
+        如果(is_digit(cp) == 1){
+            创建 StringBuffer:sb;
+            设 is_float = 0;
+            设 is_hex = 0;
+
+            如果(cp == 48 && pos + 1 < len){
+                设 ch2 = chars.获取(pos + 1);
+                设 cp2 = ch2;
+                如果(cp2 == 120 || cp2 == 88){
+
+                    is_hex = 1;
+                    sb.追加("0");
+                    sb.追加("x");
+                    pos = pos + 2;
+                    循环(pos < len){
+                        设 c = chars.获取(pos);
+                        如果(is_hex_digit(c) == 0){ 跳出; };
+                        sb.追加字符(chars.获取(pos));
+                        pos = pos + 1;
+                    };
+                };
+            };
+            如果(is_hex == 0){
+
+                循环(pos < len){
+                    设 c = chars.获取(pos);
+                    如果(is_digit(c) == 0){ 跳出; };
+                    sb.追加字符(chars.获取(pos));
+                    pos = pos + 1;
+                };
+
+                如果(pos < len){
+                    设 c = chars.获取(pos);
+                    如果(c == 46){
+                        is_float = 1;
+                        sb.追加(".");
+                        pos = pos + 1;
+                        循环(pos < len){
+                            设 c2 = chars.获取(pos);
+                            如果(is_digit(c2) == 0){ 跳出; };
+                            sb.追加字符(chars.获取(pos));
+                            pos = pos + 1;
+                        };
+                    };
+                };
+            };
+            创建 Token:t(0, sb.构建(), line, col);
+            如果(is_float == 1){
+                t.type = TOK_FLOAT;
+                t.fval = 数值(t.text);
+            }否则{
+                t.type = TOK_INT;
+                t.ival = 整数(t.text);
+            };
+            tokens.添加(t);
+            继续;
+        };
+
+        如果(is_alpha(cp) == 1){
+            创建 StringBuffer:sb;
+            设 all_ascii = 1;
+            循环(pos < len){
+                设 c = chars.获取(pos);
+
+                如果(c >= 128){
+                    如果(is_ident_char(c) == 0){ 跳出; };
+
+                    如果(all_ascii == 1){
+                        如果(c == 31186 || c == 20998 || c == 26102){
+                            设 unit_ok = 1;
+                            如果(pos + 1 < len){
+                                设 unext = chars.获取(pos + 1);
+                                如果(unext < 128){
+                                    如果(is_alnum(unext) == 1 || unext == 95){ unit_ok = 0; };
+                                }否则{
+                                    如果(is_ident_char(unext) == 1){ unit_ok = 0; };
+                                };
+                            };
+                            如果(unit_ok == 1){ 跳出; };
+                        };
+                    };
+                    all_ascii = 0;
+                }否则{
+                    如果(is_alnum(c) == 0){ 跳出; };
+                };
+                sb.追加字符(chars.获取(pos));
+                pos = pos + 1;
+            };
+            设 word = sb.构建();
+
+            设 kw_type = 字典获取(g_keywords, word);
+            如果(kw_type != 空){
+                创建 Token:t(kw_type, word, line, col);
+                tokens.添加(t);
+            }否则{
+                创建 Token:t(TOK_IDENT, word, line, col);
+                tokens.添加(t);
+            };
+            继续;
+        };
+
+        如果(cp == 65306){ 创建 Token:t(TOK_COLON, "：", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 65307){ 创建 Token:t(TOK_SEMI, "；", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 12304){ 创建 Token:t(TOK_LBRACKET, "【", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 12305){ 创建 Token:t(TOK_RBRACKET, "】", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 65288){ 创建 Token:t(TOK_LPAREN, "（", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 65289){ 创建 Token:t(TOK_RPAREN, "）", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 65292){ 创建 Token:t(TOK_COMMA, "，", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 65309){ 创建 Token:t(TOK_ASSIGN, "＝", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+
+        如果(cp == 65291){
+
+            如果(pos + 1 < len && chars.获取(pos + 1) == 65309){
+                创建 Token:t(TOK_PLUSEQ, "＋＝", line, col); tokens.添加(t); pos = pos + 2; 继续;
+            };
+            创建 Token:t(TOK_PLUS, "＋", line, col); tokens.添加(t); pos = pos + 1; 继续;
+        };
+        如果(cp == 65293){
+
+            如果(pos + 1 < len && chars.获取(pos + 1) == 65309){
+                创建 Token:t(TOK_MINUSEQ, "－＝", line, col); tokens.添加(t); pos = pos + 2; 继续;
+            };
+            创建 Token:t(TOK_MINUS, "－", line, col); tokens.添加(t); pos = pos + 1; 继续;
+        };
+        如果(cp == 65290){ 创建 Token:t(TOK_STAR, "＊", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 65295){ 创建 Token:t(TOK_SLASH, "／", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+
+        如果(cp == 65371){ 创建 Token:t(TOK_LBRACE, "｛", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 65373){ 创建 Token:t(TOK_RBRACE, "｝", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+
+        如果(cp == 8221){
+            报错("第" + line + "行: 多余的右引号 ”——欧尼酱我不认识这个");
+            pos = pos + 1;
+            继续;
+        };
+
+        如果(cp >= 65280 && cp <= 65535){
+            报错("第" + line + "行: 全角符号 '" + 字符(cp) + "'——欧尼酱我不认识这个");
+            pos = pos + 1;
+            继续;
+        };
+
+        如果(cp >= 128){
+
+            设 matched = 0;
+            设 klen = 4;
+            循环(klen >= 1){
+                如果(pos + klen <= len){
+
+                    创建 StringBuffer:sb_kw;
+                    设 j_kw = 0;
+                    循环(j_kw < klen){
+                        sb_kw.追加字符(chars.获取(pos + j_kw));
+                        j_kw = j_kw + 1;
+                    };
+                    设 word = sb_kw.构建();
+                    设 kw_type = 字典获取(g_keywords, word);
+                    如果(kw_type != 空){
+
+                        设 kw_valid = 1;
+                        设 next_pos = pos + klen;
+                        如果(next_pos < len){
+                            设 next_c = chars.获取(next_pos);
+                            如果(next_c >= 128 && is_ident_char(next_c) == 1){
+                                kw_valid = 0;
+                            }又如果(next_c < 128 && (is_alnum(next_c) == 1 || next_c == 95)){
+                                kw_valid = 0;
+                            };
+                        };
+                        如果(kw_valid == 1){
+                            创建 Token:t(kw_type, word, line, col);
+                            tokens.添加(t);
+                            pos = pos + klen;
+                            matched = 1;
+                            跳出;
+                        };
+                    };
+                };
+                klen = klen - 1;
+            };
+            如果(matched == 1){
+                继续;
+            };
+
+            创建 StringBuffer:sb;
+            循环(pos < len){
+                设 c = chars.获取(pos);
+                如果(c < 128){
+                    如果(is_alnum(c) == 0 && c != 95){ 跳出; };
+                }否则{
+                    如果(is_ident_char(c) == 0){
+
+                        如果((c < 65280 || c > 65535) && c != 8221){
+                            pos = pos + 1;
+                        };
+                        跳出;
+                    };
+                };
+                sb.追加字符(chars.获取(pos));
+                pos = pos + 1;
+            };
+            设 word = sb.构建();
+            设 kw_type = 字典获取(g_keywords, word);
+            如果(kw_type != 空){
+                创建 Token:t(kw_type, word, line, col);
+                tokens.添加(t);
+            }否则{
+                创建 Token:t(TOK_IDENT, word, line, col);
+                tokens.添加(t);
+            };
+            继续;
+        };
+
+        如果(pos + 1 < len){
+            设 ch2 = chars.获取(pos + 1);
+            设 cp2 = ch2;
+
+            如果(cp == 61 && cp2 == 61){
+                创建 Token:t(TOK_EQ, "==", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+            如果(cp == 33 && cp2 == 61){
+                创建 Token:t(TOK_NE, "!=", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+
+            如果(cp == 60 && cp2 == 61){
+                创建 Token:t(TOK_LE, "<=", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+            如果(cp == 62 && cp2 == 61){
+                创建 Token:t(TOK_GE, ">=", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+
+            如果(cp == 38 && cp2 == 38){
+                创建 Token:t(TOK_AND, "&&", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+            如果(cp == 124 && cp2 == 124){
+                创建 Token:t(TOK_OR, "||", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+
+            如果(cp == 43 && cp2 == 43){
+                创建 Token:t(TOK_INC, "++", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+            如果(cp == 45 && cp2 == 45){
+                创建 Token:t(TOK_DEC, "--", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+
+            如果(cp == 43 && cp2 == 61){
+                创建 Token:t(TOK_PLUSEQ, "+=", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+            如果(cp == 45 && cp2 == 61){
+                创建 Token:t(TOK_MINUSEQ, "-=", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+
+            如果(cp == 63 && cp2 == 46){
+                创建 Token:t(TOK_OPT_ACCESS, "?.", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+
+            如果(cp == 60 && cp2 == 60){
+                创建 Token:t(TOK_SHL, "<<", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+            如果(cp == 62 && cp2 == 62){
+                创建 Token:t(TOK_SHR, ">>", line, col);
+                tokens.添加(t);
+                pos = pos + 2;
+                继续;
+            };
+        };
+
+        如果(cp == 43){ 创建 Token:t(TOK_PLUS, "+", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 45){ 创建 Token:t(TOK_MINUS, "-", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 42){ 创建 Token:t(TOK_STAR, "*", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 47){ 创建 Token:t(TOK_SLASH, "/", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 37){ 创建 Token:t(TOK_PERCENT, "%", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 61){ 创建 Token:t(TOK_ASSIGN, "=", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 33){ 创建 Token:t(TOK_NOT, "!", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 60){ 创建 Token:t(TOK_LT, "<", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 62){ 创建 Token:t(TOK_GT, ">", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 38){ 创建 Token:t(TOK_AMP, "&", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 124){ 创建 Token:t(TOK_BOR, "|", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 94){ 创建 Token:t(TOK_BXOR, "^", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 126){ 创建 Token:t(TOK_TILDE, "~", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+
+        如果(cp == 40){ 创建 Token:t(TOK_LPAREN, "(", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 41){ 创建 Token:t(TOK_RPAREN, ")", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 123){ 创建 Token:t(TOK_LBRACE, "{", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 125){ 创建 Token:t(TOK_RBRACE, "}", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 91){ 创建 Token:t(TOK_LBRACKET, "[", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 93){ 创建 Token:t(TOK_RBRACKET, "]", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 59){ 创建 Token:t(TOK_SEMI, ";", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 44){ 创建 Token:t(TOK_COMMA, ",", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 46){ 创建 Token:t(TOK_DOT, ".", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 58){ 创建 Token:t(TOK_COLON, ":", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 63){ 创建 Token:t(TOK_QUESTION, "?", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+        如果(cp == 92){ 创建 Token:t(TOK_BACKSLASH, "\\", line, col); tokens.添加(t); pos = pos + 1; 继续; };
+
+        pos = pos + 1;
+    };
+
+    创建 Token:eof(TOK_EOF, "", line, col);
+    tokens.添加(eof);
+    返回值 tokens;
+};
+
+声明 token_type_name(t){
+    如果(t == TOK_BACKSLASH){ 返回值 "BACKSLASH"; };
+    如果(t == TOK_EOF){ 返回值 "EOF"; };
+    如果(t == TOK_INT){ 返回值 "INT"; };
+    如果(t == TOK_FLOAT){ 返回值 "FLOAT"; };
+    如果(t == TOK_STRING){ 返回值 "STRING"; };
+    如果(t == TOK_IDENT){ 返回值 "IDENT"; };
+    如果(t == TOK_SET){ 返回值 "设"; };
+    如果(t == TOK_EXIST){ 返回值 "存在"; };
+    如果(t == TOK_IF){ 返回值 "如果"; };
+    如果(t == TOK_ELIF){ 返回值 "又如果"; };
+    如果(t == TOK_ELSE){ 返回值 "否则"; };
+    如果(t == TOK_SELECT){ 返回值 "选择"; };
+    如果(t == TOK_CASE){ 返回值 "情况"; };
+    如果(t == TOK_DEFAULT){ 返回值 "默认"; };
+    如果(t == TOK_BREAK){ 返回值 "跳出"; };
+    如果(t == TOK_CONTINUE){ 返回值 "继续"; };
+    如果(t == TOK_LOOP){ 返回值 "循环"; };
+    如果(t == TOK_RETURN){ 返回值 "返回值"; };
+    如果(t == TOK_DECLARE){ 返回值 "声明"; };
+    如果(t == TOK_FUNC){ 返回值 "函数"; };
+    如果(t == TOK_CLASS){ 返回值 "类"; };
+    如果(t == TOK_EXTENDS){ 返回值 "继承"; };
+    如果(t == TOK_CREATE){ 返回值 "创建"; };
+    如果(t == TOK_PUBLIC){ 返回值 "公开"; };
+    如果(t == TOK_PRIVATE){ 返回值 "私有"; };
+    如果(t == TOK_PROTECTED){ 返回值 "受保护的"; };
+    如果(t == TOK_LIST){ 返回值 "列表"; };
+    如果(t == TOK_ARRAY){ 返回值 "数组"; };
+    如果(t == TOK_GROUP){ 返回值 "组集"; };
+    如果(t == TOK_PACKAGE){ 返回值 "包"; };
+    如果(t == TOK_CTOR){ 返回值 "构造"; };
+    如果(t == TOK_HOOK){ 返回值 "创建引子"; };
+    如果(t == TOK_ASM){ 返回值 "汇编"; };
+    如果(t == TOK_SHOW){ 返回值 "显示"; };
+    如果(t == TOK_WAIT){ 返回值 "等待"; };
+    如果(t == TOK_READFILE){ 返回值 "读取文件"; };
+    如果(t == TOK_TRUE){ 返回值 "真"; };
+    如果(t == TOK_FALSE){ 返回值 "假"; };
+    如果(t == TOK_NULL){ 返回值 "空"; };
+    如果(t == TOK_SEC){ 返回值 "秒"; };
+    如果(t == TOK_MIN){ 返回值 "分"; };
+    如果(t == TOK_HOUR){ 返回值 "时"; };
+    如果(t == TOK_END){ 返回值 "end"; };
+    如果(t == TOK_DESTROY){ 返回值 "销毁"; };
+    如果(t == TOK_THROW){ 返回值 "抛出"; };
+    如果(t == TOK_TRY){ 返回值 "尝试"; };
+    如果(t == TOK_CATCH){ 返回值 "捕获"; };
+    如果(t == TOK_FINALLY){ 返回值 "最终"; };
+    如果(t == TOK_CONST){ 返回值 "固定"; };
+    如果(t == TOK_INTERFACE){ 返回值 "接口"; };
+    如果(t == TOK_IMPLEMENTS){ 返回值 "实现"; };
+    如果(t == TOK_STATIC){ 返回值 "静态"; };
+    如果(t == TOK_UNTIL){ 返回值 "直到"; };
+
+    如果(t == TOK_PLUS){ 返回值 "+"; };
+    如果(t == TOK_MINUS){ 返回值 "-"; };
+    如果(t == TOK_STAR){ 返回值 "*"; };
+    如果(t == TOK_SLASH){ 返回值 "/"; };
+    如果(t == TOK_PERCENT){ 返回值 "%"; };
+    如果(t == TOK_ASSIGN){ 返回值 "="; };
+    如果(t == TOK_EQ){ 返回值 "=="; };
+    如果(t == TOK_NE){ 返回值 "!="; };
+    如果(t == TOK_LT){ 返回值 "<"; };
+    如果(t == TOK_GT){ 返回值 ">"; };
+    如果(t == TOK_LE){ 返回值 "<="; };
+    如果(t == TOK_GE){ 返回值 ">="; };
+    如果(t == TOK_AND){ 返回值 "&&"; };
+    如果(t == TOK_OR){ 返回值 "||"; };
+    如果(t == TOK_NOT){ 返回值 "!"; };
+    如果(t == TOK_AMP){ 返回值 "&"; };
+    如果(t == TOK_BOR){ 返回值 "|"; };
+    如果(t == TOK_BXOR){ 返回值 "^"; };
+    如果(t == TOK_TILDE){ 返回值 "~"; };
+    如果(t == TOK_SHL){ 返回值 "<<"; };
+    如果(t == TOK_SHR){ 返回值 ">>"; };
+    如果(t == TOK_INC){ 返回值 "++"; };
+    如果(t == TOK_DEC){ 返回值 "--"; };
+    如果(t == TOK_PLUSEQ){ 返回值 "+="; };
+    如果(t == TOK_MINUSEQ){ 返回值 "-="; };
+
+    如果(t == TOK_LPAREN){ 返回值 "("; };
+    如果(t == TOK_RPAREN){ 返回值 ")"; };
+    如果(t == TOK_LBRACE){ 返回值 "{"; };
+    如果(t == TOK_RBRACE){ 返回值 "}"; };
+    如果(t == TOK_LBRACKET){ 返回值 "["; };
+    如果(t == TOK_RBRACKET){ 返回值 "]"; };
+    如果(t == TOK_SEMI){ 返回值 ";"; };
+    如果(t == TOK_COMMA){ 返回值 ","; };
+    如果(t == TOK_DOT){ 返回值 "."; };
+    如果(t == TOK_OPT_ACCESS){ 返回值 "?."; };
+    如果(t == TOK_COLON){ 返回值 ":"; };
+    返回值 "T" + t;
+};

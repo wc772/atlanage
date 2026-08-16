@@ -1,0 +1,73 @@
+Token类型{
+    RED,
+    GREEN,
+    BLUE
+}MyColor;
+
+Token结构{
+    int x,
+    float y,
+    string name
+}MyPoint;
+
+类 数据类型测试 {
+公开:
+    声明 测试Token类型枚举(){
+        设 color = MyColor.RED;
+        打印("color = " + color);
+
+        选择(color){
+            情况 MyColor.RED:
+                打印("红色");
+                跳出;
+            情况 MyColor.GREEN:
+                打印("绿色");
+                跳出;
+            情况 MyColor.BLUE:
+                打印("蓝色");
+                跳出;
+            默认:
+                打印("未知颜色");
+                跳出;
+        };
+
+        返回值 0;
+    };
+
+    声明 测试Token结构(){
+        设 p = 创建 MyPoint;
+        p.x = 10;
+        p.y = 3.14;
+        p.name = "测试点";
+
+        打印("x = " + p.x);
+        打印("y = " + p.y);
+        打印("name = " + p.name);
+
+        返回值 0;
+    };
+
+    声明 测试整数类型(){
+        设 a = 42;
+        设 b = -100;
+        设 c = 0;
+
+        打印("正整数: " + a);
+        打印("负整数: " + b);
+        打印("零: " + c);
+
+        返回值 0;
+    };
+
+    声明 测试浮点类型(){
+        设 pi = 3.14159;
+        设 r = 2.5;
+        设 area = pi * r * r;
+
+        打印("pi = " + pi);
+        打印("r = " + r);
+        打印("面积 = " + area);
+
+        返回值 0;
+    };
+};

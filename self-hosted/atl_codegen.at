@@ -1,0 +1,5550 @@
+设 g_in_gfx_block = 0;
+
+类 Ctx {
+公开:
+    设 func 存在;
+    设 cls 存在;
+    设 is_method 存在;
+    设 this_offset 存在;
+    设 locals_bytes 存在;
+    设 temp_base 存在;
+    设 temp_depth 存在;
+    设 frame_size 存在;
+    设 loop_break 存在;
+    设 loop_continue 存在;
+    设 loop_counter_off 存在;
+
+    构造(){
+        func = 空;
+        cls = 空;
+        is_method = 0;
+        this_offset = 0;
+        locals_bytes = 0;
+        temp_base = 0;
+        temp_depth = 0;
+        frame_size = 0;
+        loop_break = 0;
+        loop_continue = 0;
+        loop_counter_off = 0;
+    };
+};
+
+设 g_strlits = 空;
+设 g_fplits = 空;
+设 g_label_id = 0;
+设 g_silent = 0;
+设 g_func_uses_r12 = 0;
+设 g_func_is_leaf = 1;
+设 g_cur_func_body = 空;
+设 g_temp_peak = 0;
+设 g_task_seq = 0;
+设 g_task_funcs = 创建 ArrayList;
+
+声明 init_codegen(){
+    清空();
+    创建 ArrayList:g_strlits;
+    创建 ArrayList:g_fplits;
+    g_label_id = 0;
+    g_silent = 0;
+    g_temp_peak = 0;
+    g_gfx_used = 0;
+    g_gl_used = 0;
+    g_vk_used = 0;
+    g_input_used = 0;
+    g_gfx_block_win_off = 0;
+    返回值 0;
+};
+
+init_codegen();
+
+设 g_gfx_used = 0;
+设 g_gl_used = 0;
+设 g_vk_used = 0;
+设 g_input_used = 0;
+设 g_gfx_block_win_off = 0;
+
+声明 emit(s){
+    如果(g_silent == 1){
+        返回值 0;
+    };
+    如果(g_gfx_used == 0 && s.包含("atl_gfx_")){
+        g_gfx_used = 1;
+    };
+    如果(g_gl_used == 0 && s.包含("atl_gl_")){
+        g_gl_used = 1;
+    };
+    如果(g_vk_used == 0 && s.包含("atl_vk_")){
+        g_vk_used = 1;
+    };
+    如果(g_input_used == 0 && (s.包含("atl_input_key") || s.包含("atl_input_mouse") || s.包含("atl_input_sync"))){
+        g_input_used = 1;
+    };
+    追加(s + "\n");
+    返回值 0;
+};
+
+声明 emit_no_nl(s){
+    追加(s);
+    返回值 0;
+};
+
+声明 add_strlit(s){
+    设 i = 0;
+    循环(i < g_strlits.长度()){
+        如果(g_strlits.获取(i) == s){
+            返回值 i;
+        };
+        i = i + 1;
+    };
+    g_strlits.添加(s);
+    返回值 g_strlits.长度() - 1;
+};
+
+声明 add_fplit(v){
+    设 i = 0;
+    循环(i < g_fplits.长度()){
+        创建 ArrayList:fp;
+        fp = g_fplits.获取(i);
+        如果(fp.获取(0) == v){
+            返回值 fp.获取(1);
+        };
+        i = i + 1;
+    };
+    设 id = g_strlits.长度() + g_fplits.长度();
+    创建 ArrayList:entry;
+    entry.添加(v);
+    entry.添加(id);
+    g_fplits.添加(entry);
+    返回值 id;
+};
+
+声明 temp_alloc(c){
+    创建 Ctx:ctx;
+    ctx = c;
+    设 off = ctx.temp_base - ctx.temp_depth * 8;
+    ctx.temp_depth = ctx.temp_depth + 1;
+    如果(ctx.temp_depth > g_temp_peak){
+        g_temp_peak = ctx.temp_depth;
+    };
+    返回值 off;
+};
+
+声明 temp_free(c, n){
+    创建 Ctx:ctx;
+    ctx = c;
+    ctx.temp_depth = ctx.temp_depth - n;
+    如果(ctx.temp_depth < 0){
+        ctx.temp_depth = 0;
+    };
+    返回值 0;
+};
+
+声明 new_label(){
+    设 id = g_label_id;
+    g_label_id = g_label_id + 1;
+    返回值 id;
+};
+
+声明 singleton_label(cls){
+    创建 SemClass:c;
+    c = cls;
+    返回值 "__atl_singleton_" + c.id;
+};
+
+声明 global_label(idx){
+    返回值 "__atl_global_" + idx;
+};
+
+声明 method_label(m){
+    创建 SemMethod:sm;
+    sm = m;
+    设 prefix = "__atl_method_";
+    如果(sm.kind == 1){
+        prefix = "__atl_func_";
+    };
+    如果(sm.kind == 2){
+        prefix = "__atl_hook_";
+    };
+    如果(sm.kind == 3){
+        prefix = "__atl_lambda_";
+    };
+    返回值 prefix + sm.id;
+};
+
+声明 method_label_by_id(id){
+    返回值 "__atl_method_" + id;
+};
+
+声明 align16(n){
+    设 r = n;
+    如果(r % 16 != 0){
+        r = (r + 15) / 16 * 16;
+    };
+    返回值 r;
+};
+
+声明 reg_name(idx){
+    如果(idx == 0){ 返回值 "rcx"; };
+    如果(idx == 1){ 返回值 "rdx"; };
+    如果(idx == 2){ 返回值 "r8"; };
+    返回值 "r9";
+};
+
+声明 utf8_encode(cp){
+    创建 ArrayList:bytes;
+    如果(cp < 128){
+        bytes.添加(cp);
+    }否则{
+        如果(cp < 2048){
+            bytes.添加((cp >> 6) | 192);
+            bytes.添加((cp & 63) | 128);
+        }否则{
+            如果(cp < 65536){
+                bytes.添加((cp >> 12) | 224);
+                bytes.添加(((cp >> 6) & 63) | 128);
+                bytes.添加((cp & 63) | 128);
+            }否则{
+                bytes.添加((cp >> 18) | 240);
+                bytes.添加(((cp >> 12) & 63) | 128);
+                bytes.添加(((cp >> 6) & 63) | 128);
+                bytes.添加((cp & 63) | 128);
+            };
+        };
+    };
+    返回值 bytes;
+};
+
+声明 gen_show_node(node, c){
+    创建 ASTNode:n;
+    n = node;
+    创建 Ctx:ctx;
+    ctx = c;
+    如果(n.show_end == 1){
+
+        emit("    sub rsp, 32");
+        emit("    call atl_list_new");
+        emit("    add rsp, 32");
+        设 t_list = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_list + "], rax");
+        如果(n.show_args != 空){
+            设 i = 0;
+            循环(i < n.show_args.长度()){
+                gen_expr(n.show_args.获取(i), ctx);
+                设 t_arg = temp_alloc(ctx);
+                emit("    mov [rbp + " + t_arg + "], rax");
+                emit("    mov rcx, [rbp + " + t_list + "]");
+                emit("    mov rdx, [rbp + " + t_arg + "]");
+                emit("    sub rsp, 32");
+                emit("    call atl_list_add");
+                emit("    add rsp, 32");
+                temp_free(ctx, 1);
+                i = i + 1;
+            };
+        };
+
+        设 t_w = temp_alloc(ctx);
+        设 t_h = temp_alloc(ctx);
+        emit("    mov qword [rbp + " + t_w + "], 0");
+        emit("    mov qword [rbp + " + t_h + "], 0");
+        如果(n.show_has_size == 1 && n.show_w_expr != 空){
+            gen_expr(n.show_w_expr, ctx);
+            emit("    mov rax, [rax + 8]");
+            emit("    mov [rbp + " + t_w + "], rax");
+        };
+        如果(n.show_has_size == 1 && n.show_h_expr != 空){
+            gen_expr(n.show_h_expr, ctx);
+            emit("    mov rax, [rax + 8]");
+            emit("    mov [rbp + " + t_h + "], rax");
+        };
+
+        emit("    mov rcx, [rbp + " + t_list + "]");
+        emit("    mov rdx, [rbp + " + t_w + "]");
+        emit("    mov r8, [rbp + " + t_h + "]");
+        emit("    sub rsp, 32");
+        emit("    call atl_show_input");
+        emit("    add rsp, 32");
+        temp_free(ctx, 3);
+    }否则{
+
+        如果(n.show_args != 空){
+            设 i = 0;
+            循环(i < n.show_args.长度()){
+                gen_expr(n.show_args.获取(i), ctx);
+                emit("    mov rcx, rax");
+                emit("    sub rsp, 32");
+                emit("    call atl_show_one");
+                emit("    add rsp, 32");
+                i = i + 1;
+            };
+        };
+        emit("    sub rsp, 32");
+        emit("    call atl_null");
+        emit("    add rsp, 32");
+    };
+    返回值 0;
+};
+
+声明 check_expr_uses(e, name){
+    如果(e == 空){ 返回值 1; };
+    创建 ASTNode:x;
+    x = e;
+    如果(x.type == AST_VAR){
+        返回值 1;
+    };
+    如果(x.type == AST_LITERAL){
+        返回值 1;
+    };
+    如果(x.type == AST_INDEX){
+
+        返回值 0;
+    };
+    如果(x.type == AST_BINARY || x.type == AST_UNARY){
+        如果(x.sem != 空 && x.sem.type_kind == T_INT){
+            设 r1 = check_expr_uses(x.lhs, name);
+            如果(r1 == 0){ 返回值 0; };
+            如果(x.rhs != 空){
+                设 r2 = check_expr_uses(x.rhs, name);
+                如果(r2 == 0){ 返回值 0; };
+            };
+            返回值 1;
+        };
+        设 is_cmp = 0;
+        如果(x.type == AST_BINARY && (x.op == TOK_EQ || x.op == TOK_NE || x.op == TOK_LT ||
+           x.op == TOK_GT || x.op == TOK_LE || x.op == TOK_GE)){
+            is_cmp = 1;
+
+        };
+        如果(is_cmp == 0){
+            如果(x.lhs != 空 && x.lhs.type == AST_VAR && x.lhs.sval == name){ 返回值 0; };
+            如果(x.rhs != 空 && x.rhs.type == AST_VAR && x.rhs.sval == name){ 返回值 0; };
+        };
+        设 r3 = check_expr_uses(x.lhs, name);
+        如果(r3 == 0){ 返回值 0; };
+        如果(x.rhs != 空){
+            设 r4 = check_expr_uses(x.rhs, name);
+            如果(r4 == 0){ 返回值 0; };
+        };
+        返回值 1;
+    };
+    如果(x.type == AST_CALL){
+
+        返回值 0;
+    };
+    如果(x.type == AST_MODCALL){
+
+        返回值 0;
+    };
+    如果(x.type == AST_METHODCALL){
+
+        返回值 0;
+    };
+    如果(x.type == AST_REF){
+
+        如果(x.lhs != 空 && x.lhs.type == AST_VAR && x.lhs.sval == name){ 返回值 0; };
+        如果(x.lhs != 空){
+            设 r8 = check_expr_uses(x.lhs, name);
+            如果(r8 == 0){ 返回值 0; };
+        };
+        返回值 1;
+    };
+    返回值 1;
+};
+
+声明 check_stmt_uses(s, name){
+    如果(s == 空){ 返回值 1; };
+    创建 ASTNode:st;
+    st = s;
+    如果(st.type == AST_ASSIGN){
+        如果(st.lhs != 空 && st.lhs.type == AST_VAR && st.lhs.sval == name){
+            创建 ASTNode:rr;
+            rr = st.rhs;
+            如果(rr != 空 && rr.type == AST_BINARY){
+                如果(rr.op == TOK_PLUS || rr.op == TOK_MINUS){
+                    如果(rr.lhs != 空 && rr.lhs.type == AST_VAR && rr.lhs.sval == name){
+                        如果(rr.rhs != 空 && rr.rhs.type == AST_LITERAL && rr.rhs.op == LIT_INT){
+                            返回值 1;
+                        };
+                    };
+                };
+            };
+            返回值 0;
+        };
+        如果(st.rhs != 空){ 返回值 check_expr_uses(st.rhs, name); };
+        返回值 1;
+    };
+    如果(st.type == AST_IF){
+        设 r1 = check_expr_uses(st.cond, name);
+        如果(r1 == 0){ 返回值 0; };
+        设 r2 = check_stmt_uses(st.then_block, name);
+        如果(r2 == 0){ 返回值 0; };
+        如果(st.else_block != 空){
+            设 r3 = check_stmt_uses(st.else_block, name);
+            如果(r3 == 0){ 返回值 0; };
+        };
+        返回值 1;
+    };
+    如果(st.type == AST_BLOCK){
+        如果(st.children != 空){
+            设 i = 0;
+            循环(i < st.children.长度()){
+                设 r4 = check_stmt_uses(st.children.获取(i), name);
+                如果(r4 == 0){ 返回值 0; };
+                i = i + 1;
+            };
+        };
+        返回值 1;
+    };
+    如果(st.type == AST_EXPRSTMT){
+        如果(st.operand != 空){
+            设 r5 = check_expr_uses(st.operand, name);
+            如果(r5 == 0){ 返回值 0; };
+        };
+        返回值 1;
+    };
+    如果(st.type == AST_LOOP){
+        如果(st.loop_cond != 空){
+            设 r6 = check_expr_uses(st.loop_cond, name);
+            如果(r6 == 0){ 返回值 0; };
+        };
+        设 r7 = check_stmt_uses(st.loop_body, name);
+        如果(r7 == 0){ 返回值 0; };
+        返回值 1;
+    };
+    如果(st.type == AST_RETURN || st.type == AST_VARDECL){
+        返回值 0;
+    };
+    返回值 1;
+};
+
+声明 str_acc_mentions(e, name){
+    如果(e == 空){ 返回值 0; };
+    创建 ASTNode:x;
+    x = e;
+    如果(x.type == AST_VAR && x.sval == name){ 返回值 1; };
+    如果(x.type == AST_BINARY){
+        如果(str_acc_mentions(x.lhs, name) == 1){ 返回值 1; };
+        如果(x.rhs != 空 && str_acc_mentions(x.rhs, name) == 1){ 返回值 1; };
+        返回值 0;
+    };
+    如果(x.type == AST_UNARY){
+        返回值 str_acc_mentions(x.operand, name);
+    };
+    如果(x.type == AST_CALL || x.type == AST_METHODCALL || x.type == AST_HOOKCALL){
+        如果(x.obj != 空 && str_acc_mentions(x.obj, name) == 1){ 返回值 1; };
+        如果(x.args != 空){
+            设 i = 0;
+            循环(i < x.args.长度()){
+                如果(str_acc_mentions(x.args.获取(i), name) == 1){ 返回值 1; };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(x.type == AST_INDEX){
+        如果(str_acc_mentions(x.obj, name) == 1){ 返回值 1; };
+        如果(x.index != 空 && str_acc_mentions(x.index, name) == 1){ 返回值 1; };
+        返回值 0;
+    };
+    如果(x.type == AST_MEMBER){
+        返回值 str_acc_mentions(x.obj, name);
+    };
+    返回值 0;
+};
+
+声明 str_acc_escape_expr(e, name){
+    如果(e == 空){ 返回值 0; };
+    创建 ASTNode:x;
+    x = e;
+    如果(x.type == AST_VAR || x.type == AST_LITERAL){
+        返回值 0;
+    };
+    如果(x.type == AST_BINARY){
+        如果(str_acc_escape_expr(x.lhs, name) == 1){ 返回值 1; };
+        如果(x.rhs != 空 && str_acc_escape_expr(x.rhs, name) == 1){ 返回值 1; };
+        返回值 0;
+    };
+    如果(x.type == AST_UNARY){
+        如果(x.op == TOK_AMP && x.operand != 空 && x.operand.type == AST_VAR && x.operand.sval == name){
+            返回值 1;
+        };
+        返回值 str_acc_escape_expr(x.operand, name);
+    };
+    如果(x.type == AST_METHODCALL){
+        如果(x.obj != 空 && str_acc_escape_expr(x.obj, name) == 1){ 返回值 1; };
+        如果(x.args != 空){
+            设 i = 0;
+            循环(i < x.args.长度()){
+
+                创建 ASTNode:argm;
+                argm = x.args.获取(i);
+                如果(argm != 空 && argm.type == AST_VAR && argm.sval == name){ 返回值 1; };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(x.type == AST_CALL || x.type == AST_HOOKCALL){
+        如果(x.args != 空){
+            设 i = 0;
+            循环(i < x.args.长度()){
+
+                创建 ASTNode:argc;
+                argc = x.args.获取(i);
+                如果(argc != 空 && argc.type == AST_VAR && argc.sval == name){ 返回值 1; };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(x.type == AST_INDEX){
+        如果(str_acc_escape_expr(x.obj, name) == 1){ 返回值 1; };
+        如果(x.index != 空 && str_acc_escape_expr(x.index, name) == 1){ 返回值 1; };
+        返回值 0;
+    };
+    如果(x.type == AST_MEMBER){
+        返回值 str_acc_escape_expr(x.obj, name);
+    };
+    返回值 1;
+};
+
+声明 str_acc_safe_stmt(s, name){
+    如果(s == 空){ 返回值 1; };
+    创建 ASTNode:st;
+    st = s;
+    如果(st.type == AST_ASSIGN){
+        如果(st.lhs != 空 && st.lhs.type == AST_VAR && st.lhs.sval == name){
+            创建 ASTNode:rr;
+            rr = st.rhs;
+            如果(rr != 空 && rr.type == AST_BINARY && rr.op == TOK_PLUS &&
+               rr.lhs != 空 && rr.lhs.type == AST_VAR && rr.lhs.sval == name){
+                返回值 1;
+            };
+            如果(rr != 空 && rr.type == AST_LITERAL && rr.op == LIT_STRING){
+                返回值 1;
+            };
+            返回值 0;
+        };
+
+        如果(st.lhs != 空 && st.lhs.type == AST_VAR){
+            如果(st.rhs != 空 && str_acc_mentions(st.rhs, name) == 1){ 返回值 0; };
+            返回值 1;
+        };
+        如果(str_acc_escape_expr(st.lhs, name) == 1){ 返回值 0; };
+        如果(str_acc_escape_expr(st.rhs, name) == 1){ 返回值 0; };
+        返回值 1;
+    };
+    如果(st.type == AST_IF){
+        如果(str_acc_escape_expr(st.cond, name) == 1){ 返回值 0; };
+        如果(str_acc_safe_stmt(st.then_block, name) == 0){ 返回值 0; };
+        如果(st.else_block != 空 && str_acc_safe_stmt(st.else_block, name) == 0){ 返回值 0; };
+        返回值 1;
+    };
+    如果(st.type == AST_BLOCK){
+        如果(st.children != 空){
+            设 i = 0;
+            循环(i < st.children.长度()){
+                如果(str_acc_safe_stmt(st.children.获取(i), name) == 0){ 返回值 0; };
+                i = i + 1;
+            };
+        };
+        返回值 1;
+    };
+    如果(st.type == AST_EXPRSTMT){
+        如果(str_acc_escape_expr(st.operand, name) == 1){ 返回值 0; };
+        返回值 1;
+    };
+    如果(st.type == AST_LOOP){
+        如果(st.loop_cond != 空 && str_acc_escape_expr(st.loop_cond, name) == 1){ 返回值 0; };
+        如果(st.loop_init != 空 && str_acc_escape_expr(st.loop_init, name) == 1){ 返回值 0; };
+        如果(st.loop_step != 空 && str_acc_escape_expr(st.loop_step, name) == 1){ 返回值 0; };
+        如果(str_acc_safe_stmt(st.loop_body, name) == 0){ 返回值 0; };
+        返回值 1;
+    };
+    如果(st.type == AST_RETURN){
+
+        如果(st.ret_value != 空 && st.ret_value.type == AST_VAR && st.ret_value.sval == name){
+            返回值 0;
+        };
+        如果(str_acc_escape_expr(st.ret_value, name) == 1){ 返回值 0; };
+        返回值 1;
+    };
+    如果(st.type == AST_VARDECL){
+
+        如果(st.var_inits != 空){
+            设 i = 0;
+            循环(i < st.var_inits.长度()){
+                如果(str_acc_mentions(st.var_inits.获取(i), name) == 1){ 返回值 0; };
+                i = i + 1;
+            };
+        };
+        返回值 1;
+    };
+
+    如果(st.type == AST_SHOW){
+        如果(st.show_args != 空){
+            设 i = 0;
+            循环(i < st.show_args.长度()){
+                如果(str_acc_escape_expr(st.show_args.获取(i), name) == 1){ 返回值 0; };
+                i = i + 1;
+            };
+        };
+        返回值 1;
+    };
+    emit("; T6DBG escape stmt type=" + st.type + " name=" + name);
+    返回值 0;
+};
+
+声明 find_loop_counter(n, ctx){
+    如果(ctx.func == 空){ 返回值 空; };
+    创建 ASTNode:ln;
+    ln = n;
+    如果(ln.loop_kind != LOOP_COND && ln.loop_kind != LOOP_CFOR){
+        返回值 空;
+    };
+    设 cand_name = 空;
+    如果(ln.loop_cond != 空 && ln.loop_cond.type == AST_BINARY && ln.loop_cond.lhs != 空 &&
+       ln.loop_cond.lhs.type == AST_VAR){
+
+        设 cond_int = 0;
+        如果(ln.loop_cond.sem != 空){
+            创建 SemNode:cs;
+            cs = ln.loop_cond.sem;
+            如果(cs.type_kind == T_INT){ cond_int = 1; };
+        };
+        如果(cond_int == 0){
+            如果(ln.loop_cond.op == TOK_EQ || ln.loop_cond.op == TOK_NE || ln.loop_cond.op == TOK_LT ||
+               ln.loop_cond.op == TOK_GT || ln.loop_cond.op == TOK_LE || ln.loop_cond.op == TOK_GE){
+                cond_int = 1;
+            };
+        };
+        如果(cond_int == 1){
+            cand_name = ln.loop_cond.lhs.sval;
+        };
+    };
+    如果(cand_name == 空){ 返回值 空; };
+    创建 SemLocal:cand;
+    cand = gen_find_local(ctx.func, cand_name);
+    如果(cand == 空 || cand.type_kind != T_INT){ 返回值 空; };
+
+    设 r1 = check_expr_uses(ln.loop_cond, cand_name);
+    如果(r1 == 0){ 返回值 空; };
+    设 r2 = check_stmt_uses(ln.loop_body, cand_name);
+    如果(r2 == 0){ 返回值 空; };
+    如果(ln.loop_step != 空){
+        设 r3 = check_stmt_uses(ln.loop_step, cand_name);
+        如果(r3 == 0){ 返回值 空; };
+    };
+    返回值 cand;
+};
+
+声明 gen_float_value(node, ctx){
+    如果(node == 空){
+        emit("    xorps xmm0, xmm0  ; null (float 0)");
+        返回值 0;
+    };
+    创建 ASTNode:n;
+    n = node;
+    如果(n.type == AST_LITERAL){
+        如果(n.op == LIT_FLOAT){
+            设 id = add_fplit(n.fval);
+            emit("    movsd xmm0, [__atl_fp_" + id + "]  ; float literal");
+            返回值 0;
+        };
+        如果(n.op == LIT_INT){
+            emit("    mov rax, " + n.ival);
+            emit("    cvtsi2sd xmm0, rax  ; int literal -> double");
+            返回值 0;
+        };
+    };
+    如果(n.type == AST_VAR && n.sem != 空){
+        创建 SemNode:s;
+        s = n.sem;
+        如果(s.kind == SN_LOCAL && s.type_kind == T_FLOAT){
+            emit("    movsd xmm0, [rbp + " + s.offset + "]  ; " + n.sval + " (float local)");
+            返回值 0;
+        };
+    };
+    如果(n.type == AST_BINARY && n.sem != 空){
+        创建 SemNode:bs;
+        bs = n.sem;
+        如果(bs.type_kind == T_FLOAT){
+            设 op = n.op;
+            gen_float_value(n.lhs, ctx);
+            设 t = temp_alloc(ctx);
+            emit("    movsd [rbp + " + t + "], xmm0  ; lhs double");
+            gen_float_value(n.rhs, ctx);
+            emit("    movsd xmm1, [rbp + " + t + "]  ; reload lhs");
+            temp_free(ctx, 1);
+            如果(op == TOK_PLUS){
+                emit("    addsd xmm1, xmm0");
+            }又如果(op == TOK_MINUS){
+                emit("    subsd xmm1, xmm0");
+            }又如果(op == TOK_STAR){
+                emit("    mulsd xmm1, xmm0");
+            }又如果(op == TOK_SLASH){
+                emit("    pxor xmm2, xmm2");
+                emit("    comisd xmm0, xmm2");
+                设 lz = new_label();
+                设 le2 = new_label();
+                emit("    jz __atl_L" + lz);
+                emit("    divsd xmm1, xmm0");
+                emit("    jmp __atl_L" + le2);
+                emit("__atl_L" + lz + ":");
+                emit("    pxor xmm1, xmm1  ; div by zero -> 0.0");
+                emit("__atl_L" + le2 + ":");
+            };
+            emit("    movsd xmm0, xmm1  ; result");
+            返回值 0;
+        };
+    };
+
+    gen_expr(node, ctx);
+    emit("    mov rcx, rax");
+    emit("    sub rsp, 32");
+    emit("    call atl_tofloat");
+    emit("    add rsp, 32");
+    emit("    movq xmm0, [rax + 8]  ; unbox double");
+    返回值 0;
+};
+
+声明 gen_int_value(node, ctx){
+    如果(node == 空){
+        emit("    xor rax, rax  ; null node (int)");
+        返回值 0;
+    };
+    创建 ASTNode:n;
+    n = node;
+    如果(n.type == AST_LITERAL){
+        如果(n.op == LIT_INT){
+            emit("    mov rax, " + n.ival + "  ; int literal");
+        }又如果(n.op == LIT_TRUE){
+            emit("    mov rax, 1  ; true as int");
+        }又如果(n.op == LIT_FALSE){
+            emit("    xor rax, rax  ; false as int");
+        }否则{
+            gen_expr(node, ctx);
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_toint");
+            emit("    add rsp, 32");
+            emit("    mov rax, [rax + 8]  ; unbox int");
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_VAR && n.sem != 空){
+        创建 SemNode:s;
+        s = n.sem;
+        如果(s.kind == SN_LOCAL && s.type_kind == T_INT){
+            如果(s.offset == ctx.loop_counter_off){
+                emit("    mov rax, r12  ; " + n.sval + " (counter)");
+            }否则{
+                emit("    mov rax, [rbp + " + s.offset + "]  ; " + n.sval + " (unboxed int)");
+            };
+            返回值 0;
+        };
+        gen_expr(node, ctx);
+        emit("    mov rcx, rax");
+        emit("    sub rsp, 32");
+        emit("    call atl_toint");
+        emit("    add rsp, 32");
+        emit("    mov rax, [rax + 8]  ; unbox int");
+        返回值 0;
+    };
+    如果(n.type == AST_BINARY && n.sem != 空){
+        创建 SemNode:bs;
+        bs = n.sem;
+        如果(bs.type_kind == T_INT){
+            gen_int_binary_raw(n, ctx);
+            返回值 0;
+        };
+    };
+    如果(n.type == AST_CALL && n.sem != 空){
+        创建 SemNode:cs;
+        cs = n.sem;
+        如果(cs.type_kind == T_INT){
+
+            gen_call(n, ctx);
+            返回值 0;
+        };
+    };
+    gen_expr(node, ctx);
+    emit("    mov rcx, rax");
+    emit("    sub rsp, 32");
+    emit("    call atl_toint");
+    emit("    add rsp, 32");
+    emit("    mov rax, [rax + 8]  ; unbox int");
+    返回值 0;
+};
+
+声明 gen_int_binary_raw(node, ctx){
+    创建 ASTNode:n;
+    n = node;
+    设 op = n.op;
+    设 rhs_kind = 0;
+    如果(n.rhs != 空){
+        如果(n.rhs.type == AST_LITERAL && n.rhs.op == LIT_INT){
+            rhs_kind = 1;
+        }又如果(n.rhs.type == AST_VAR && n.rhs.sem != 空){
+            创建 SemNode:rs;
+            rs = n.rhs.sem;
+            如果(rs.kind == SN_LOCAL && rs.type_kind == T_INT){
+                rhs_kind = 2;
+            };
+        };
+    };
+    如果(rhs_kind != 0){
+        gen_int_value(n.lhs, ctx);
+
+        如果(rhs_kind == 2 && n.lhs != 空 && n.lhs.type == AST_VAR && n.lhs.sem != 空){
+            创建 SemNode:ls;
+            ls = n.lhs.sem;
+            创建 SemNode:rs2;
+            rs2 = n.rhs.sem;
+            如果(ls.kind == rs2.kind && ls.offset == rs2.offset && ls.type_kind == rs2.type_kind){
+                如果(op == TOK_PLUS){
+                    emit("    add rax, rax  ; self-add");
+                    返回值 0;
+                };
+                如果(op == TOK_STAR){
+                    emit("    imul rax, rax  ; self-mul");
+                    返回值 0;
+                };
+            };
+        };
+
+        设 skip_rcx = 0;
+        如果((op == TOK_SLASH || op == TOK_PERCENT) && rhs_kind == 1){
+            skip_rcx = 1;
+        };
+        如果(skip_rcx == 0){
+            如果(rhs_kind == 1){
+                emit("    mov rcx, " + n.rhs.ival);
+            }又如果(rhs_kind == 2){
+                创建 SemNode:r2;
+                r2 = n.rhs.sem;
+                如果(r2.offset == ctx.loop_counter_off){
+                    emit("    mov rcx, r12  ; " + n.rhs.sval + " (counter)");
+                }否则{
+                    emit("    mov rcx, [rbp + " + r2.offset + "]  ; " + n.rhs.sval);
+                };
+            };
+        };
+    }否则{
+        gen_int_value(n.lhs, ctx);
+        设 t = temp_alloc(ctx);
+        emit("    mov [rbp + " + t + "], rax");
+        gen_int_value(n.rhs, ctx);
+        emit("    mov rcx, rax");
+        emit("    mov rax, [rbp + " + t + "]");
+        temp_free(ctx, 1);
+    };
+    如果(op == TOK_PLUS){
+        emit("    add rax, rcx");
+    }又如果(op == TOK_MINUS){
+        emit("    sub rax, rcx");
+    }又如果(op == TOK_STAR){
+        emit("    imul rax, rcx");
+    }又如果(op == TOK_SLASH){
+
+        设 div_const = 0;
+        如果(rhs_kind == 1){ div_const = n.rhs.ival; };
+        如果(div_const > 0 && ((div_const & (div_const - 1)) == 0)){
+            设 shift = 0;
+            设 v = div_const;
+            循环(v > 1){
+                shift = shift + 1;
+                v = v >> 1;
+            };
+            如果(shift == 1){
+                emit("    sar rax, 1");
+            }否则{
+                emit("    sar rax, " + shift);
+            };
+        }又如果(div_const > 1){
+            设 l0 = new_label();
+            设 l1 = new_label();
+            emit("    mov rcx, " + div_const);
+            emit("    test rcx, rcx");
+            emit("    jz __atl_L" + l0);
+            emit("    cqo");
+            emit("    idiv rcx");
+            emit("    jmp __atl_L" + l1);
+            emit("__atl_L" + l0 + ":");
+            emit("    xor rax, rax  ; div by zero -> 0");
+            emit("__atl_L" + l1 + ":");
+        }否则{
+            设 l0 = new_label();
+            设 l1 = new_label();
+            emit("    test rcx, rcx");
+            emit("    jz __atl_L" + l0);
+            emit("    cqo");
+            emit("    idiv rcx");
+            emit("    jmp __atl_L" + l1);
+            emit("__atl_L" + l0 + ":");
+            emit("    xor rax, rax  ; div by zero -> 0");
+            emit("__atl_L" + l1 + ":");
+        };
+    }又如果(op == TOK_PERCENT){
+        设 mod_const = 0;
+        如果(rhs_kind == 1){ mod_const = n.rhs.ival; };
+        如果(mod_const > 0 && ((mod_const & (mod_const - 1)) == 0)){
+            emit("    and rax, " + (mod_const - 1));
+        }又如果(mod_const > 1){
+            设 l0 = new_label();
+            设 l1 = new_label();
+            emit("    mov rcx, " + mod_const);
+            emit("    test rcx, rcx");
+            emit("    jz __atl_L" + l0);
+            emit("    cqo");
+            emit("    idiv rcx");
+            emit("    mov rax, rdx");
+            emit("    jmp __atl_L" + l1);
+            emit("__atl_L" + l0 + ":");
+            emit("    xor rax, rax  ; mod by zero -> 0");
+            emit("__atl_L" + l1 + ":");
+        }否则{
+            设 l0 = new_label();
+            设 l1 = new_label();
+            emit("    test rcx, rcx");
+            emit("    jz __atl_L" + l0);
+            emit("    cqo");
+            emit("    idiv rcx");
+            emit("    mov rax, rdx");
+            emit("    jmp __atl_L" + l1);
+            emit("__atl_L" + l0 + ":");
+            emit("    xor rax, rax  ; mod by zero -> 0");
+            emit("__atl_L" + l1 + ":");
+        };
+    }又如果(op == TOK_AMP){
+        emit("    and rax, rcx");
+    }又如果(op == TOK_BOR){
+        emit("    or rax, rcx");
+    }又如果(op == TOK_BXOR){
+        emit("    xor rax, rcx");
+    }又如果(op == TOK_SHL){
+        emit("    shl rax, cl");
+    }又如果(op == TOK_SHR){
+        emit("    sar rax, cl");
+    };
+    返回值 0;
+};
+
+声明 gen_int_cmp(lhs, rhs, ctx){
+    gen_int_value(lhs, ctx);
+    如果(rhs != 空 && rhs.type == AST_LITERAL && rhs.op == LIT_INT){
+        emit("    cmp rax, " + rhs.ival);
+    }又如果(rhs != 空 && rhs.type == AST_LITERAL && rhs.op == LIT_TRUE){
+        emit("    cmp rax, 1");
+    }又如果(rhs != 空 && rhs.type == AST_LITERAL && rhs.op == LIT_FALSE){
+        emit("    cmp rax, 0");
+    }又如果(rhs != 空 && rhs.type == AST_VAR && rhs.sem != 空){
+        创建 SemNode:rs;
+        rs = rhs.sem;
+        如果(rs.kind == SN_LOCAL && rs.type_kind == T_INT){
+            如果(rs.offset == ctx.loop_counter_off){
+                emit("    cmp rax, r12  ; " + rhs.sval + " (counter)");
+            }否则{
+                emit("    cmp rax, [rbp + " + rs.offset + "]  ; " + rhs.sval);
+            };
+        }否则{
+            设 t = temp_alloc(ctx);
+            emit("    mov [rbp + " + t + "], rax");
+            gen_int_value(rhs, ctx);
+            emit("    mov rcx, rax");
+            emit("    mov rax, [rbp + " + t + "]");
+            temp_free(ctx, 1);
+            emit("    cmp rax, rcx");
+        };
+    }否则{
+        设 t = temp_alloc(ctx);
+        emit("    mov [rbp + " + t + "], rax");
+        gen_int_value(rhs, ctx);
+        emit("    mov rcx, rax");
+        emit("    mov rax, [rbp + " + t + "]");
+        temp_free(ctx, 1);
+        emit("    cmp rax, rcx");
+    };
+    返回值 0;
+};
+
+声明 gen_cond_jmp_false(cond, ctx, l_false){
+    如果(cond == 空 || cond.type != AST_BINARY){ 返回值 0; };
+    创建 ASTNode:cn;
+    cn = cond;
+    设 lt = 0;
+    如果(cn.lhs != 空 && cn.lhs.sem != 空){
+        创建 SemNode:ln;
+        ln = cn.lhs.sem;
+        lt = ln.type_kind;
+    };
+    设 rt = 0;
+    如果(cn.rhs != 空 && cn.rhs.sem != 空){
+        创建 SemNode:rn;
+        rn = cn.rhs.sem;
+        rt = rn.type_kind;
+    };
+    如果(lt != T_INT || rt != T_INT){ 返回值 0; };
+    设 jcc = 空;
+    如果(cn.op == TOK_EQ){ jcc = "jne"; };
+    如果(cn.op == TOK_NE){ jcc = "je"; };
+    如果(cn.op == TOK_LT){ jcc = "jge"; };
+    如果(cn.op == TOK_GT){ jcc = "jle"; };
+    如果(cn.op == TOK_LE){ jcc = "jg"; };
+    如果(cn.op == TOK_GE){ jcc = "jl"; };
+    如果(jcc == 空){ 返回值 0; };
+    gen_int_cmp(cn.lhs, cn.rhs, ctx);
+    emit("    " + jcc + " __atl_L" + l_false + "  ; cond false");
+    返回值 1;
+};
+
+声明 gen_expr(node, c){
+    如果(node == 空){
+        emit("    xor rax, rax  ; null node");
+        返回值 0;
+    };
+    创建 ASTNode:n;
+    n = node;
+    创建 Ctx:ctx;
+    ctx = c;
+
+    如果(n.type == AST_WAIT_TASK){
+        gen_expr(n.ret_value, ctx);
+        emit("    mov rcx, rax");
+        emit("    sub rsp, 32");
+        emit("    call atl_task_wait");
+        emit("    add rsp, 32");
+        返回值 0;
+    };
+
+    如果(n.type == AST_TRY_BUBBLE){
+        gen_expr(n.operand, ctx);
+        emit("    mov rcx, rax");
+        emit("    mov eax, [rcx]  ; tag");
+        emit("    cmp eax, 11");
+        设 lbad = new_label();
+        设 lok = new_label();
+        设 lb_end = new_label();
+        emit("    jne __atl_L" + lbad + "  ; 非 Result → 报错");
+        emit("    mov rdx, [rcx + 8]  ; is_success");
+        emit("    test rdx, rdx");
+        emit("    jnz __atl_L" + lok + "  ; 成功 → 解包");
+        emit("    mov rax, rcx        ; 失败 → 返回该 Result 给调用方");
+        emit("    mov rsp, rbp");
+        emit("    pop rbp");
+        emit("    ret");
+        emit("__atl_L" + lok + ":");
+        emit("    mov rax, [rcx + 16]  ; 成功 → 取值");
+        emit("    jmp __atl_L" + lb_end);
+        emit("__atl_L" + lbad + ":");
+        emit("    ; 非 Result 对象: 报错 + 返回原值(不崩)");
+        emit("    mov rax, rcx");
+        emit("    sub rsp, 48");
+        emit("    mov [rsp + 40], rax  ; 保存原对象");
+        设 cid_bb = add_strlit("切~ ?冒泡: 对象不是结果(tag=%d)——欧尼酱要对 成功()/失败() 返回的值用 ?");
+        emit("    lea rcx, [__atl_str_" + cid_bb + "_data]");
+        emit("    mov rdx, rax");
+        emit("    mov eax, [rdx]");
+        emit("    mov rdx, rax");
+        emit("    sub rsp, 32");
+        emit("    call atl_fprintf_stderr");
+        emit("    add rsp, 32");
+        emit("    mov rax, [rsp + 40]");
+        emit("    add rsp, 48");
+        emit("__atl_L" + lb_end + ":");
+        返回值 0;
+    };
+
+    如果(n.type == AST_ASYNC){
+        设 tseq = g_task_seq;
+        g_task_seq = g_task_seq + 1;
+        g_task_funcs.添加(n);
+        emit("    lea rcx, [__atl_task_" + tseq + "]");
+        emit("    sub rsp, 32");
+        emit("    call atl_task_spawn");
+        emit("    add rsp, 32");
+        返回值 0;
+    };
+
+    如果(n.type == AST_LITERAL){
+        如果(n.op == LIT_INT){
+
+            如果(n.ival == 0){
+                emit("    lea rax, [__atl_int_0]  ; int 0 (static singleton)");
+            }又如果(n.ival == 1){
+                emit("    lea rax, [__atl_int_1]  ; int 1 (static singleton)");
+            }否则{
+                emit("    mov rcx, " + n.ival);
+                emit("    sub rsp, 32");
+                emit("    call atl_int");
+                emit("    add rsp, 32");
+            };
+        }又如果(n.op == LIT_FLOAT){
+            设 id = add_fplit(n.fval);
+            emit("    movsd xmm0, [__atl_fp_" + id + "]");
+            emit("    movq rcx, xmm0");
+            emit("    sub rsp, 32");
+            emit("    call atl_float");
+            emit("    add rsp, 32");
+        }又如果(n.op == LIT_STRING){
+            设 id = add_strlit(n.sval);
+            emit("    lea rax, [__atl_str_" + id + "]  ; string (static object)");
+        }又如果(n.op == LIT_TRUE){
+            emit("    mov rcx, 1");
+            emit("    sub rsp, 32");
+            emit("    call atl_bool");
+            emit("    add rsp, 32");
+        }又如果(n.op == LIT_FALSE){
+            emit("    xor rcx, rcx");
+            emit("    sub rsp, 32");
+            emit("    call atl_bool");
+            emit("    add rsp, 32");
+        }又如果(n.op == LIT_NULL){
+            emit("    sub rsp, 32");
+            emit("    call atl_null");
+            emit("    add rsp, 32");
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_VAR){
+        创建 SemNode:s;
+        s = n.sem;
+        如果(s == 空){
+            emit("    xor rax, rax  ; unresolved var");
+            返回值 0;
+        };
+        如果(s.kind == SN_LOCAL){
+            创建 SemNode:lcs;
+            lcs = s;
+            如果(lcs.type_kind == T_INT){
+
+                emit("    mov rcx, [rbp + " + lcs.offset + "]  ; " + n.sval + " (int local)");
+                emit("    sub rsp, 32");
+                emit("    call atl_int");
+                emit("    add rsp, 32");
+            }又如果(lcs.type_kind == T_FLOAT){
+
+                emit("    movsd xmm0, [rbp + " + lcs.offset + "]  ; " + n.sval + " (float local)");
+                emit("    movq rcx, xmm0");
+                emit("    sub rsp, 32");
+                emit("    call atl_float");
+                emit("    add rsp, 32");
+            }否则{
+                emit("    mov rax, [rbp + " + lcs.offset + "]  ; " + n.sval);
+            };
+        }又如果(s.kind == SN_FIELD){
+            设 off = ctx.this_offset;
+            emit("    mov rax, [rbp + " + off + "]  ; this");
+            emit("    mov rax, [rax + 8]   ; inst");
+            emit("    mov rax, [rax + 8]   ; field_vals");
+            emit("    mov rax, [rax + " + (s.offset * 8) + "]  ; field " + n.sval);
+        }又如果(s.kind == SN_GLOBAL){
+            emit("    mov rax, [" + global_label(s.offset) + "]  ; " + n.sval);
+        }又如果(s.kind == SN_CLASS){
+            emit("    mov rax, [" + singleton_label(s.cls) + "]  ; class " + n.sval + " singleton");
+        }又如果(s.kind == SN_SPECIAL){
+            emit("    xor rax, rax  ; special var");
+        }又如果(s.kind == SN_BUILTIN_VAR){
+            如果(n.sval == "时间"){
+                emit("    sub rsp, 32");
+                emit("    call atl_time_str");
+                emit("    add rsp, 32");
+            }否则{
+                emit("    xor rax, rax  ; builtin var " + n.sval);
+            };
+        }否则{
+            emit("    xor rax, rax  ; var kind " + s.kind);
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_BINARY){
+        设 op = n.op;
+
+        如果(n.sem != 空){
+            创建 SemNode:bsn;
+            bsn = n.sem;
+            如果(bsn.type_kind == T_INT){
+                gen_int_binary_raw(n, ctx);
+                emit("    mov rcx, rax");
+                emit("    sub rsp, 32");
+                emit("    call atl_int");
+                emit("    add rsp, 32");
+                返回值 0;
+            };
+            如果(bsn.type_kind == T_FLOAT){
+
+                gen_float_value(n, ctx);
+                emit("    movq rcx, xmm0");
+                emit("    sub rsp, 32");
+                emit("    call atl_float");
+                emit("    add rsp, 32");
+                返回值 0;
+            };
+        };
+
+        如果(op == TOK_AND || op == TOK_OR){
+            设 l_false = new_label();
+            设 l_end = new_label();
+            gen_expr(n.lhs, ctx);
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_truthy");
+            emit("    add rsp, 32");
+            如果(op == TOK_AND){
+                emit("    test eax, eax");
+                emit("    jz __atl_L" + l_false);
+                gen_expr(n.rhs, ctx);
+                emit("    mov rcx, rax");
+                emit("    sub rsp, 32");
+                emit("    call atl_truthy");
+                emit("    add rsp, 32");
+                emit("    test eax, eax");
+                emit("    jz __atl_L" + l_false);
+                emit("    mov rcx, 1");
+                emit("    sub rsp, 32");
+                emit("    call atl_bool");
+                emit("    add rsp, 32");
+                emit("    jmp __atl_L" + l_end);
+                emit("__atl_L" + l_false + ":");
+                emit("    xor rcx, rcx");
+                emit("    sub rsp, 32");
+                emit("    call atl_bool");
+                emit("    add rsp, 32");
+                emit("__atl_L" + l_end + ":");
+            }否则{
+
+                emit("    test eax, eax");
+                emit("    jnz __atl_L" + l_false);
+                gen_expr(n.rhs, ctx);
+                emit("    mov rcx, rax");
+                emit("    sub rsp, 32");
+                emit("    call atl_truthy");
+                emit("    add rsp, 32");
+                emit("    test eax, eax");
+                emit("    jnz __atl_L" + l_false);
+                emit("    xor rcx, rcx");
+                emit("    sub rsp, 32");
+                emit("    call atl_bool");
+                emit("    add rsp, 32");
+                emit("    jmp __atl_L" + l_end);
+                emit("__atl_L" + l_false + ":");
+                emit("    mov rcx, 1");
+                emit("    sub rsp, 32");
+                emit("    call atl_bool");
+                emit("    add rsp, 32");
+                emit("__atl_L" + l_end + ":");
+            };
+            返回值 0;
+        };
+
+        gen_expr(n.lhs, ctx);
+        设 t_lhs = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_lhs + "], rax");
+        gen_expr(n.rhs, ctx);
+        设 t_rhs = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_rhs + "], rax");
+        emit("    mov rcx, [rbp + " + t_lhs + "]");
+        emit("    mov rdx, [rbp + " + t_rhs + "]");
+        temp_free(ctx, 2);
+        设 fn = 空;
+        如果(op == TOK_PLUS){ fn = "atl_add"; };
+        如果(op == TOK_MINUS){ fn = "atl_sub"; };
+        如果(op == TOK_STAR){ fn = "atl_mul"; };
+        如果(op == TOK_SLASH){ fn = "atl_div"; };
+        如果(op == TOK_PERCENT){ fn = "atl_mod"; };
+        如果(op == TOK_EQ){ fn = "atl_eq"; };
+        如果(op == TOK_NE){ fn = "atl_ne"; };
+        如果(op == TOK_LT){ fn = "atl_lt"; };
+        如果(op == TOK_GT){ fn = "atl_gt"; };
+        如果(op == TOK_LE){ fn = "atl_le"; };
+        如果(op == TOK_GE){ fn = "atl_ge"; };
+        如果(op == TOK_AMP){ fn = "atl_band"; };
+        如果(op == TOK_BOR){ fn = "atl_bor"; };
+        如果(op == TOK_BXOR){ fn = "atl_bxor"; };
+        如果(op == TOK_SHL){ fn = "atl_shl"; };
+        如果(op == TOK_SHR){ fn = "atl_shr"; };
+        如果(fn != 空){
+            emit("    sub rsp, 32");
+            emit("    call " + fn);
+            emit("    add rsp, 32");
+        }否则{
+            emit("    xor rax, rax  ; unknown op " + op);
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_UNARY){
+        设 op = n.op;
+
+        如果(op == TOK_AMP){
+            创建 ASTNode:operand;
+            operand = n.operand;
+            如果(operand != 空 && operand.type == AST_VAR){
+                创建 SemNode:s;
+                s = operand.sem;
+                如果(s != 空 && s.kind == SN_LOCAL){
+                    emit("    lea rax, [rbp + " + s.offset + "]");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_ref_new");
+                    emit("    add rsp, 32");
+                    返回值 0;
+                };
+            };
+            emit("    xor rax, rax  ; & unresolvable");
+            返回值 0;
+        };
+
+        如果(op == TOK_INC || op == TOK_DEC){
+            创建 ASTNode:operand;
+            operand = n.operand;
+            如果(operand != 空 && operand.type == AST_VAR){
+                创建 SemNode:s;
+                s = operand.sem;
+                如果(s != 空 && (s.kind == SN_LOCAL || s.kind == SN_GLOBAL)){
+
+                    设 addr = "[rbp + " + s.offset + "]";
+                    如果(s.kind == SN_GLOBAL){
+                        addr = "[" + global_label(s.offset) + "]";
+                    };
+                    如果(s.kind == SN_LOCAL && s.type_kind == T_INT){
+
+                        如果(s.offset == ctx.loop_counter_off){
+                            emit("    mov rcx, r12  ; return old (counter)");
+                            如果(op == TOK_INC){
+                                emit("    inc r12");
+                            }否则{
+                                emit("    dec r12");
+                            };
+                            emit("    mov [rbp + " + s.offset + "], r12  ; 保存点");
+                            emit("    sub rsp, 32");
+                            emit("    call atl_int");
+                            emit("    add rsp, 32");
+                            返回值 0;
+                        };
+
+                        设 t_old = temp_alloc(ctx);
+                        emit("    mov rax, " + addr + "  ; " + operand.sval + " (int)");
+                        emit("    mov [rbp + " + t_old + "], rax  ; save old");
+                        如果(op == TOK_INC){
+                            emit("    inc rax");
+                        }否则{
+                            emit("    dec rax");
+                        };
+                        emit("    mov " + addr + ", rax  ; " + operand.sval + " ++/-- (int)");
+
+                        emit("    mov rcx, [rbp + " + t_old + "]  ; return old (int)");
+                        emit("    sub rsp, 32");
+                        emit("    call atl_int");
+                        emit("    add rsp, 32");
+                        temp_free(ctx, 1);
+                        返回值 0;
+                    };
+                    设 t_old = temp_alloc(ctx);
+                    emit("    mov rax, " + addr + "  ; " + operand.sval);
+                    emit("    mov [rbp + " + t_old + "], rax  ; save old");
+                    emit("    mov rcx, 1");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_int");
+                    emit("    add rsp, 32");
+                    emit("    mov rdx, rax  ; rdx = AtlInt(1)");
+                    emit("    mov rcx, [rbp + " + t_old + "]  ; rcx = old val");
+                    emit("    sub rsp, 32");
+                    设 fn2 = "atl_add";
+                    如果(op == TOK_DEC){ fn2 = "atl_sub"; };
+                    emit("    call " + fn2);
+                    emit("    add rsp, 32");
+                    emit("    mov " + addr + ", rax  ; " + operand.sval);
+                    emit("    mov rax, [rbp + " + t_old + "]  ; return old");
+                    temp_free(ctx, 1);
+                    返回值 0;
+                };
+            };
+            emit("    xor rax, rax  ; ++ unresolvable");
+            返回值 0;
+        };
+        gen_expr(n.operand, ctx);
+        设 fn = 空;
+        如果(op == TOK_NOT){ fn = "atl_not"; };
+        如果(op == TOK_MINUS){ fn = "atl_neg"; };
+        如果(op == TOK_STAR){ fn = "atl_deref"; };
+        如果(op == TOK_TILDE){ fn = "atl_bnot"; };
+        如果(fn != 空){
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call " + fn);
+            emit("    add rsp, 32");
+        }否则{
+            emit("    xor rax, rax  ; unknown unary " + op);
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_MEMBER){
+        创建 SemNode:s;
+        s = n.sem;
+        如果(s == 空){
+            gen_expr(n.obj, ctx);
+            返回值 0;
+        };
+
+        如果(n.is_null_safe == 1 && s.kind == SN_MEM_FIELD){
+            gen_expr(n.obj, ctx);
+            设 t_obj = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_obj + "], rax  ; ?. obj");
+            设 l_null = new_label();
+            设 l_end = new_label();
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_is_null");
+            emit("    add rsp, 32");
+            emit("    test eax, eax");
+            emit("    jnz __atl_L" + l_null);
+            如果(s.offset >= 0){
+                emit("    mov rax, [rbp + " + t_obj + "]");
+                emit("    mov rax, [rax + 8]   ; inst");
+                emit("    mov rax, [rax + 8]   ; field_vals");
+                emit("    mov rax, [rax + " + (s.offset * 8) + "]  ; field " + n.member);
+            }否则{
+                设 nid = add_strlit(n.member);
+                emit("    mov rcx, [rbp + " + t_obj + "]");
+                emit("    lea rdx, [__atl_str_" + nid + "_data]  ; field " + n.member);
+                emit("    sub rsp, 32");
+                emit("    call atl_field_get");
+                emit("    add rsp, 32");
+            };
+            emit("    jmp __atl_L" + l_end);
+            emit("__atl_L" + l_null + ":");
+            emit("    sub rsp, 32");
+            emit("    call atl_null");
+            emit("    add rsp, 32");
+            emit("__atl_L" + l_end + ":");
+            temp_free(ctx, 1);
+            返回值 0;
+        };
+        如果(s.kind == SN_MEM_ARGC){
+
+            emit("    movsxd rcx, dword [g_argc]");
+            emit("    sub rsp, 32");
+            emit("    call atl_int");
+            emit("    add rsp, 32");
+        }又如果(s.kind == SN_MEM_ENUM){
+
+            emit("    mov rcx, " + s.enum_val + "  ; enum member " + n.member);
+            emit("    sub rsp, 32");
+            emit("    call atl_int");
+            emit("    add rsp, 32");
+        }又如果(s.kind == SN_MEM_STATIC_FIELD){
+
+            emit("    mov rax, [__atl_static_" + s.cls.id + "_" + s.offset + "]  ; static field " + n.member);
+        }又如果(s.kind == SN_GLOBAL){
+
+            emit("    mov rax, [" + global_label(s.offset) + "]  ; pkg global " + n.member);
+        }又如果(s.kind == SN_MEM_STRLEN || s.kind == SN_MEM_LISTLEN){
+            gen_expr(n.obj, ctx);
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_str_len");
+            emit("    add rsp, 32");
+        }又如果(s.kind == SN_MEM_FIELD){
+            如果(s.offset >= 0){
+
+                创建 ASTNode:obj_node;
+                obj_node = n.obj;
+                如果(obj_node != 空 && obj_node.type == AST_VAR){
+                    创建 SemNode:os;
+                    os = obj_node.sem;
+                    如果(os != 空 && os.kind == SN_CLASS){
+                        emit("    xor rax, rax");
+                    }否则{
+                        gen_expr(n.obj, ctx);
+
+                        设 t_fobj2 = temp_alloc(ctx);
+                        emit("    mov [rbp + " + t_fobj2 + "], rax  ; obj");
+                        设 l_fnull2 = new_label();
+                        设 l_fend2 = new_label();
+                        emit("    mov rax, [rbp + " + t_fobj2 + "]");
+                        emit("    test rax, rax");
+                        emit("    jz __atl_L" + l_fnull2);
+                        emit("    mov ecx, [rax]");
+                        emit("    sub ecx, 7");
+                        emit("    jnz __atl_L" + l_fnull2);
+                        emit("    mov rax, [rbp + " + t_fobj2 + "]");
+                        emit("    mov rax, [rax + 8]   ; inst");
+                        emit("    mov rax, [rax + 8]   ; field_vals");
+                        emit("    mov rax, [rax + " + (s.offset * 8) + "]  ; field " + n.member);
+                        emit("    jmp __atl_L" + l_fend2);
+                        emit("__atl_L" + l_fnull2 + ":");
+                        emit("    sub rsp, 32");
+                        emit("    call atl_null");
+                        emit("    add rsp, 32");
+                        emit("__atl_L" + l_fend2 + ":");
+                        temp_free(ctx, 1);
+                    };
+                }否则{
+                    gen_expr(n.obj, ctx);
+
+                    设 t_fobj = temp_alloc(ctx);
+                    emit("    mov [rbp + " + t_fobj + "], rax  ; obj");
+                    设 l_fnull = new_label();
+                    设 l_fend = new_label();
+                    emit("    mov rax, [rbp + " + t_fobj + "]");
+                    emit("    test rax, rax");
+                    emit("    jz __atl_L" + l_fnull);
+                    emit("    mov ecx, [rax]");
+                    emit("    sub ecx, 7");
+                    emit("    jnz __atl_L" + l_fnull);
+                    emit("    mov rax, [rbp + " + t_fobj + "]");
+                    emit("    mov rax, [rax + 8]   ; inst");
+                    emit("    mov rax, [rax + 8]   ; field_vals");
+                    emit("    mov rax, [rax + " + (s.offset * 8) + "]  ; field " + n.member);
+                    emit("    jmp __atl_L" + l_fend);
+                    emit("__atl_L" + l_fnull + ":");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_null");
+                    emit("    add rsp, 32");
+                    emit("__atl_L" + l_fend + ":");
+                    temp_free(ctx, 1);
+                };
+            }否则{
+
+                gen_expr(n.obj, ctx);
+                设 t_obj = temp_alloc(ctx);
+                emit("    mov [rbp + " + t_obj + "], rax  ; obj");
+                设 nid = add_strlit(n.member);
+                emit("    mov rcx, [rbp + " + t_obj + "]");
+                emit("    lea rdx, [__atl_str_" + nid + "_data]  ; field " + n.member);
+                emit("    sub rsp, 32");
+                emit("    call atl_field_get");
+                emit("    add rsp, 32");
+                temp_free(ctx, 1);
+            };
+        }否则{
+            gen_expr(n.obj, ctx);
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_INDEX){
+
+        如果(n.obj != 空 && n.obj.type == AST_VAR && n.obj.sval == "参数"){
+            gen_expr(n.index, ctx);
+            emit("    mov rax, [rax + 8]   ; index (int)");
+            emit("    mov rcx, rax");
+            设 l_arg_out = new_label();
+            设 l_arg_ok = new_label();
+            设 l_arg_end = new_label();
+            emit("    movsxd rdx, dword [g_argc]  ; argc");
+            emit("    cmp rcx, rdx");
+            emit("    jae __atl_L" + l_arg_out);
+            emit("    mov rax, [g_argv]");
+            emit("    mov rax, [rax + rcx*8]  ; argv[i]");
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_str");
+            emit("    add rsp, 32");
+            emit("    jmp __atl_L" + l_arg_end);
+            emit("__atl_L" + l_arg_out + ":");
+            emit("    xor rcx, rcx");
+            emit("    sub rsp, 32");
+            emit("    call atl_null");
+            emit("    add rsp, 32");
+            emit("__atl_L" + l_arg_end + ":");
+            返回值 0;
+        };
+        gen_expr(n.obj, ctx);
+        设 t_obj = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_obj + "], rax");
+        gen_expr(n.index, ctx);
+
+        emit("    mov rdx, rax");
+        emit("    mov rcx, [rbp + " + t_obj + "]");
+        temp_free(ctx, 1);
+        emit("    sub rsp, 32");
+        emit("    call atl_list_get");
+        emit("    add rsp, 32");
+        返回值 0;
+    };
+
+    如果(n.type == AST_PAIR){
+        gen_expr(n.pair_left, c);
+        返回值 0;
+    };
+
+    如果(n.type == AST_COLOR_SUFFIX){
+        如果(n.base_expr != 空){
+            创建 ASTNode:base;
+            base = n.base_expr;
+            如果(base.args == 空){ base.ensure_args(); };
+            设 orig_len = base.args.长度();
+            base.args.添加(n.color_expr);
+            创建 ASTNode:fill(AST_LITERAL, 0, 0);
+            fill.op = LIT_INT;
+            fill.ival = n.is_filled;
+            base.args.添加(fill);
+            设 has_extra = 0;
+            如果(n.alpha_expr != 空){ has_extra = 1; };
+
+            创建 ArrayList:na_l;
+            na_l = n.named_args;
+            如果(na_l != 空 && na_l.长度() > 0){ has_extra = 1; };
+            如果(has_extra == 1){
+                如果(n.alpha_expr != 空){
+                    base.args.添加(n.alpha_expr);
+                }否则{
+
+                    创建 ASTNode:ad(AST_LITERAL, 0, 0);
+                    ad.op = LIT_FLOAT;
+                    ad.fval = 1.0;
+                    base.args.添加(ad);
+                };
+                如果(na_l != 空){
+                    设 ni = 0;
+                    循环(ni < na_l.长度()){
+                        创建 ASTNode:na;
+                        na = na_l.获取(ni);
+
+                        创建 ASTNode:nm(AST_LITERAL, 0, 0);
+                        nm.op = LIT_STRING;
+                        nm.sval = na.sval;
+                        base.args.添加(nm);
+                        base.args.添加(na.lhs);
+                        ni = ni + 1;
+                    };
+                };
+            };
+            gen_expr(base, c);
+            循环(base.args.长度() > orig_len){
+                base.args.弹出();
+            };
+        }否则{
+            gen_expr(n.base_expr, c);
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_CALL || n.type == AST_METHODCALL || n.type == AST_HOOKCALL){
+
+        gen_call(node, ctx);
+        如果(n.sem != 空 && n.sem.type_kind == T_INT){
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_int");
+            emit("    add rsp, 32");
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_MODCALL){
+
+        gen_call(node, ctx);
+
+        如果(n.sem != 空 && n.sem.kind == SN_FUNC && n.sem.type_kind == T_INT){
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_int");
+            emit("    add rsp, 32");
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_LIST_LIT){
+        emit("    sub rsp, 32");
+        emit("    call atl_list_new");
+        emit("    add rsp, 32");
+        设 t_list = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_list + "], rax");
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                创建 ASTNode:ch;
+                ch = n.children.获取(i);
+
+                如果(ch != 空 && ch.type == AST_PAIR){
+                    gen_expr(ch.pair_left, ctx);
+                    设 t_pk = temp_alloc(ctx);
+                    emit("    mov [rbp + " + t_pk + "], rax  ; pair key");
+                    gen_expr(ch.pair_right, ctx);
+                    设 t_pv = temp_alloc(ctx);
+                    emit("    mov [rbp + " + t_pv + "], rax  ; pair val");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_list_new");
+                    emit("    add rsp, 32");
+                    设 t_pair = temp_alloc(ctx);
+                    emit("    mov [rbp + " + t_pair + "], rax  ; pair list");
+                    emit("    mov rcx, [rbp + " + t_pair + "]");
+                    emit("    mov rdx, [rbp + " + t_pk + "]");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_list_add");
+                    emit("    add rsp, 32");
+                    emit("    mov rcx, [rbp + " + t_pair + "]");
+                    emit("    mov rdx, [rbp + " + t_pv + "]");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_list_add");
+                    emit("    add rsp, 32");
+                    emit("    mov rdx, [rbp + " + t_pair + "]");
+                    emit("    mov rcx, [rbp + " + t_list + "]");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_list_add");
+                    emit("    add rsp, 32");
+                    temp_free(ctx, 3);
+                }否则{
+                    gen_expr(n.children.获取(i), ctx);
+                    emit("    mov rdx, rax");
+                    emit("    mov rcx, [rbp + " + t_list + "]");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_list_add");
+                    emit("    add rsp, 32");
+                };
+                i = i + 1;
+            };
+        };
+        emit("    mov rax, [rbp + " + t_list + "]");
+        temp_free(ctx, 1);
+        返回值 0;
+    };
+
+    如果(n.type == AST_NEW){
+        创建 SemNode:s;
+        s = n.sem;
+        如果(s != 空 && s.cls != 空){
+            创建 SemClass:cls;
+            cls = s.cls;
+            设 id = add_strlit(cls.name);
+            emit("    lea rcx, [__atl_str_" + id + "_data]");
+            emit("    mov rdx, " + cls.nfields);
+            emit("    sub rsp, 32");
+            emit("    call atl_instance_new");
+            emit("    add rsp, 32");
+            设 t = temp_alloc(ctx);
+            emit("    mov [rbp + " + t + "], rax  ; save instance");
+
+            如果(s.target_id != 0){
+                设 nargs = 0;
+                如果(n.new_args != 空){
+                    nargs = n.new_args.长度();
+                };
+
+                创建 ArrayList:slots;
+                设 i = 0;
+                循环(i < nargs){
+                    gen_expr(n.new_args.获取(i), ctx);
+                    设 off = temp_alloc(ctx);
+                    emit("    mov [rbp + " + off + "], rax  ; ctor arg" + i);
+                    slots.添加(off);
+                    i = i + 1;
+                };
+
+                emit("    mov rcx, [rbp + " + t + "]  ; this");
+                设 j = 0;
+                循环(j < nargs && j < 3){
+                    emit("    mov " + reg_name(j + 1) + ", [rbp + " + slots.获取(j) + "]  ; arg" + (j + 1));
+                    j = j + 1;
+                };
+
+                设 stack_args = 0;
+                如果(nargs > 3){ stack_args = nargs - 3; };
+                设 total = align16(32 + stack_args * 8);
+                emit("    sub rsp, " + total);
+                设 k = 3;
+                循环(k < nargs){
+                    emit("    mov rax, [rbp + " + slots.获取(k) + "]");
+                    emit("    mov [rsp + " + (32 + (k - 3) * 8) + "], rax");
+                    k = k + 1;
+                };
+                emit("    call " + method_label_by_id(s.target_id));
+                emit("    add rsp, " + total);
+                temp_free(ctx, nargs);
+            };
+            emit("    mov rax, [rbp + " + t + "]  ; restore instance");
+            temp_free(ctx, 1);
+        }否则{
+            如果(n.new_cls_name == "ArrayList" || n.new_cls_name == "列表"){
+
+                emit("    sub rsp, 32");
+                emit("    call atl_list_new");
+                emit("    add rsp, 32");
+            }否则{
+                emit("    xor rax, rax  ; new unknown class");
+            };
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_REF){
+        创建 ASTNode:rop;
+        rop = n.operand;
+        如果(rop != 空 && rop.type == AST_VAR && rop.sem != 空){
+            创建 SemNode:rs;
+            rs = rop.sem;
+            如果(rs.kind == SN_LOCAL){
+                emit("    lea rcx, [rbp + " + rs.offset + "]  ; &" + rop.sval);
+            }又如果(rs.kind == SN_GLOBAL){
+                emit("    lea rcx, [" + global_label(rs.offset) + "]  ; &" + rop.sval);
+            }否则{
+                emit("    xor rax, rax  ; & unsupported kind " + rs.kind);
+                返回值 0;
+            };
+            emit("    sub rsp, 32");
+            emit("    call atl_ref_new");
+            emit("    add rsp, 32");
+            返回值 0;
+        };
+        gen_expr(n.operand, ctx);
+        返回值 0;
+    };
+
+    如果(n.type == AST_DEREF){
+        gen_expr(n.operand, ctx);
+        emit("    mov rcx, rax  ; ref");
+        emit("    sub rsp, 32");
+        emit("    call atl_deref");
+        emit("    add rsp, 32");
+        返回值 0;
+    };
+
+    如果(n.type == AST_RANGE){
+        gen_expr(n.lhs, ctx);
+        返回值 0;
+    };
+
+    如果(n.type == AST_FUNC){
+        创建 SemNode:s;
+        s = n.sem;
+        如果(s != 空 && s.target_id != 0){
+            emit("    lea rcx, [__atl_lambda_" + s.target_id + "]");
+            设 id = add_strlit("<lambda>");
+            emit("    lea rdx, [__atl_str_" + id + "_data]");
+            emit("    sub rsp, 32");
+            emit("    call atl_func_wrap");
+            emit("    add rsp, 32");
+        }否则{
+            emit("    xor rax, rax  ; lambda no id");
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_SHOW){
+
+        gen_show_node(n, ctx);
+    }否则{
+        emit("    xor rax, rax  ; unhandled expr " + n.type);
+    };
+    返回值 0;
+};
+
+声明 gen_store(lhs, c){
+    如果(lhs == 空){
+        返回值 0;
+    };
+    创建 ASTNode:l;
+    l = lhs;
+    创建 Ctx:ctx;
+    ctx = c;
+
+    如果(l.type == AST_VAR){
+        创建 SemNode:s;
+        s = l.sem;
+        如果(s == 空){
+            emit("    ; store: no sem");
+            返回值 0;
+        };
+        如果(s.kind == SN_LOCAL){
+            如果(s.type_kind == T_FLOAT){
+
+                emit("    mov rcx, rax");
+                emit("    sub rsp, 32");
+                emit("    call atl_tofloat");
+                emit("    add rsp, 32");
+                emit("    movq xmm0, [rax + 8]  ; unbox double for store");
+                emit("    movsd [rbp + " + s.offset + "], xmm0  ; " + l.sval + " (float)");
+            }否则{
+                emit("    mov [rbp + " + s.offset + "], rax  ; " + l.sval);
+            };
+        }又如果(s.kind == SN_FIELD){
+            设 off = ctx.this_offset;
+            emit("    mov rdx, rax  ; save val");
+            emit("    mov rax, [rbp + " + off + "]  ; this");
+            emit("    mov rax, [rax + 8]   ; inst");
+            emit("    mov rax, [rax + 8]   ; field_vals");
+            emit("    mov [rax + " + (s.offset * 8) + "], rdx  ; field " + l.sval);
+        }又如果(s.kind == SN_GLOBAL){
+            emit("    mov [" + global_label(s.offset) + "], rax  ; " + l.sval);
+        }否则{
+            emit("    ; store: unhandled kind " + s.kind);
+        };
+        返回值 0;
+    };
+
+    如果(l.type == AST_DEREF){
+
+        设 t_val = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_val + "], rax  ; val");
+        gen_expr(l.operand, ctx);
+        emit("    mov rdx, [rbp + " + t_val + "]  ; val");
+        emit("    mov rcx, rax  ; ref");
+        temp_free(ctx, 1);
+        emit("    sub rsp, 32");
+        emit("    call atl_deref_set");
+        emit("    add rsp, 32");
+        返回值 0;
+    };
+
+    如果(l.type == AST_INDEX){
+        设 t_val = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_val + "], rax");
+        gen_expr(l.obj, ctx);
+        设 t_obj = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_obj + "], rax");
+        gen_expr(l.index, ctx);
+        设 t_idx = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_idx + "], rax");
+        emit("    mov r9, [rbp + " + t_val + "]  ; val");
+        emit("    mov r8, [rbp + " + t_idx + "]  ; idx");
+        emit("    mov rdx, [rbp + " + t_obj + "] ; obj");
+        emit("    mov rcx, rdx");
+        emit("    mov rdx, r8");
+        emit("    mov r8, r9");
+        temp_free(ctx, 3);
+        emit("    sub rsp, 32");
+        emit("    call atl_list_set");
+        emit("    add rsp, 32");
+        返回值 0;
+    };
+
+    如果(l.type == AST_MEMBER){
+        创建 SemNode:s;
+        s = l.sem;
+        如果(s != 空 && s.kind == SN_MEM_FIELD && s.offset >= 0){
+            设 t_val = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_val + "], rax");
+            gen_expr(l.obj, ctx);
+            emit("    mov rdx, [rbp + " + t_val + "]  ; val");
+            emit("    mov rax, [rax + 8]   ; inst");
+            emit("    mov rax, [rax + 8]   ; field_vals");
+            emit("    mov [rax + " + (s.offset * 8) + "], rdx  ; field " + l.member);
+            temp_free(ctx, 1);
+        }又如果(s != 空 && s.kind == SN_MEM_STATIC_FIELD){
+
+            emit("    mov [__atl_static_" + s.cls.id + "_" + s.offset + "], rax  ; static field " + l.member);
+        }又如果(s != 空 && s.kind == SN_GLOBAL){
+
+            emit("    mov [" + global_label(s.offset) + "], rax  ; pkg global " + l.member);
+        }又如果(s != 空 && s.kind == SN_MEM_FIELD){
+
+            设 t_val = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_val + "], rax  ; val");
+            gen_expr(l.obj, ctx);
+            设 t_obj = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_obj + "], rax  ; obj");
+            设 nid = add_strlit(l.member);
+            emit("    mov rcx, [rbp + " + t_obj + "]");
+                emit("    lea rdx, [__atl_str_" + nid + "_data]  ; field " + l.member);
+            emit("    mov r8, [rbp + " + t_val + "]");
+            emit("    sub rsp, 32");
+            emit("    call atl_field_set");
+            emit("    add rsp, 32");
+            temp_free(ctx, 2);
+        }否则{
+            emit("    ; store member: unhandled");
+        };
+        返回值 0;
+    };
+
+    emit("    ; store: unhandled lhs " + l.type);
+    返回值 0;
+};
+
+声明 gen_call_seq(ctx, target_label, n_args, arg_slots, is_method){
+    创建 ArrayList:slots;
+    slots = arg_slots;
+    设 stack_args = 0;
+    如果(n_args > 4){
+        stack_args = n_args - 4;
+    };
+    设 stack_bytes = stack_args * 8;
+    设 total = align16(32 + stack_bytes);
+    emit("    sub rsp, " + total);
+
+    设 i = 4;
+    循环(i < n_args){
+        emit("    mov rax, [rbp + " + slots.获取(i) + "]");
+        emit("    mov [rsp + " + (32 + (i - 4) * 8) + "], rax");
+        i = i + 1;
+    };
+
+    设 j = 0;
+    循环(j < n_args && j < 4){
+        emit("    mov " + reg_name(j) + ", [rbp + " + slots.获取(j) + "]");
+        j = j + 1;
+    };
+    emit("    call " + target_label);
+    emit("    add rsp, " + total);
+    返回值 0;
+};
+
+声明 gen_pos_call(ctx, fn, n_args, arg_slots, start_idx){
+    创建 ArrayList:slots;
+    slots = arg_slots;
+    设 stack_args = 0;
+    如果(n_args > 4){
+        stack_args = n_args - 4;
+    };
+    设 total = align16(32 + stack_args * 8);
+    emit("    sub rsp, " + total);
+    设 i = 4;
+    循环(i < n_args){
+        emit("    mov rax, [rbp + " + slots.获取(start_idx + i) + "]");
+        emit("    mov [rsp + " + (32 + (i - 4) * 8) + "], rax");
+        i = i + 1;
+    };
+    设 j = 0;
+    循环(j < n_args && j < 4){
+        emit("    mov " + reg_name(j) + ", [rbp + " + slots.获取(start_idx + j) + "]");
+        j = j + 1;
+    };
+    emit("    call " + fn);
+    emit("    add rsp, " + total);
+    返回值 0;
+};
+
+声明 gen_call(node, c){
+    创建 ASTNode:n;
+    n = node;
+    创建 Ctx:ctx;
+    ctx = c;
+    创建 SemNode:s;
+    s = n.sem;
+    设 n_args = 0;
+    如果(n.args != 空){
+        n_args = n.args.长度();
+    };
+
+    如果(n.type == AST_HOOKCALL){
+        创建 SemMethod:h;
+        h = 空;
+        设 i = 0;
+        循环(i < g_sem_hooks.长度()){
+            创建 SemMethod:m;
+            m = g_sem_hooks.获取(i);
+            如果(m.name == n.method_name){
+                h = m;
+                跳出;
+            };
+            i = i + 1;
+        };
+        如果(h == 空){
+            emit("    xor rax, rax  ; hook not found");
+            返回值 0;
+        };
+        创建 ArrayList:slots;
+        设 i = 0;
+        循环(i < n_args){
+            设 pk = 0;
+            如果(h.sem_func != 空 && i < h.sem_func.nparams && i < h.sem_func.locals.长度()){
+
+                创建 ArrayList:al;
+                al = h.sem_func.locals;
+                创建 SemLocal:ll;
+                ll = al.获取(i);
+                pk = ll.type_kind;
+            };
+            创建 ASTNode:arg;
+            arg = n.args.获取(i);
+            如果(pk == T_STR && arg.type == AST_VAR && arg.sem != 空 &&
+               arg.sem.kind == SN_GLOBAL && arg.sem.offset == 0){
+                设 sid = add_strlit(arg.sval);
+                emit("    lea rax, [__atl_str_" + sid + "]  ; hook 字符串参数(裸标识符)");
+            }又如果(pk == 1){
+                gen_int_value(arg, ctx);
+            }否则{
+                gen_expr(arg, ctx);
+            };
+            设 off = temp_alloc(ctx);
+            emit("    mov [rbp + " + off + "], rax");
+            slots.添加(off);
+            i = i + 1;
+        };
+        gen_call_seq(ctx, method_label(h), n_args, slots, 0);
+        返回值 0;
+    };
+
+    如果(n.type == AST_MODCALL && (s == 空 || s.kind == SN_MODCALL)){
+        如果(s == 空){
+            emit("    xor rax, rax  ; modcall no sem");
+            返回值 0;
+        };
+
+        设 n_second = 0;
+        如果(n.second_args != 空){ n_second = n.second_args.长度(); };
+
+        设 need_implicit_id = 0;
+        如果(g_in_gfx_block == 1 && n_second == 0){
+            如果(s.modcall_id == MC_GFX_DRAW_PIXEL){ need_implicit_id = 1; };
+            如果(s.modcall_id == MC_GFX_FILL_RECT){ need_implicit_id = 1; };
+            如果(s.modcall_id == MC_GFX_DRAW_LINE){ need_implicit_id = 1; };
+            如果(s.modcall_id == MC_GFX_DRAW_CIRCLE){ need_implicit_id = 1; };
+            如果(s.modcall_id == MC_GFX_DRAW_TRIANGLE){ need_implicit_id = 1; };
+            如果(s.modcall_id == MC_GFX_DRAW_TEXT){ need_implicit_id = 1; };
+            如果(s.modcall_id == MC_GFX_CLEAR){ need_implicit_id = 1; };
+            如果(s.modcall_id == MC_GFX_PRESENT){ need_implicit_id = 1; };
+            如果(s.modcall_id == MC_GFX_BEGIN_FRAME){ need_implicit_id = 1; };
+            如果(s.modcall_id == MC_GFX_END_FRAME){ need_implicit_id = 1; };
+        };
+        创建 ArrayList:slots;
+        设 i = 0;
+
+        循环(i < n_second){
+            gen_expr(n.second_args.获取(i), ctx);
+            设 off2 = temp_alloc(ctx);
+            emit("    mov [rbp + " + off2 + "], rax");
+            slots.添加(off2);
+            i = i + 1;
+        };
+
+        如果(need_implicit_id == 1){
+            emit("    lea rax, [__atl_int_0]  ; implicit window id = 0 (use current)");
+            设 off3 = temp_alloc(ctx);
+            emit("    mov [rbp + " + off3 + "], rax");
+            slots.添加(off3);
+        };
+
+        设 i = 0;
+        循环(i < n_args){
+
+            设 is_atomic_slot = 0;
+            如果(i == 0 && (s.modcall_id == MC_ATOMIC_INC || s.modcall_id == MC_ATOMIC_DEC)){
+                创建 ASTNode:an;
+                an = n.args.获取(i);
+                如果(an != 空 && an.type == AST_VAR && an.sem != 空){
+                    创建 SemNode:as;
+                    as = an.sem;
+                    如果(as.kind == SN_LOCAL){
+                        emit("    lea rax, [rbp + " + as.offset + "]  ; atomic slot " + an.sval);
+                        is_atomic_slot = 1;
+                    }又如果(as.kind == SN_GLOBAL){
+                        emit("    lea rax, [" + global_label(as.offset) + "]  ; atomic slot " + an.sval);
+                        is_atomic_slot = 1;
+                    };
+                };
+            };
+            如果(is_atomic_slot == 1){
+                emit("    mov rcx, rax");
+                emit("    sub rsp, 32");
+                emit("    call atl_int");
+                emit("    add rsp, 32");
+            }否则{
+                gen_expr(n.args.获取(i), ctx);
+            };
+            设 off = temp_alloc(ctx);
+            emit("    mov [rbp + " + off + "], rax");
+            slots.添加(off);
+            i = i + 1;
+        };
+        设 fn = 空;
+        如果(s.modcall_id == MC_MATH_ADD){ fn = "atl_math_add"; };
+        如果(s.modcall_id == MC_MATH_SUB){ fn = "atl_math_sub"; };
+        如果(s.modcall_id == MC_MATH_MUL){ fn = "atl_math_mul"; };
+        如果(s.modcall_id == MC_MATH_DIV){ fn = "atl_math_div"; };
+        如果(s.modcall_id == MC_MATH_ABS){ fn = "atl_math_abs"; };
+        如果(s.modcall_id == MC_MATH_FLOOR){ fn = "atl_math_floor"; };
+        如果(s.modcall_id == MC_MATH_MOD){ fn = "atl_math_mod"; };
+        如果(s.modcall_id == MC_MATH_AVG){ fn = "atl_math_avg"; };
+        如果(s.modcall_id == MC_MATH_MAX){ fn = "atl_math_max"; };
+        如果(s.modcall_id == MC_MATH_MIN){ fn = "atl_math_min"; };
+        如果(s.modcall_id == MC_NET_GET){ fn = "atl_net_get"; };
+        如果(s.modcall_id == MC_NET_POST){ fn = "atl_net_post"; };
+        如果(s.modcall_id == MC_NET_RESOLVE){ fn = "atl_net_resolve"; };
+        如果(s.modcall_id == MC_NET_PING){ fn = "atl_net_ping"; };
+        如果(s.modcall_id == MC_NET_ALIVE){ fn = "atl_net_alive"; };
+        如果(s.modcall_id == MC_PROC_CREATE){ fn = "atl_proc_create"; };
+        如果(s.modcall_id == MC_PROC_WAIT){ fn = "atl_proc_wait"; };
+        如果(s.modcall_id == MC_PROC_JOIN){ fn = "atl_proc_join"; };
+        如果(s.modcall_id == MC_SYNC_LOCK_CREATE){ fn = "atl_sync_lock_create"; };
+        如果(s.modcall_id == MC_CHAN_NEW){ fn = "atl_chan_new"; };
+        如果(s.modcall_id == MC_CHAN_SEND){ fn = "atl_chan_send"; };
+        如果(s.modcall_id == MC_CHAN_RECV){ fn = "atl_chan_recv"; };
+        如果(s.modcall_id == MC_SYNC_LOCK){ fn = "atl_sync_lock"; };
+        如果(s.modcall_id == MC_SYNC_UNLOCK){ fn = "atl_sync_unlock"; };
+        如果(s.modcall_id == MC_ATOMIC_INC){ fn = "atl_atomic_inc"; };
+        如果(s.modcall_id == MC_ATOMIC_DEC){ fn = "atl_atomic_dec"; };
+        如果(s.modcall_id == MC_THREAD_ID){ fn = "atl_thread_id"; };
+        如果(s.modcall_id == MC_MEM_ALLOC){ fn = "atl_mem_alloc"; };
+        如果(s.modcall_id == MC_MEM_FREE){ fn = "atl_mem_free"; };
+        如果(s.modcall_id == MC_MEM_REALLOC){ fn = "atl_mem_realloc"; };
+        如果(s.modcall_id == MC_MEM_ALLOC_EXEC){ fn = "atl_mem_alloc_exec"; };
+        如果(s.modcall_id == MC_MEM_SET_EXEC){ fn = "atl_mem_set_exec"; };
+        如果(s.modcall_id == MC_MEM_READBYTE){ fn = "atl_mem_readbyte"; };
+        如果(s.modcall_id == MC_MEM_WRITEBYTE){ fn = "atl_mem_writebyte"; };
+        如果(s.modcall_id == MC_MEM_EXEC){ fn = "atl_mem_exec"; };
+        如果(s.modcall_id == MC_SYS_EXEC){ fn = "atl_sys_exec"; };
+        如果(s.modcall_id == MC_SYS_GETFN){ fn = "atl_sys_getfn"; };
+        如果(s.modcall_id == MC_SYS_CALL){ fn = "atl_sys_call"; };
+        如果(s.modcall_id == MC_SYS_CHDIR){ fn = "atl_chdir"; };
+        如果(s.modcall_id == MC_SYS_GETCWD){ fn = "atl_getcwd"; };
+        如果(s.modcall_id == MC_MOD_IMPORT){ fn = "atl_module_import"; };
+        如果(s.modcall_id == MC_JSON_PARSE){ fn = "atl_json_parse"; };
+        如果(s.modcall_id == MC_JSON_SER){ fn = "atl_json_serialize"; };
+        如果(s.modcall_id == MC_REGEX_MATCH){ fn = "atl_regex_match"; };
+        如果(s.modcall_id == MC_FILE_CREATE){ fn = "atl_file_create"; };
+        如果(s.modcall_id == MC_FILE_OPEN){ fn = "atl_file_open"; };
+        如果(s.modcall_id == MC_FILE_CLOSE){ fn = "atl_file_close"; };
+        如果(s.modcall_id == MC_FILE_WRITE){ fn = "atl_file_write"; };
+        如果(s.modcall_id == MC_FILE_READ){ fn = "atl_file_read"; };
+        如果(s.modcall_id == MC_BIN_WRITE){ fn = "atl_bin_write"; };
+        如果(s.modcall_id == MC_BIN_READ){ fn = "atl_bin_read"; };
+        如果(s.modcall_id == MC_FILE_LIST_DIR){ fn = "atl_dir_list"; };
+        如果(s.modcall_id == MC_FILE_DELETE){ fn = "atl_file_delete"; };
+        如果(s.modcall_id == MC_FILE_RMDIR){ fn = "atl_dir_delete"; };
+        如果(s.modcall_id == MC_FILE_LOAD_MEM){ fn = "atl_file_load_mem"; };
+        如果(s.modcall_id == MC_FILE_SAVE_MEM){ fn = "atl_file_save_mem"; };
+        如果(s.modcall_id == MC_NET_GET_FILE){ fn = "atl_net_get_file"; };
+        如果(s.modcall_id == MC_GFX_BUTTON_REG){ fn = "atl_gfx_button_reg"; };
+        如果(s.modcall_id == MC_GFX_WIN_OPEN){ fn = "atl_gfx_win_create"; };
+        如果(s.modcall_id == MC_GFX_WIN_CLOSE){ fn = "atl_gfx_win_close"; };
+        如果(s.modcall_id == MC_GFX_WIN_TITLE){ fn = "atl_gfx_win_title"; };
+        如果(s.modcall_id == MC_GFX_WIN_SIZE){ fn = "atl_gfx_win_size"; };
+        如果(s.modcall_id == MC_GFX_WIN_FULLSCREEN){ fn = "atl_gfx_win_fullscreen"; };
+        如果(s.modcall_id == MC_GFX_WIN_VSYNC){ fn = "atl_gfx_win_vsync"; };
+        如果(s.modcall_id == MC_GFX_WIN_FPS){ fn = "atl_gfx_win_fps"; };
+        如果(s.modcall_id == MC_GFX_WIN_QUERY){ fn = "atl_gfx_win_query"; };
+        如果(s.modcall_id == MC_GFX_PRESENT){ fn = "atl_gfx_present"; };
+        如果(s.modcall_id == MC_GFX_POLL){ fn = "atl_gfx_poll"; };
+        如果(s.modcall_id == MC_GFX_FB_PIXELS){ fn = "atl_gfx_fb_pixels"; };
+        如果(s.modcall_id == MC_GFX_FB_SIZE){ fn = "atl_gfx_fb_size"; };
+        如果(s.modcall_id == MC_GFX_CLEAR){ fn = "atl_gfx_clear"; };
+        如果(s.modcall_id == MC_GFX_FILL_RECT){ fn = "atl_gfx_draw_rect"; };
+        如果(s.modcall_id == MC_GFX_DRAW_PIXEL){ fn = "atl_gfx_draw_pixel"; };
+        如果(s.modcall_id == MC_GFX_DRAW_LINE){ fn = "atl_gfx_draw_line"; };
+        如果(s.modcall_id == MC_GFX_DRAW_CIRCLE){ fn = "atl_gfx_draw_circle"; };
+        如果(s.modcall_id == MC_GFX_DRAW_TRIANGLE){ fn = "atl_gfx_draw_triangle"; };
+        如果(s.modcall_id == MC_GFX_DRAW_POLYGON){ fn = "atl_gfx_draw_polygon"; };
+        如果(s.modcall_id == MC_GFX_DRAW_TEXT){ fn = "atl_gfx_draw_text"; };
+        如果(s.modcall_id == MC_GFX_TEXT_SIZE){ fn = "atl_gfx_text_size"; };
+        如果(s.modcall_id == MC_GFX_LOAD_BMP){ fn = "atl_gfx_load_bmp"; };
+        如果(s.modcall_id == MC_GFX_DRAW_BMP){ fn = "atl_gfx_draw_bmp"; };
+        如果(s.modcall_id == MC_GFX_BEGIN_FRAME){ fn = "atl_gfx_begin_frame"; };
+        如果(s.modcall_id == MC_GFX_END_FRAME){ fn = "atl_gfx_end_frame"; };
+        如果(s.modcall_id == MC_GFX_SET_CURRENT){ fn = "atl_gfx_set_current"; };
+        如果(s.modcall_id == MC_GFX_BUTTON_RENDER){ fn = "atl_gfx_button_render"; };
+        如果(s.modcall_id == MC_GFX_BUTTON_HANDLE){ fn = "atl_gfx_button_handle"; };
+
+        如果(s.modcall_id == MC_GL_WIN_CREATE){ fn = "atl_gl_window_create"; };
+        如果(s.modcall_id == MC_GL_WIN_CLOSE){ fn = "atl_gl_window_close"; };
+        如果(s.modcall_id == MC_GL_WIN_SHOW){ fn = "atl_gl_window_show"; };
+        如果(s.modcall_id == MC_GL_WIN_TITLE){ fn = "atl_gl_window_title"; };
+        如果(s.modcall_id == MC_GL_PRESENT){ fn = "atl_gl_present"; };
+        如果(s.modcall_id == MC_GL_CLEAR){ fn = "atl_gl_clear"; };
+        如果(s.modcall_id == MC_GL_POLL){ fn = "atl_gl_poll"; };
+        如果(s.modcall_id == MC_GL_VERSION){ fn = "atl_gl_version"; };
+        如果(s.modcall_id == MC_GL_RENDERER){ fn = "atl_gl_renderer"; };
+        如果(s.modcall_id == MC_GL_GETPROC){ fn = "atl_gl_getproc"; };
+        如果(s.modcall_id == MC_GL_CALL){ fn = "atl_gl_call"; };
+        如果(s.modcall_id == MC_GL_CALL_RAW){ fn = "atl_gl_call_raw"; };
+        如果(s.modcall_id == MC_GL_BEGIN){ fn = "atl_gl_begin"; };
+        如果(s.modcall_id == MC_GL_END){ fn = "atl_gl_end"; };
+        如果(s.modcall_id == MC_GL_VERTEX){ fn = "atl_gl_vertex"; };
+        如果(s.modcall_id == MC_GL_COLOR){ fn = "atl_gl_color"; };
+        如果(s.modcall_id == MC_GL_MATRIX_MODE){ fn = "atl_gl_matrix_mode"; };
+        如果(s.modcall_id == MC_GL_LOAD_IDENTITY){ fn = "atl_gl_load_identity"; };
+        如果(s.modcall_id == MC_GL_ORTHO){ fn = "atl_gl_ortho"; };
+        如果(s.modcall_id == MC_GL_ROTATE){ fn = "atl_gl_rotate"; };
+        如果(s.modcall_id == MC_GL_TRANSLATE){ fn = "atl_gl_translate"; };
+        如果(s.modcall_id == MC_GL_SCALE){ fn = "atl_gl_scale"; };
+        如果(s.modcall_id == MC_GL_DRAW_ARRAYS){ fn = "atl_gl_draw_arrays"; };
+
+        如果(s.modcall_id == MC_GPU_MEM_WRITE){ fn = "atl_gpu_mem_write"; };
+        如果(s.modcall_id == MC_GPU_MEM_READ){ fn = "atl_gpu_mem_read"; };
+        如果(s.modcall_id == MC_GPU_MEM_ZERO){ fn = "atl_gpu_mem_zero"; };
+        如果(s.modcall_id == MC_GPU_MEM_WRITEF){ fn = "atl_gpu_mem_writef"; };
+        如果(s.modcall_id == MC_GPU_MEM_PUTS){ fn = "atl_gpu_mem_puts"; };
+
+        如果(s.modcall_id == MC_VK_LOAD){ fn = "atl_vk_load"; };
+        如果(s.modcall_id == MC_VK_VERSION){ fn = "atl_vk_version"; };
+        如果(s.modcall_id == MC_VK_GETPROC){ fn = "atl_vk_getproc"; };
+        如果(s.modcall_id == MC_VK_GETPROC_LDR){ fn = "atl_vk_getproc_ldr"; };
+        如果(s.modcall_id == MC_VK_MODULE_HANDLE){ fn = "atl_vk_module_handle"; };
+        如果(s.modcall_id == MC_VK_CALL){ fn = "atl_vk_call"; };
+        如果(s.modcall_id == MC_VK_CALL_RAW){ fn = "atl_vk_call_raw"; };
+        如果(s.modcall_id == MC_VK_CALL_ADDR){ fn = "atl_vk_call_addr"; };
+        如果(s.modcall_id == MC_VK_WIN_CREATE){ fn = "atl_vk_window_create"; };
+        如果(s.modcall_id == MC_VK_WIN_CLOSE){ fn = "atl_vk_window_close"; };
+        如果(s.modcall_id == MC_VK_WIN_SHOW){ fn = "atl_vk_window_show"; };
+        如果(s.modcall_id == MC_VK_POLL){ fn = "atl_vk_poll"; };
+        如果(s.modcall_id == MC_STR_FROM_MEM){ fn = "atl_str_from_mem"; };
+        如果(s.modcall_id == MC_GL_TEXT_DRAW){ fn = "atl_gl_text_draw"; };
+        如果(s.modcall_id == MC_GL_SET_CURRENT){ fn = "atl_gl_set_current"; };
+        如果(s.modcall_id == MC_GL_SET_VSYNC){ fn = "atl_gl_set_vsync"; };
+        如果(s.modcall_id == MC_GL_PRESENT_GDI){ fn = "atl_gl_present_gdi"; };
+        如果(s.modcall_id == MC_STR_CONTAINS){ fn = "atl_contains"; };
+        如果(s.modcall_id == MC_GL_WIN_SIZE){ fn = "atl_gl_window_size"; };
+        如果(s.modcall_id == MC_GL_MSG_PUMP){ fn = "atl_gl_msg_pump"; };
+        如果(s.modcall_id == MC_GL_EVENT_TAKE){ fn = "atl_gl_event_take"; };
+
+        如果(s.modcall_id == MC_INPUT_KEY_DOWN){ fn = "atl_input_key_down"; };
+        如果(s.modcall_id == MC_INPUT_KEY_PRESSED){ fn = "atl_input_key_pressed"; };
+        如果(s.modcall_id == MC_INPUT_MOUSE_POS){ fn = "atl_input_mouse_pos"; };
+        如果(s.modcall_id == MC_INPUT_MOUSE_BUTTON){ fn = "atl_input_mouse_button"; };
+        如果(s.modcall_id == MC_INPUT_SYNC){ fn = "atl_input_sync"; };
+        设 nslots = slots.长度();
+        如果(fn != 空){
+
+            如果(s.modcall_id == MC_SYS_CALL || s.modcall_id == MC_GL_CALL || s.modcall_id == MC_GL_CALL_RAW ||
+               s.modcall_id == MC_VK_CALL || s.modcall_id == MC_VK_CALL_RAW || s.modcall_id == MC_VK_CALL_ADDR){
+                设 want = 7;
+                如果(s.modcall_id == MC_GL_CALL || s.modcall_id == MC_VK_CALL || s.modcall_id == MC_VK_CALL_ADDR){ want = 13; };
+                如果(s.modcall_id == MC_GL_CALL_RAW || s.modcall_id == MC_VK_CALL_RAW){ want = 14; };
+                设 have = nslots;
+                设 stack_args = 0;
+                如果(want > 4){ stack_args = want - 4; };
+                设 total = align16(32 + stack_args * 8);
+                emit("    sub rsp, " + total);
+                设 si = 4;
+                循环(si < want){
+                    如果(si < have){
+                        emit("    mov rax, [rbp + " + slots.获取(si) + "]");
+                    }否则{
+                        emit("    xor rax, rax  ; pad arg");
+                    };
+                    emit("    mov [rsp + " + (32 + (si - 4) * 8) + "], rax");
+                    si = si + 1;
+                };
+                设 ri = 0;
+                循环(ri < want && ri < 4){
+                    如果(ri < have){
+                        emit("    mov " + reg_name(ri) + ", [rbp + " + slots.获取(ri) + "]");
+                    }否则{
+                        emit("    xor " + reg_name(ri) + ", " + reg_name(ri) + "  ; pad arg");
+                    };
+                    ri = ri + 1;
+                };
+                设 ri2 = want;
+                循环(ri2 < 4){
+                    emit("    xor " + reg_name(ri2) + ", " + reg_name(ri2) + "  ; unused arg = NULL");
+                    ri2 = ri2 + 1;
+                };
+                emit("    call " + fn);
+                emit("    add rsp, " + total);
+            }又如果(s.modcall_id == MC_MATH_AVG || s.modcall_id == MC_MATH_MAX || s.modcall_id == MC_MATH_MIN ||
+               s.modcall_id == MC_PROC_CREATE){
+                emit("    sub rsp, 32");
+                emit("    call atl_list_new");
+                emit("    add rsp, 32");
+                设 t_vl = temp_alloc(ctx);
+                emit("    mov [rbp + " + t_vl + "], rax  ; args list");
+                设 pack_first = 0;
+                如果(s.modcall_id == MC_PROC_CREATE){ pack_first = 1; };
+                设 vi = pack_first;
+                循环(vi < nslots){
+                    emit("    mov rdx, [rbp + " + slots.获取(vi) + "]  ; arg " + vi);
+                    emit("    mov rcx, [rbp + " + t_vl + "]");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_list_add");
+                    emit("    add rsp, 32");
+                    vi = vi + 1;
+                };
+                如果(s.modcall_id == MC_PROC_CREATE){
+                    emit("    mov rcx, [rbp + " + slots.获取(0) + "]  ; fn name");
+                    emit("    mov rdx, [rbp + " + t_vl + "]  ; args list");
+                }否则{
+                    emit("    mov rcx, [rbp + " + t_vl + "]");
+                };
+                emit("    sub rsp, 32");
+                emit("    call " + fn);
+                emit("    add rsp, 32");
+                temp_free(ctx, 1);
+                设 nslots2 = 0;
+            }否则{
+                gen_pos_call(ctx, fn, nslots, slots, 0);
+            };
+        }否则{
+            emit("    xor rax, rax  ; modcall not implemented: " + s.modcall_id);
+        };
+
+        如果(n.block_arg != 空){
+            设 saved_ret = temp_alloc(ctx);
+            emit("    mov [rbp + " + saved_ret + "], rax  ; save ret (win id)");
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_gfx_set_current");
+            emit("    add rsp, 32");
+            设 saved_old = temp_alloc(ctx);
+            emit("    mov [rbp + " + saved_old + "], rax  ; save old current");
+
+            设 saved_block_win = g_gfx_block_win_off;
+            如果(s.modcall_id == MC_GL_WIN_CREATE){
+                g_gfx_block_win_off = saved_ret;
+            };
+            g_in_gfx_block = 1;
+            gen_stmt(n.block_arg, ctx);
+            g_in_gfx_block = 0;
+            g_gfx_block_win_off = saved_block_win;
+            emit("    mov rcx, [rbp + " + saved_old + "]");
+            emit("    sub rsp, 32");
+            emit("    call atl_gfx_set_current");
+            emit("    add rsp, 32");
+            emit("    mov rax, [rbp + " + saved_ret + "]");
+            temp_free(ctx, 1);
+            temp_free(ctx, 1);
+        };
+        设 i = 0;
+        循环(i < nslots){
+            temp_free(ctx, 1);
+            i = i + 1;
+        };
+        返回值 0;
+    };
+
+    如果(s == 空){
+        emit("    xor rax, rax  ; call no sem");
+        返回值 0;
+    };
+
+    设 has_this = 0;
+    如果(s.kind == SN_METHOD){
+        has_this = 1;
+    };
+    设 total_args = n_args;
+    如果(has_this == 1){
+        total_args = total_args + 1;
+    };
+    创建 ArrayList:slots;
+    设 slot_idx = 0;
+
+    创建 SemFunc:target_sf;
+    target_sf = 空;
+    如果(s.kind == SN_METHOD || s.kind == SN_FUNC || s.kind == SN_PKGFUNC){
+        创建 SemMethod:tsm;
+        tsm = 空;
+        设 tci = 0;
+        循环(tci < g_sem_classes.长度()){
+            创建 SemClass:tcls;
+            tcls = g_sem_classes.获取(tci);
+            设 tmj = 0;
+            循环(tmj < tcls.methods.长度()){
+                创建 SemMethod:tm2;
+                tm2 = tcls.methods.获取(tmj);
+                如果(tm2.id == s.target_id){ tsm = tm2; 跳出; };
+                tmj = tmj + 1;
+            };
+            如果(tsm != 空){ 跳出; };
+            tci = tci + 1;
+        };
+        如果(tsm == 空){
+            设 tfi = 0;
+            循环(tfi < g_sem_funcs.长度()){
+                创建 SemMethod:tm3;
+                tm3 = g_sem_funcs.获取(tfi);
+                如果(tm3.id == s.target_id){ tsm = tm3; 跳出; };
+                tfi = tfi + 1;
+            };
+        };
+        如果(tsm == 空){
+            设 thi = 0;
+            循环(thi < g_sem_hooks.长度()){
+                创建 SemMethod:tm4;
+                tm4 = g_sem_hooks.获取(thi);
+                如果(tm4.id == s.target_id){ tsm = tm4; 跳出; };
+                thi = thi + 1;
+            };
+        };
+        如果(tsm != 空 && tsm.sem_func != 空){
+            target_sf = tsm.sem_func;
+        };
+    };
+
+    如果(has_this == 1 && n.type == AST_METHODCALL && n.obj != 空 && n.is_null_safe == 1){
+        设 l_skip = new_label();
+        设 l_end = new_label();
+        gen_expr(n.obj, ctx);
+        设 off = temp_alloc(ctx);
+        emit("    mov [rbp + " + off + "], rax  ; ?. obj");
+        emit("    mov rcx, rax");
+        emit("    sub rsp, 32");
+        emit("    call atl_is_null");
+        emit("    add rsp, 32");
+        emit("    test eax, eax");
+        emit("    jnz __atl_L" + l_skip);
+        slots.添加(off);
+        slot_idx = slot_idx + 1;
+
+        设 i = 0;
+        循环(i < n_args){
+
+            如果(gen_input_ref_slot(n.args.获取(i), ctx, s, i) == 0){
+                设 pk2 = 0;
+                如果(target_sf != 空 && i < target_sf.nparams && i < target_sf.locals.长度()){
+                    创建 ArrayList:tal;
+                    tal = target_sf.locals;
+                    创建 SemLocal:tll;
+                    tll = tal.获取(i);
+                    pk2 = tll.type_kind;
+                };
+                如果(pk2 == 1){
+                    gen_int_value(n.args.获取(i), ctx);
+                }否则{
+                    gen_expr(n.args.获取(i), ctx);
+                };
+            };
+            设 off2 = temp_alloc(ctx);
+            emit("    mov [rbp + " + off2 + "], rax");
+            slots.添加(off2);
+            slot_idx = slot_idx + 1;
+            i = i + 1;
+        };
+
+        设 target_m = 空;
+        设 i = 0;
+        循环(i < g_sem_classes.长度()){
+            创建 SemClass:cls;
+            cls = g_sem_classes.获取(i);
+            设 j = 0;
+            循环(j < cls.methods.长度()){
+                创建 SemMethod:m;
+                m = cls.methods.获取(j);
+                如果(m.id == s.target_id){
+                    target_m = m;
+                    跳出;
+                };
+                j = j + 1;
+            };
+            如果(target_m != 空){ 跳出; };
+            i = i + 1;
+        };
+        如果(target_m == 空){
+            设 i = 0;
+            循环(i < g_sem_funcs.长度()){
+                创建 SemMethod:m;
+                m = g_sem_funcs.获取(i);
+                如果(m.id == s.target_id){
+                    target_m = m;
+                    跳出;
+                };
+                i = i + 1;
+            };
+        };
+        如果(target_m == 空){
+            设 i = 0;
+            循环(i < g_sem_hooks.长度()){
+                创建 SemMethod:m;
+                m = g_sem_hooks.获取(i);
+                如果(m.id == s.target_id){
+                    target_m = m;
+                    跳出;
+                };
+                i = i + 1;
+            };
+        };
+        如果(target_m != 空){
+            gen_call_seq(ctx, method_label(target_m), total_args, slots, has_this);
+        }否则{
+            emit("    xor rax, rax  ; ?. call target not found");
+        };
+        temp_free(ctx, total_args);
+        emit("    jmp __atl_L" + l_end);
+        emit("__atl_L" + l_skip + ":");
+        emit("    sub rsp, 32");
+        emit("    call atl_null");
+        emit("    add rsp, 32");
+        emit("__atl_L" + l_end + ":");
+        返回值 0;
+    };
+    如果(has_this == 1){
+        如果(n.type == AST_METHODCALL && n.obj != 空){
+            gen_expr(n.obj, ctx);
+        }又如果(ctx.is_method == 1 && ctx.this_offset != 0){
+            emit("    mov rax, [rbp + " + ctx.this_offset + "]  ; this (implicit)");
+        }又如果(s.cls != 空){
+            emit("    mov rax, [" + singleton_label(s.cls) + "]  ; this");
+        }否则{
+            emit("    xor rax, rax  ; no this");
+        };
+        设 off = temp_alloc(ctx);
+        emit("    mov [rbp + " + off + "], rax");
+        slots.添加(off);
+        slot_idx = slot_idx + 1;
+    };
+
+    设 i = 0;
+    循环(i < n_args){
+
+        如果(gen_input_ref_slot(n.args.获取(i), ctx, s, i) == 0){
+            设 pk3 = 0;
+            如果(target_sf != 空 && i < target_sf.nparams && i < target_sf.locals.长度()){
+                创建 ArrayList:tal2;
+                tal2 = target_sf.locals;
+                创建 SemLocal:tll2;
+                tll2 = tal2.获取(i);
+                pk3 = tll2.type_kind;
+            };
+            如果(pk3 == 1){
+                gen_int_value(n.args.获取(i), ctx);
+            }否则{
+                gen_expr(n.args.获取(i), ctx);
+            };
+        };
+        设 off = temp_alloc(ctx);
+        emit("    mov [rbp + " + off + "], rax");
+        slots.添加(off);
+        slot_idx = slot_idx + 1;
+        i = i + 1;
+    };
+
+    如果(s.kind == SN_METHOD || s.kind == SN_FUNC || s.kind == SN_PKGFUNC){
+
+        创建 SemMethod:dm;
+        设 dm_found = 0;
+        设 ci = 0;
+        循环(ci < g_sem_classes.长度()){
+            创建 SemClass:cls;
+            cls = g_sem_classes.获取(ci);
+            设 j = 0;
+            循环(j < cls.methods.长度()){
+                创建 SemMethod:m;
+                m = cls.methods.获取(j);
+                如果(m.id == s.target_id){
+                    dm = m;
+                    dm_found = 1;
+                    跳出;
+                };
+                j = j + 1;
+            };
+            如果(dm_found == 1){ 跳出; };
+            ci = ci + 1;
+        };
+        如果(dm_found == 0){
+            设 fi = 0;
+            循环(fi < g_sem_funcs.长度()){
+                创建 SemMethod:m;
+                m = g_sem_funcs.获取(fi);
+                如果(m.id == s.target_id){
+                    dm = m;
+                    dm_found = 1;
+                    跳出;
+                };
+                fi = fi + 1;
+            };
+        };
+        如果(dm != 空){
+            创建 ASTNode:dmf;
+            dmf = dm.func;
+            如果(dmf != 空){
+            }否则{
+            };
+            设 ck2 = 0;
+            循环(ck2 < dm.param_defaults.长度()){
+                设 cv2 = dm.param_defaults.获取(ck2);
+                如果(cv2 != 空){
+                    创建 ASTNode:cv2n;
+                    cv2n = cv2;
+                }否则{
+                };
+                ck2 = ck2 + 1;
+            };
+        }否则{
+        };
+        如果(dm_found == 1 && dm.param_defaults != 空 && dm.param_defaults.长度() > 0){
+
+            设 di = n_args;
+            循环(di < dm.param_defaults.长度()){
+                设 def = dm.param_defaults.获取(di);
+                如果(def != 空){
+                    gen_expr(def, ctx);
+                    设 off2 = temp_alloc(ctx);
+                    emit("    mov [rbp + " + off2 + "], rax  ; default arg " + di);
+                    slots.添加(off2);
+                    slot_idx = slot_idx + 1;
+                }否则{
+                };
+                di = di + 1;
+            };
+            total_args = slot_idx;
+        };
+        如果(dm_found == 1 && dm.vararg == 1 && n_args > dm.nparams){
+
+            设 fixed = dm.nparams - 1;
+            设 extra = n_args - fixed;
+            emit("    sub rsp, 32");
+            emit("    call atl_list_new");
+            emit("    add rsp, 32");
+            设 t_vlist = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_vlist + "], rax  ; vararg list");
+            设 vi = 0;
+            循环(vi < extra){
+                emit("    mov rdx, [rbp + " + slots.获取(has_this + fixed + vi) + "]  ; arg " + (fixed + vi));
+                emit("    mov rcx, [rbp + " + t_vlist + "]");
+                emit("    sub rsp, 32");
+                emit("    call atl_list_add");
+                emit("    add rsp, 32");
+                vi = vi + 1;
+            };
+            emit("    mov rax, [rbp + " + t_vlist + "]");
+            设 voff = temp_alloc(ctx);
+            emit("    mov [rbp + " + voff + "], rax  ; vararg list");
+            slots.设置(has_this + fixed, voff);
+            设 rvi = fixed + 1;
+            循环(rvi < n_args){
+                temp_free(ctx, 1);
+                rvi = rvi + 1;
+            };
+            total_args = has_this + fixed + 1;
+        };
+    };
+
+    如果(s.kind == SN_BUILTIN){
+        设 fn = 空;
+        设 is_void = 0;
+        设 special = 0;
+        如果(s.builtin_id == B_PRINT){ fn = "atl_print"; is_void = 1; special = 1; };
+        如果(s.builtin_id == B_ERRPRINT){ fn = "atl_errprint"; is_void = 1; special = 1; };
+        如果(s.builtin_id == B_OK){ fn = "atl_result_ok"; };
+        如果(s.builtin_id == B_FAIL){ fn = "atl_result_fail"; };
+        如果(s.builtin_id == B_INPUT){
+
+            如果(n_args >= 2){ fn = "atl_input_ref"; }否则{ fn = "atl_input"; };
+        };
+        如果(s.builtin_id == B_NUM){ fn = "atl_num"; };
+        如果(s.builtin_id == B_CHR){ fn = "atl_chr"; };
+        如果(s.builtin_id == B_FORMAT){ fn = "atl_format"; special = 1; };
+        如果(s.builtin_id == B_MILLIS){ fn = "atl_millis"; };
+        如果(s.builtin_id == B_MICROS){ fn = "atl_micros"; };
+        如果(s.builtin_id == B_FILE_CREATE){ fn = "atl_file_create"; };
+        如果(s.builtin_id == B_MKDIR){ fn = "atl_mkdir"; };
+        如果(s.builtin_id == B_FILE_OPEN){ fn = "atl_file_open"; };
+        如果(s.builtin_id == B_FILE_CLOSE){ fn = "atl_file_close"; };
+        如果(s.builtin_id == B_FILE_WRITE){ fn = "atl_file_write"; };
+        如果(s.builtin_id == B_FILE_READ){ fn = "atl_file_read"; };
+        如果(s.builtin_id == B_FILE_READ_LINES){ fn = "atl_file_read_lines"; };
+        如果(s.builtin_id == B_BIN_WRITE){ fn = "atl_bin_write"; };
+        如果(s.builtin_id == B_BIN_READ){ fn = "atl_bin_read"; };
+        如果(s.builtin_id == B_WRITE_BYTES){ fn = "atl_write_bytes"; };
+        如果(s.builtin_id == B_READ_BYTES){ fn = "atl_read_bytes"; };
+        如果(s.builtin_id == B_FILE_SIZE){ fn = "atl_file_size"; };
+        如果(s.builtin_id == B_SB_CLEAR){ fn = "atl_sb_clear"; is_void = 1; };
+        如果(s.builtin_id == B_SB_APPEND){ fn = "atl_sb_append"; is_void = 1; };
+        如果(s.builtin_id == B_SB_BUILD){ fn = "atl_sb_build"; };
+        如果(s.builtin_id == B_MEM_ALLOC){ fn = "atl_mem_alloc"; };
+        如果(s.builtin_id == B_MEM_FREE){ fn = "atl_mem_free"; is_void = 1; };
+        如果(s.builtin_id == B_MEM_REALLOC){ fn = "atl_mem_realloc"; };
+        如果(s.builtin_id == B_MEM_ALLOC_EXEC){ fn = "atl_mem_alloc_exec"; };
+        如果(s.builtin_id == B_MEM_SET_EXEC){ fn = "atl_mem_set_exec"; is_void = 1; };
+        如果(s.builtin_id == B_CODEPOINT){ fn = "atl_codepoint"; };
+        如果(s.builtin_id == B_TOINT){ fn = "atl_toint"; };
+        如果(s.builtin_id == B_SPLIT_LINES){ fn = "atl_str_split_lines"; };
+        如果(s.builtin_id == B_MEM_REPORT){ fn = "atl_mem_report"; is_void = 1; };
+        如果(s.builtin_id == B_FIND_FROM){ fn = "atl_str_find_from"; };
+        如果(s.builtin_id == B_DICT_GET){ fn = "atl_dict_get"; };
+        如果(s.builtin_id == B_DICT_SET){ fn = "atl_dict_set"; };
+        如果(s.builtin_id == B_FP_BITS){ fn = "atl_fp_bits"; };
+
+        如果(special == 1){
+
+            emit("    sub rsp, 32");
+            emit("    call atl_list_new");
+            emit("    add rsp, 32");
+            设 t_list = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_list + "], rax");
+            设 j = 0;
+            循环(j < n_args){
+                emit("    mov rdx, [rbp + " + slots.获取(has_this + j) + "]");
+                emit("    mov rcx, [rbp + " + t_list + "]");
+                emit("    sub rsp, 32");
+                emit("    call atl_list_add");
+                emit("    add rsp, 32");
+                j = j + 1;
+            };
+            emit("    mov rcx, [rbp + " + t_list + "]");
+            temp_free(ctx, 1);
+            emit("    sub rsp, 32");
+            emit("    call " + fn);
+            emit("    add rsp, 32");
+            如果(is_void == 1){
+                emit("    xor rax, rax");
+            };
+        }又如果(fn != 空){
+            gen_pos_call(ctx, fn, n_args, slots, has_this);
+            如果(is_void == 1){
+                emit("    xor rax, rax");
+            };
+        }否则{
+            emit("    xor rax, rax  ; builtin not implemented: " + s.builtin_id);
+        };
+        temp_free(ctx, total_args);
+        返回值 0;
+    };
+
+    如果(s.kind == SN_STRMETHOD){
+        设 fn = 空;
+        如果(s.strmethod_id == SM_LEN){ fn = "atl_str_len"; };
+        如果(s.strmethod_id == SM_CONTAINS){ fn = "atl_contains"; };
+        如果(s.strmethod_id == SM_SUB){ fn = "atl_str_sub"; };
+        如果(s.strmethod_id == SM_STARTS){ fn = "atl_str_starts"; };
+        如果(s.strmethod_id == SM_ENDS){ fn = "atl_str_ends"; };
+        如果(s.strmethod_id == SM_FIND_COUNT){ fn = "atl_str_find_count"; };
+        如果(s.strmethod_id == SM_FIND_LINE){ fn = "atl_str_find_line"; };        如果(s.strmethod_id == SM_FIND_POS){ fn = "atl_str_find_pos"; };
+        如果(s.strmethod_id == SM_ADD){ fn = "atl_list_add"; };
+        如果(s.strmethod_id == SM_LIST_ADD){
+
+            如果(n_args == 2){ fn = "atl_list_add_kv"; }否则{ fn = "atl_list_add"; };
+        };
+        如果(s.strmethod_id == SM_BYTE){ fn = "atl_str_byte"; };
+        如果(s.strmethod_id == SM_BYTE_SUB){ fn = "atl_str_byte_sub"; };
+
+        如果(s.strmethod_id == SM_UPPER){ fn = "atl_str_upper"; };
+        如果(s.strmethod_id == SM_LOWER){ fn = "atl_str_lower"; };
+        如果(s.strmethod_id == SM_REPLACE){ fn = "atl_str_replace"; };
+        如果(s.strmethod_id == SM_SPLIT){ fn = "atl_str_split"; };
+        如果(s.strmethod_id == SM_TRIM){ fn = "atl_str_trim"; };
+        如果(s.strmethod_id == SM_REPEAT){ fn = "atl_str_repeat"; };
+        如果(s.strmethod_id == SM_EQUALS){ fn = "atl_str_equals"; };
+
+        如果(s.strmethod_id == SM_LIST_DELETE){ fn = "atl_list_delete"; };
+        如果(s.strmethod_id == SM_LIST_CLEAR){ fn = "atl_list_clear"; };
+        如果(s.strmethod_id == SM_LIST_SORT){ fn = "atl_list_sort"; };
+        如果(s.strmethod_id == SM_LIST_REVERSE){ fn = "atl_list_reverse"; };
+        如果(s.strmethod_id == SM_LIST_DEDUP){ fn = "atl_list_dedup"; };
+        如果(s.strmethod_id == SM_LIST_CONTAINS){ fn = "atl_contains"; };
+        如果(s.strmethod_id == SM_LIST_FIND){ fn = "atl_list_find"; };
+        如果(s.strmethod_id == SM_LIST_COUNT){ fn = "atl_list_len"; };
+        如果(s.strmethod_id == SM_DICT_HAS_KEY){ fn = "atl_dict_has_key"; };
+        如果(s.strmethod_id == SM_DICT_DELETE_KEY){ fn = "atl_dict_delete_key"; };
+        如果(s.strmethod_id == SM_DICT_KEYS){ fn = "atl_dict_keys"; };
+        如果(s.strmethod_id == SM_DICT_VALUES){ fn = "atl_dict_values"; };
+        如果(s.strmethod_id == SM_DICT_GET){ fn = "atl_dict_get"; };
+        如果(s.strmethod_id == SM_DICT_SET){ fn = "atl_dict_set"; };
+
+        如果(s.strmethod_id == SM_LIST_MAP){ fn = "atl_list_map"; };
+        如果(s.strmethod_id == SM_LIST_FILTER){ fn = "atl_list_filter"; };
+        如果(s.strmethod_id == SM_LIST_REDUCE){ fn = "atl_list_reduce"; };
+
+        如果(fn != 空){
+
+            设 new_n = n_args + 1;
+            创建 ArrayList:new_slots;
+            gen_expr(n.obj, ctx);
+            设 off0 = temp_alloc(ctx);
+            emit("    mov [rbp + " + off0 + "], rax");
+            new_slots.添加(off0);
+            设 j = 0;
+            循环(j < n_args){
+                new_slots.添加(slots.获取(j));
+                j = j + 1;
+            };
+            设 stack_args = 0;
+            如果(new_n > 4){
+                stack_args = new_n - 4;
+            };
+            设 total = align16(32 + stack_args * 8);
+            emit("    sub rsp, " + total);
+            设 k = 4;
+            循环(k < new_n){
+                emit("    mov rax, [rbp + " + new_slots.获取(k) + "]");
+                emit("    mov [rsp + " + (32 + (k - 4) * 8) + "], rax");
+                k = k + 1;
+            };
+            设 m = 0;
+            循环(m < new_n && m < 4){
+                emit("    mov " + reg_name(m) + ", [rbp + " + new_slots.获取(m) + "]");
+                m = m + 1;
+            };
+
+            设 p = new_n;
+            循环(p < 4){
+                设 pn = reg_name(p);
+                emit("    xor " + pn + ", " + pn + "  ; missing arg");
+                p = p + 1;
+            };
+            emit("    call " + fn);
+            emit("    add rsp, " + total);
+            temp_free(ctx, 1);
+        }否则{
+            emit("    xor rax, rax  ; strmethod not implemented: " + s.strmethod_id);
+        };
+        temp_free(ctx, total_args);
+        返回值 0;
+    };
+
+    如果(s.kind == SN_LAMBDA){
+        emit("    mov rax, [rbp + " + s.offset + "]  ; lambda var");
+        emit("    mov rax, [rax + 8]   ; fn_addr");
+        设 stack_args = 0;
+        如果(n_args > 4){
+            stack_args = n_args - 4;
+        };
+        设 total = align16(32 + stack_args * 8);
+        emit("    sub rsp, " + total);
+        设 i = 4;
+        循环(i < n_args){
+            emit("    mov rax, [rbp + " + slots.获取(i) + "]");
+            emit("    mov [rsp + " + (32 + (i - 4) * 8) + "], rax");
+            i = i + 1;
+        };
+        设 j = 0;
+        循环(j < n_args && j < 4){
+            emit("    mov " + reg_name(j) + ", [rbp + " + slots.获取(j) + "]");
+            j = j + 1;
+        };
+        emit("    mov rax, [rbp + " + s.offset + "]  ; lambda var");
+        emit("    mov rax, [rax + 8]   ; fn_addr");
+        emit("    call rax");
+        emit("    add rsp, " + total);
+        temp_free(ctx, total_args);
+        返回值 0;
+    };
+
+    如果(s.kind == SN_RESULT_CHAIN){
+        设 rc_obj = 空;
+        如果(n.type == AST_METHODCALL){
+            rc_obj = n.obj;
+        }否则{
+            rc_obj = n.callee;
+        };
+        gen_expr(rc_obj, ctx);
+        设 t_obj = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_obj + "], rax  ; result obj");
+        emit("    mov rax, [rbp + " + t_obj + "]");
+        emit("    mov eax, [rax]");
+        emit("    cmp eax, 11");
+        设 l_skip = new_label();
+        设 l_done = new_label();
+        emit("    jne __atl_L" + l_skip + "  ; 非结果对象 → 原样返回");
+        emit("    mov rax, [rbp + " + t_obj + "]");
+        emit("    cmp qword [rax + 8], 0  ; is_success");
+        如果(n.method_name == "接着"){
+
+            emit("    je __atl_L" + l_skip);
+            emit("    mov rax, [rbp + " + t_obj + "]");
+            emit("    mov rcx, [rax + 16]  ; value");
+        }否则{
+
+            emit("    jne __atl_L" + l_skip);
+            emit("    mov rax, [rbp + " + t_obj + "]");
+            emit("    mov rcx, [rax + 24]  ; error");
+        };
+        emit("    mov rax, [rbp + " + slots.获取(0) + "]  ; callback");
+        emit("    mov rax, [rax + 8]   ; fn_addr");
+        emit("    sub rsp, 32");
+        emit("    call rax");
+        emit("    add rsp, 32");
+        emit("    jmp __atl_L" + l_done);
+        emit("__atl_L" + l_skip + ":");
+        emit("    mov rax, [rbp + " + t_obj + "]");
+        emit("__atl_L" + l_done + ":");
+        temp_free(ctx, 1);
+        返回值 0;
+    };
+
+    如果(s.kind == SN_DISPATCH){
+
+        创建 ASTNode:obj_node;
+        如果(n.type == AST_METHODCALL){
+            obj_node = n.obj;
+        }否则{
+            obj_node = n.callee;
+        };
+
+        如果(n.is_null_safe == 1){
+            设 l_skip = new_label();
+            设 l_end = new_label();
+            gen_expr(obj_node, ctx);
+            设 t_obj = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_obj + "], rax  ; ?. obj");
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_is_null");
+            emit("    add rsp, 32");
+            emit("    test eax, eax");
+            emit("    jnz __atl_L" + l_skip);
+            设 mid = -1;
+            如果(n.type == AST_METHODCALL && n.method_name != 空){
+                mid = add_strlit(n.method_name);
+            };
+            emit("    sub rsp, 32");
+            emit("    call atl_list_new");
+            emit("    add rsp, 32");
+            设 t_args = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_args + "], rax");
+            设 i = 0;
+            循环(i < n_args){
+                emit("    mov rdx, [rbp + " + slots.获取(i) + "]  ; arg " + i);
+                emit("    mov rcx, [rbp + " + t_args + "]");
+                emit("    sub rsp, 32");
+                emit("    call atl_list_add");
+                emit("    add rsp, 32");
+                i = i + 1;
+            };
+            emit("    mov r8, [rbp + " + t_args + "]  ; args_list");
+            如果(mid >= 0){
+                emit("    lea rdx, [__atl_str_" + mid + "_data]  ; method name");
+            }否则{
+                emit("    xor rdx, rdx");
+            };
+            emit("    mov rcx, [rbp + " + t_obj + "]  ; obj");
+            temp_free(ctx, 2);
+            emit("    sub rsp, 32");
+            emit("    call atl_method_call");
+            emit("    add rsp, 32");
+            temp_free(ctx, total_args);
+            emit("    jmp __atl_L" + l_end);
+            emit("__atl_L" + l_skip + ":");
+            emit("    sub rsp, 32");
+            emit("    call atl_null");
+            emit("    add rsp, 32");
+            emit("__atl_L" + l_end + ":");
+            返回值 0;
+        };
+        gen_expr(obj_node, ctx);
+        设 t_obj = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_obj + "], rax");
+        设 mid = -1;
+        如果(n.type == AST_METHODCALL && n.method_name != 空){
+            mid = add_strlit(n.method_name);
+        };
+
+        emit("    sub rsp, 32");
+        emit("    call atl_list_new");
+        emit("    add rsp, 32");
+        设 t_args = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_args + "], rax");
+        设 i = 0;
+        循环(i < n_args){
+
+            emit("    mov rdx, [rbp + " + slots.获取(i) + "]  ; arg " + i);
+            emit("    mov rcx, [rbp + " + t_args + "]");
+            emit("    sub rsp, 32");
+            emit("    call atl_list_add");
+            emit("    add rsp, 32");
+            i = i + 1;
+        };
+        emit("    mov r8, [rbp + " + t_args + "]  ; args_list");
+        如果(mid >= 0){
+            emit("    lea rdx, [__atl_str_" + mid + "_data]  ; method name");
+        }否则{
+            emit("    xor rdx, rdx");
+        };
+        emit("    mov rcx, [rbp + " + t_obj + "]  ; obj");
+        temp_free(ctx, 2);
+        emit("    sub rsp, 32");
+        emit("    call atl_method_call");
+        emit("    add rsp, 32");
+        temp_free(ctx, total_args);
+        返回值 0;
+    };
+
+    如果(s.kind == SN_METHOD || s.kind == SN_FUNC || s.kind == SN_PKGFUNC){
+        创建 SemMethod:target_m;
+        target_m = 空;
+
+        设 i = 0;
+        循环(i < g_sem_classes.长度()){
+            创建 SemClass:cls;
+            cls = g_sem_classes.获取(i);
+            设 j = 0;
+            循环(j < cls.methods.长度()){
+                创建 SemMethod:m;
+                m = cls.methods.获取(j);
+                如果(m.id == s.target_id){
+                    target_m = m;
+                    跳出;
+                };
+                j = j + 1;
+            };
+            如果(target_m != 空){
+                跳出;
+            };
+            i = i + 1;
+        };
+
+        如果(target_m == 空){
+            设 i = 0;
+            循环(i < g_sem_funcs.长度()){
+                创建 SemMethod:m;
+                m = g_sem_funcs.获取(i);
+                如果(m.id == s.target_id){
+                    target_m = m;
+                    跳出;
+                };
+                i = i + 1;
+            };
+        };
+
+        如果(target_m == 空){
+            设 i = 0;
+            循环(i < g_sem_hooks.长度()){
+                创建 SemMethod:m;
+                m = g_sem_hooks.获取(i);
+                如果(m.id == s.target_id){
+                    target_m = m;
+                    跳出;
+                };
+                i = i + 1;
+            };
+        };
+        如果(target_m != 空){
+            gen_call_seq(ctx, method_label(target_m), total_args, slots, has_this);
+        }否则{
+            emit("    xor rax, rax  ; call target not found: kind=" + s.kind + " id=" + s.target_id);
+        };
+
+        如果(n.block_arg != 空){
+            gen_stmt(n.block_arg, ctx);
+        };
+        temp_free(ctx, total_args);
+        返回值 0;
+    };
+
+    emit("    xor rax, rax  ; call unhandled kind " + s.kind);
+    temp_free(ctx, total_args);
+    返回值 0;
+};
+
+声明 gen_find_local(func, name){
+    如果(func == 空){ 返回值 空; };
+    创建 SemFunc:f;
+    f = func;
+    设 i = 0;
+    循环(i < f.locals.长度()){
+        创建 SemLocal:l;
+        l = f.locals.获取(i);
+        如果(l.name == name){
+            返回值 l;
+        };
+        i = i + 1;
+    };
+    返回值 空;
+};
+
+声明 gen_input_ref_slot(arg, ctx, callee, idx){
+    如果(callee == 空){ 返回值 0; };
+    创建 SemNode:cs0;
+    cs0 = callee;
+    如果(cs0.builtin_id != B_INPUT || idx != 1){ 返回值 0; };
+    如果(arg == 空){ 返回值 0; };
+    创建 ASTNode:a0;
+    a0 = arg;
+    如果(a0.type != AST_REF){ 返回值 0; };
+    如果(a0.operand == 空){ 返回值 0; };
+    创建 ASTNode:rop;
+    rop = a0.operand;
+    如果(rop.type != AST_VAR || rop.sval == 空){ 返回值 0; };
+    设 roff = 0;
+    设 rglobal = 0;
+    设 rfound = 0;
+    如果(rop.sem != 空){
+        如果(rop.sem.kind == SN_LOCAL){
+            roff = rop.sem.offset;
+            rfound = 1;
+        }又如果(rop.sem.kind == SN_GLOBAL){
+            roff = rop.sem.offset;
+            rglobal = 1;
+            rfound = 1;
+        };
+    }否则{
+
+        创建 SemLocal:rl;
+        rl = gen_find_local(ctx.func, rop.sval);
+        如果(rl != 空){
+            roff = rl.offset;
+            rfound = 1;
+        };
+    };
+    如果(rfound == 0){ 返回值 0; };
+    如果(rglobal == 1){
+        emit("    lea rax, [" + global_label(roff) + "]  ; &" + rop.sval);
+    }否则{
+        emit("    lea rax, [rbp + " + roff + "]  ; &" + rop.sval);
+    };
+    返回值 1;
+};
+
+声明 gen_stmt(node, c){
+    如果(node == 空){
+        返回值 0;
+    };
+    创建 ASTNode:n;
+    n = node;
+    创建 Ctx:ctx;
+    ctx = c;
+
+    如果(n.type == AST_BLOCK){
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                gen_stmt(n.children.获取(i), ctx);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_VARDECL){
+        如果(n.var_names != 空){
+            设 i = 0;
+            循环(i < n.var_names.长度()){
+                设 vn = n.var_names.获取(i);
+                如果(i < n.var_inits.长度()){
+                    创建 ASTNode:init;
+                    init = n.var_inits.获取(i);
+                    如果(init != 空){
+
+                        创建 SemLocal:l;
+                        l = gen_find_local(ctx.func, vn);
+                        设 use_raw = 0;
+                        如果(l != 空 && l.type_kind == T_INT && init.sem != 空){
+                            创建 SemNode:in;
+                            in = init.sem;
+                            如果(in.type_kind == T_INT){ use_raw = 1; };
+                        };
+                        设 use_raw_float = 0;
+                        如果(l != 空 && l.type_kind == T_FLOAT && init.sem != 空){
+                            创建 SemNode:inf;
+                            inf = init.sem;
+                            如果(inf.type_kind == T_FLOAT){ use_raw_float = 1; };
+                        };
+                        如果(use_raw == 1){
+                            gen_int_value(init, ctx);
+                            emit("    mov [rbp + " + l.offset + "], rax  ; var " + vn + " (raw int)");
+                        }又如果(use_raw_float == 1){
+                            gen_float_value(init, ctx);
+                            emit("    movsd [rbp + " + l.offset + "], xmm0  ; var " + vn + " (raw double)");
+                        }否则{
+                            gen_expr(init, ctx);
+                            如果(l != 空){
+                                emit("    mov [rbp + " + l.offset + "], rax  ; var " + vn);
+                            }又如果(ctx.cls != 空){
+                                设 fi = sem_find_field(ctx.cls, vn);
+                                如果(fi >= 0){
+                                    emit("    mov rdx, rax  ; save val");
+                                    emit("    mov rax, [rbp + " + ctx.this_offset + "]  ; this");
+                                    emit("    mov rax, [rax + 8]   ; inst");
+                                    emit("    mov rax, [rax + 8]   ; field_vals");
+                                    emit("    mov [rax + " + (fi * 8) + "], rdx  ; field " + vn);
+                                };
+                            };
+                        };
+                    };
+                }又如果(n.is_exist == 1){
+                    创建 SemLocal:l;
+                    l = gen_find_local(ctx.func, vn);
+                    如果(l != 空){
+                        emit("    sub rsp, 32");
+                        emit("    call atl_null");
+                        emit("    add rsp, 32");
+                        emit("    mov [rbp + " + l.offset + "], rax  ; var " + vn + " exist");
+                    };
+                };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_ASSIGN){
+        设 op = n.op;
+        如果(op == TOK_ASSIGN){
+
+            如果(n.lhs != 空 && n.lhs.type == AST_VAR && n.rhs != 空 && n.rhs.type == AST_BINARY &&
+               n.rhs.op == TOK_PLUS && n.rhs.lhs != 空 && n.rhs.lhs.type == AST_VAR &&
+               n.rhs.lhs.sval == n.lhs.sval && n.rhs.rhs != 空 && n.rhs.rhs.type == AST_LITERAL &&
+               n.rhs.rhs.op == LIT_STRING){
+                创建 SemLocal:sacc;
+                sacc = gen_find_local(ctx.func, n.lhs.sval);
+                如果(sacc != 空 && sacc.type_kind != T_INT && sacc.type_kind != T_FLOAT){
+                    如果(g_cur_func_body != 空 && str_acc_safe_stmt(g_cur_func_body, n.lhs.sval) == 1){
+                        gen_expr(n.rhs.rhs, ctx);
+                        emit("    mov rdx, rax  ; suffix");
+                        emit("    mov rcx, [rbp + " + sacc.offset + "]  ; s (累加器)");
+                        emit("    sub rsp, 32");
+                        emit("    call atl_str_append_self");
+                        emit("    add rsp, 32");
+                        emit("    mov [rbp + " + sacc.offset + "], rax  ; s = 追加后");
+                        返回值 0;
+                    };
+                };
+            };
+
+            创建 ASTNode:lhs_node;
+            lhs_node = n.lhs;
+            如果(lhs_node != 空 && (lhs_node.type == AST_HOOKCALL || lhs_node.type == AST_MODCALL || lhs_node.type == AST_CALL)){
+                gen_expr(n.lhs, ctx);
+
+                创建 ASTNode:rhs_node2;
+                rhs_node2 = n.rhs;
+                创建 SemLocal:rl2;
+                rl2 = 空;
+                如果(rhs_node2 != 空 && rhs_node2.type == AST_VAR){
+                    rl2 = gen_find_local(ctx.func, rhs_node2.sval);
+                    如果(rl2 != 空 && rl2.type_kind == T_INT && lhs_node.type != AST_CALL){
+                        emit("    mov rcx, rax");
+                        emit("    sub rsp, 32");
+                        emit("    call atl_toint");
+                        emit("    add rsp, 32");
+                        emit("    mov rax, [rax + 8]  ; unbox int");
+                    };
+                };
+                gen_store(n.rhs, ctx);
+            }否则{
+
+                设 use_raw = 0;
+                创建 ASTNode:asgn_lhs;
+                asgn_lhs = n.lhs;
+                创建 SemLocal:al;
+                al = 空;
+                如果(asgn_lhs != 空 && asgn_lhs.type == AST_VAR){
+                    al = gen_find_local(ctx.func, asgn_lhs.sval);
+                    如果(al != 空 && al.type_kind == T_INT && n.rhs != 空 && n.rhs.sem != 空){
+                        创建 SemNode:arn;
+                        arn = n.rhs.sem;
+                        如果(arn.type_kind == T_INT){ use_raw = 1; };
+                    };
+                };
+                设 use_raw_float = 0;
+                如果(al != 空 && al.type_kind == T_FLOAT && n.rhs != 空 && n.rhs.sem != 空){
+                    创建 SemNode:arnf;
+                    arnf = n.rhs.sem;
+                    如果(arnf.type_kind == T_FLOAT){ use_raw_float = 1; };
+                };
+                如果(use_raw_float == 1){
+                    gen_float_value(n.rhs, ctx);
+                    emit("    movsd [rbp + " + al.offset + "], xmm0  ; " + asgn_lhs.sval + " (raw double)");
+                }又如果(use_raw == 1){
+                    如果(al.offset == ctx.loop_counter_off){
+
+                        创建 ASTNode:cr;
+                        cr = n.rhs;
+                        如果(cr.type == AST_BINARY && (cr.op == TOK_PLUS || cr.op == TOK_MINUS) &&
+                           cr.rhs != 空 && cr.rhs.type == AST_LITERAL && cr.rhs.op == LIT_INT){
+                            如果(cr.op == TOK_PLUS){
+                                emit("    add r12, " + cr.rhs.ival + "  ; " + asgn_lhs.sval + " (counter)");
+                            }否则{
+                                emit("    sub r12, " + cr.rhs.ival + "  ; " + asgn_lhs.sval + " (counter)");
+                            };
+                            emit("    mov [rbp + " + al.offset + "], r12  ; 保存点");
+                            返回值 0;
+                        };
+                    };
+                    gen_int_value(n.rhs, ctx);
+                    emit("    mov [rbp + " + al.offset + "], rax  ; " + asgn_lhs.sval + " (raw int)");
+                }否则{
+
+                    创建 ASTNode:wrhs;
+                    wrhs = n.rhs;
+                    如果(wrhs != 空 && wrhs.type == AST_CALL && wrhs.args != 空 &&
+                       wrhs.args.长度() == 1 && wrhs.callee != 空 && wrhs.callee.sval == "写入文件"){
+                        gen_expr(wrhs.args.获取(0), ctx);
+                        设 t_p2 = temp_alloc(ctx);
+                        emit("    mov [rbp + " + t_p2 + "], rax  ; 路径");
+                        emit("    mov rcx, rax");
+                        emit("    sub rsp, 32");
+                        emit("    call atl_file_create");
+                        emit("    add rsp, 32");
+                        设 t_h2 = temp_alloc(ctx);
+                        emit("    mov [rbp + " + t_h2 + "], rax  ; 句柄");
+                        gen_expr(n.lhs, ctx);
+                        emit("    mov rcx, [rbp + " + t_h2 + "]");
+                        emit("    mov rdx, rax");
+                        emit("    sub rsp, 32");
+                        emit("    call atl_file_write");
+                        emit("    add rsp, 32");
+                        设 t_w2 = temp_alloc(ctx);
+                        emit("    mov [rbp + " + t_w2 + "], rax  ; 写入返回值");
+                        emit("    mov rcx, [rbp + " + t_h2 + "]");
+                        emit("    sub rsp, 32");
+                        emit("    call atl_file_close");
+                        emit("    add rsp, 32");
+                        emit("    mov rax, [rbp + " + t_w2 + "]");
+                        temp_free(ctx, 3);
+                        gen_store(n.lhs, ctx);
+                        返回值 0;
+                    };
+                    gen_expr(n.rhs, ctx);
+                    gen_store(n.lhs, ctx);
+                };
+            };
+        }又如果(op == TOK_PLUSEQ || op == TOK_MINUSEQ){
+
+            设 use_raw = 0;
+            创建 ASTNode:plhs;
+            plhs = n.lhs;
+            创建 SemLocal:pl;
+            pl = 空;
+            如果(plhs != 空 && plhs.type == AST_VAR){
+                pl = gen_find_local(ctx.func, plhs.sval);
+                如果(pl != 空 && pl.type_kind == T_INT){ use_raw = 1; };
+            };
+            如果(use_raw == 1){
+                如果(pl.offset == ctx.loop_counter_off && n.rhs != 空 &&
+                   n.rhs.type == AST_LITERAL && n.rhs.op == LIT_INT){
+
+                    如果(op == TOK_PLUSEQ){
+                        emit("    add r12, " + n.rhs.ival + "  ; " + plhs.sval + " (counter)");
+                    }否则{
+                        emit("    sub r12, " + n.rhs.ival + "  ; " + plhs.sval + " (counter)");
+                    };
+                    emit("    mov [rbp + " + pl.offset + "], r12  ; 保存点");
+                    返回值 0;
+                };
+                gen_int_value(n.lhs, ctx);
+                gen_int_value(n.rhs, ctx);
+                emit("    mov rcx, rax");
+                emit("    mov rax, [rbp + " + pl.offset + "]");
+                如果(op == TOK_PLUSEQ){
+                    emit("    add rax, rcx");
+                }否则{
+                    emit("    sub rax, rcx");
+                };
+                emit("    mov [rbp + " + pl.offset + "], rax  ; " + plhs.sval + " (raw int)");
+            }否则{
+                gen_expr(n.lhs, ctx);
+                设 t_lhs = temp_alloc(ctx);
+                emit("    mov [rbp + " + t_lhs + "], rax");
+                gen_expr(n.rhs, ctx);
+                emit("    mov rdx, rax");
+                emit("    mov rcx, [rbp + " + t_lhs + "]");
+                temp_free(ctx, 1);
+                设 fn = "atl_add";
+                如果(op == TOK_MINUSEQ){
+                    fn = "atl_sub";
+                };
+                emit("    sub rsp, 32");
+                emit("    call " + fn);
+                emit("    add rsp, 32");
+                gen_store(n.lhs, ctx);
+            };
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_IF){
+        设 l_else = new_label();
+        设 l_end = new_label();
+
+        如果(gen_cond_jmp_false(n.cond, ctx, l_else) == 0){
+            gen_expr(n.cond, ctx);
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_truthy");
+            emit("    add rsp, 32");
+            emit("    test eax, eax");
+            emit("    jz __atl_L" + l_else);
+        };
+        gen_stmt(n.then_block, ctx);
+        emit("    jmp __atl_L" + l_end);
+        emit("__atl_L" + l_else + ":");
+        如果(n.else_block != 空){
+            gen_stmt(n.else_block, ctx);
+        };
+        emit("__atl_L" + l_end + ":");
+        返回值 0;
+    };
+
+    如果(n.type == AST_SELECT){
+        设 l_end = new_label();
+        如果(n.obj != 空){
+
+            gen_expr(n.obj, ctx);
+            设 t_subj = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_subj + "], rax");
+
+            创建 ArrayList:sel_ch;
+            sel_ch = n.children;
+            如果(sel_ch != 空){
+                设 i = 0;
+                循环(i < sel_ch.长度()){
+                    创建 ASTNode:cs;
+                    cs = sel_ch.获取(i);
+                    设 l_next = new_label();
+                    如果(cs.is_default == 1){
+                        创建 ArrayList:case_bodies;
+                        case_bodies = cs.children;
+                        如果(case_bodies != 空){
+                            设 j = 0;
+                            循环(j < case_bodies.长度()){
+                                gen_stmt(case_bodies.获取(j), ctx);
+                                j = j + 1;
+                            };
+                        };
+                        emit("    jmp __atl_L" + l_end);
+                        跳出;
+                    };
+                    如果(cs.case_cond != 空 || cs.case_kind == 2 || cs.case_kind == 1 || cs.case_kind == 4){
+
+                        如果(cs.case_kind == 1){
+                            创建 ArrayList:case_bodies_w;
+                            case_bodies_w = cs.children;
+                            如果(case_bodies_w != 空){
+                                设 j = 0;
+                                循环(j < case_bodies_w.长度()){
+                                    gen_stmt(case_bodies_w.获取(j), ctx);
+                                    j = j + 1;
+                                };
+                            };
+                            emit("    jmp __atl_L" + l_end);
+                            emit("__atl_L" + l_next + ":");
+                        }又如果(cs.case_kind == 2){
+
+                            创建 ArrayList:tn_l;
+                            tn_l = cs.case_type_names;
+                            设 tn_count = 0;
+                            如果(tn_l != 空){ tn_count = tn_l.长度(); };
+                            设 l_hit = new_label();
+                            设 tni = 0;
+                            循环(tni < tn_count){
+                                设 tname = tn_l.获取(tni);
+                                emit("    mov rax, [rbp + " + t_subj + "]");
+                                emit("    mov eax, [rax]  ; tag");
+                                如果(tname == "整"){
+                                    emit("    cmp eax, 2");
+                                    emit("    je __atl_L" + l_hit);
+                                }又如果(tname == "小数"){
+                                    emit("    cmp eax, 3");
+                                    emit("    je __atl_L" + l_hit);
+                                }又如果(tname == "字"){
+                                    emit("    cmp eax, 4");
+                                    emit("    je __atl_L" + l_hit);
+                                }又如果(tname == "列表"){
+                                    emit("    cmp eax, 5");
+                                    emit("    je __atl_L" + l_hit);
+                                }又如果(tname == "函数"){
+                                    emit("    cmp eax, 6");
+                                    emit("    je __atl_L" + l_hit);
+                                }又如果(tname == "结果"){
+                                    emit("    cmp eax, 11");
+                                    emit("    je __atl_L" + l_hit);
+                                }否则{
+
+                                    设 l_tnskip = new_label();
+                                    emit("    cmp eax, 7");
+                                    emit("    jne __atl_L" + l_tnskip);
+                                    emit("    mov rax, [rbp + " + t_subj + "]");
+                                    emit("    mov rax, [rax + 8]  ; inst");
+                                    emit("    mov rcx, [rax + 24]  ; cls_name");
+                                    设 cid2 = add_strlit(tname);
+                                    emit("    lea rdx, [__atl_str_" + cid2 + "_data]");
+                                    emit("    sub rsp, 32");
+                                    emit("    call atl_strcmp");
+                                    emit("    add rsp, 32");
+                                    emit("    test eax, eax");
+                                    emit("    jz __atl_L" + l_hit);
+                                    emit("__atl_L" + l_tnskip + ":");
+                                };
+                                tni = tni + 1;
+                            };
+                            emit("    jmp __atl_L" + l_next);
+                            emit("__atl_L" + l_hit + ":");
+                            创建 ArrayList:case_bodies_t;
+                            case_bodies_t = cs.children;
+                            如果(case_bodies_t != 空){
+                                设 j = 0;
+                                循环(j < case_bodies_t.长度()){
+                                    gen_stmt(case_bodies_t.获取(j), ctx);
+                                    j = j + 1;
+                                };
+                            };
+                            emit("    jmp __atl_L" + l_end);
+                            emit("__atl_L" + l_next + ":");
+                        }又如果(cs.case_kind == 4){
+
+                            设 l_dskip = new_label();
+                            设 l_dhit = new_label();
+                            emit("    mov rax, [rbp + " + t_subj + "]");
+                            emit("    mov eax, [rax]  ; tag");
+                            emit("    cmp eax, 7");
+                            emit("    jne __atl_L" + l_dskip);
+                            emit("    mov rax, [rbp + " + t_subj + "]");
+                            emit("    mov rax, [rax + 8]  ; inst");
+                            emit("    mov rcx, [rax + 24]  ; cls_name");
+                            设 cid3 = add_strlit(cs.case_destruct_cls);
+                            emit("    lea rdx, [__atl_str_" + cid3 + "_data]");
+                            emit("    sub rsp, 32");
+                            emit("    call atl_strcmp");
+                            emit("    add rsp, 32");
+                            emit("    test eax, eax");
+                            emit("    jnz __atl_L" + l_dskip);
+                            emit("__atl_L" + l_dhit + ":");
+
+                            创建 ArrayList:dv_c;
+                            dv_c = cs.case_destruct_vars;
+                            设 dc = 0;
+                            循环(dc < dv_c.长度()){
+                                设 dvn_c = dv_c.获取(dc);
+                                设 dl2 = sem_find_local(ctx.func, dvn_c);
+                                如果(dl2 != 空){
+                                    创建 SemLocal:dl3;
+                                    dl3 = dl2;
+                                    emit("    mov rax, [rbp + " + t_subj + "]");
+                                    emit("    mov rax, [rax + 8]  ; inst");
+                                    emit("    mov rcx, [rax + 8]  ; field_vals");
+                                    emit("    mov rdx, [rcx + " + (dc * 8) + "]  ; field " + dc);
+                                    emit("    mov [rbp + " + dl3.offset + "], rdx");
+                                };
+                                dc = dc + 1;
+                            };
+                            创建 ArrayList:case_bodies_d;
+                            case_bodies_d = cs.children;
+                            如果(case_bodies_d != 空){
+                                设 j = 0;
+                                循环(j < case_bodies_d.长度()){
+                                    gen_stmt(case_bodies_d.获取(j), ctx);
+                                    j = j + 1;
+                                };
+                            };
+                            emit("    jmp __atl_L" + l_end);
+                            emit("__atl_L" + l_dskip + ":");
+                        }否则{
+
+                            gen_expr(cs.case_cond, ctx);
+                            emit("    mov rdx, rax");
+                            emit("    mov rcx, [rbp + " + t_subj + "]");
+                            emit("    sub rsp, 32");
+                            emit("    call atl_eq");
+                            emit("    add rsp, 32");
+                            emit("    mov rcx, rax");
+                            emit("    sub rsp, 32");
+                            emit("    call atl_truthy");
+                            emit("    add rsp, 32");
+                            emit("    test eax, eax");
+                            emit("    jnz __atl_L" + l_next + "_m");
+
+                            如果(cs.case_alt != 空){
+                                创建 ArrayList:alt_l;
+                                alt_l = cs.case_alt;
+                                设 ai = 0;
+                                循环(ai < alt_l.长度()){
+                                    创建 ASTNode:alt_e;
+                                    alt_e = alt_l.获取(ai);
+                                    如果(alt_e != 空){
+                                        gen_expr(alt_e, ctx);
+                                        emit("    mov rdx, rax");
+                                        emit("    mov rcx, [rbp + " + t_subj + "]");
+                                        emit("    sub rsp, 32");
+                                        emit("    call atl_eq");
+                                        emit("    add rsp, 32");
+                                        emit("    mov rcx, rax");
+                                        emit("    sub rsp, 32");
+                                        emit("    call atl_truthy");
+                                        emit("    add rsp, 32");
+                                        emit("    test eax, eax");
+                                        emit("    jnz __atl_L" + l_next + "_m");
+                                    };
+                                    ai = ai + 1;
+                                };
+                            };
+                            emit("    jmp __atl_L" + l_next);
+                            emit("__atl_L" + l_next + "_m:");
+
+                            如果(cs.case_kind == 3 && cs.lhs != 空){
+                                gen_expr(cs.lhs, ctx);
+                                emit("    mov rcx, rax");
+                                emit("    sub rsp, 32");
+                                emit("    call atl_truthy");
+                                emit("    add rsp, 32");
+                                emit("    test eax, eax");
+                                emit("    jz __atl_L" + l_next);
+                            };
+                            创建 ArrayList:case_bodies2;
+                            case_bodies2 = cs.children;
+                            如果(case_bodies2 != 空){
+                                设 j = 0;
+                                循环(j < case_bodies2.长度()){
+                                    gen_stmt(case_bodies2.获取(j), ctx);
+                                    j = j + 1;
+                                };
+                            };
+                            emit("    jmp __atl_L" + l_end);
+                            emit("__atl_L" + l_next + ":");
+                        };
+                    };
+                    i = i + 1;
+                };
+            };
+            temp_free(ctx, 1);
+        }否则{
+
+            创建 ArrayList:sel_ch2;
+            sel_ch2 = n.children;
+            如果(sel_ch2 != 空){
+                设 i = 0;
+                循环(i < sel_ch2.长度()){
+                    创建 ASTNode:cs;
+                    cs = sel_ch2.获取(i);
+                    设 l_next = new_label();
+                    如果(cs.is_default == 1){
+                        创建 ArrayList:case_bodies3;
+                        case_bodies3 = cs.children;
+                        如果(case_bodies3 != 空){
+                            设 j = 0;
+                            循环(j < case_bodies3.长度()){
+                                gen_stmt(case_bodies3.获取(j), ctx);
+                                j = j + 1;
+                            };
+                        };
+                        emit("    jmp __atl_L" + l_end);
+                        跳出;
+                    };
+                    如果(cs.case_cond != 空){
+                        gen_expr(cs.case_cond, ctx);
+                        emit("    mov rcx, rax");
+                        emit("    sub rsp, 32");
+                        emit("    call atl_truthy");
+                        emit("    add rsp, 32");
+                        emit("    test eax, eax");
+                        emit("    jz __atl_L" + l_next);
+                        创建 ArrayList:case_bodies4;
+                        case_bodies4 = cs.children;
+                        如果(case_bodies4 != 空){
+                            设 j = 0;
+                            循环(j < case_bodies4.长度()){
+                                gen_stmt(case_bodies4.获取(j), ctx);
+                                j = j + 1;
+                            };
+                        };
+                        emit("    jmp __atl_L" + l_end);
+                        emit("__atl_L" + l_next + ":");
+                    };
+                    i = i + 1;
+                };
+            };
+        };
+        emit("__atl_L" + l_end + ":");
+        返回值 0;
+    };
+
+    如果(n.type == AST_LOOP){
+        设 l_break = new_label();
+        设 l_continue = new_label();
+        设 l_start = new_label();
+        设 saved_break = ctx.loop_break;
+        设 saved_continue = ctx.loop_continue;
+        ctx.loop_break = l_break;
+        ctx.loop_continue = l_continue;
+
+        设 saved_counter = ctx.loop_counter_off;
+        如果(saved_counter != 0){
+            emit("    mov [rbp + " + saved_counter + "], r12  ; spill outer counter");
+        };
+        创建 SemLocal:ctr;
+        ctr = find_loop_counter(n, ctx);
+        如果(ctr != 空){
+            ctx.loop_counter_off = ctr.offset;
+            g_func_uses_r12 = 1;
+        }否则{
+            ctx.loop_counter_off = 0;
+        };
+
+        如果(n.loop_kind == LOOP_INFINITE){
+            emit("__atl_L" + l_start + ":");
+            gen_stmt(n.loop_body, ctx);
+            emit("    jmp __atl_L" + l_start);
+            emit("__atl_L" + l_continue + ":");
+            emit("__atl_L" + l_break + ":");
+        }又如果(n.loop_kind == LOOP_COUNT){
+
+            gen_expr(n.loop_count, ctx);
+            emit("    mov rax, [rax + 8]  ; unbox int");
+            设 t_count = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_count + "], rax");
+            emit("    xor rax, rax  ; i = 0");
+            设 t_i = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_i + "], rax");
+            emit("__atl_L" + l_start + ":");
+            emit("    mov rax, [rbp + " + t_i + "]");
+            emit("    cmp rax, [rbp + " + t_count + "]");
+            emit("    jge __atl_L" + l_break);
+            gen_stmt(n.loop_body, ctx);
+            emit("__atl_L" + l_continue + ":");
+            emit("    mov rax, [rbp + " + t_i + "]");
+            emit("    inc rax");
+            emit("    mov [rbp + " + t_i + "], rax");
+            emit("    jmp __atl_L" + l_start);
+            emit("__atl_L" + l_break + ":");
+            temp_free(ctx, 2);
+        }又如果(n.loop_kind == LOOP_COND){
+
+            如果(ctx.loop_counter_off != 0){
+                emit("    mov r12, [rbp + " + ctx.loop_counter_off + "]  ; load counter");
+            };
+            emit("__atl_L" + l_start + ":");
+
+            如果(gen_cond_jmp_false(n.loop_cond, ctx, l_break) == 0){
+                gen_expr(n.loop_cond, ctx);
+                emit("    mov rcx, rax");
+                emit("    sub rsp, 32");
+                emit("    call atl_truthy");
+                emit("    add rsp, 32");
+                emit("    test eax, eax");
+                emit("    jz __atl_L" + l_break);
+            };
+            gen_stmt(n.loop_body, ctx);
+            emit("__atl_L" + l_continue + ":");
+            emit("    jmp __atl_L" + l_start);
+            emit("__atl_L" + l_break + ":");
+        }又如果(n.loop_kind == LOOP_CFOR){
+            如果(n.loop_init != 空){
+                gen_stmt(n.loop_init, ctx);
+            };
+
+            如果(ctx.loop_counter_off != 0){
+                emit("    mov r12, [rbp + " + ctx.loop_counter_off + "]  ; load counter");
+            };
+            emit("__atl_L" + l_start + ":");
+            如果(n.loop_cond != 空){
+                如果(gen_cond_jmp_false(n.loop_cond, ctx, l_break) == 0){
+                    gen_expr(n.loop_cond, ctx);
+                    emit("    mov rcx, rax");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_truthy");
+                    emit("    add rsp, 32");
+                    emit("    test eax, eax");
+                    emit("    jz __atl_L" + l_break);
+                };
+            };
+            gen_stmt(n.loop_body, ctx);
+            emit("__atl_L" + l_continue + ":");
+            如果(n.loop_step != 空){
+                gen_stmt(n.loop_step, ctx);
+            };
+            emit("    jmp __atl_L" + l_start);
+            emit("__atl_L" + l_break + ":");
+        }又如果(n.loop_kind == LOOP_FOREACH){
+
+            gen_expr(n.loop_cond, ctx);
+            设 t_list = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_list + "], rax");
+            emit("    mov rcx, [rbp + " + t_list + "]");
+            emit("    sub rsp, 32");
+            emit("    call atl_str_len");
+            emit("    add rsp, 32");
+            emit("    mov rax, [rax + 8]  ; unbox int");
+            设 t_len = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_len + "], rax");
+            emit("    xor rax, rax");
+            设 t_idx = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_idx + "], rax");
+            emit("__atl_L" + l_start + ":");
+            emit("    mov rax, [rbp + " + t_idx + "]");
+            emit("    cmp rax, [rbp + " + t_len + "]");
+            emit("    jge __atl_L" + l_break);
+
+            emit("    mov rax, [rbp + " + t_idx + "]");
+            emit("    mov rcx, rax  ; idx for atl_int");
+            emit("    sub rsp, 32");
+            emit("    call atl_int");
+            emit("    add rsp, 32");
+            emit("    mov rdx, rax  ; idx");
+            emit("    mov rcx, [rbp + " + t_list + "]  ; list");
+            emit("    sub rsp, 32");
+            emit("    call atl_list_get");
+            emit("    add rsp, 32");
+
+            如果(n.loop_item != 空){
+                创建 ASTNode:item_node;
+                item_node = n.loop_item;
+                如果(item_node.sval != 空){
+                    设 iname = item_node.sval;
+                    创建 SemLocal:l;
+                    l = gen_find_local(ctx.func, iname);
+                    如果(l != 空){
+                        如果(n.loop_item2 != 空){
+
+                            设 t_pair = temp_alloc(ctx);
+                            emit("    mov [rbp + " + t_pair + "], rax  ; pair");
+                            emit("    mov rax, [rax + 8]   ; pair->as.list");
+                            emit("    mov rax, [rax]       ; items (AtlObj**)");
+                            emit("    mov rax, [rax]       ; items[0] = key");
+                            emit("    mov [rbp + " + l.offset + "], rax  ; " + iname + " (key)");
+                            创建 ASTNode:item2_node;
+                            item2_node = n.loop_item2;
+                            如果(item2_node.sval != 空){
+                                设 iname2 = item2_node.sval;
+                                创建 SemLocal:l2;
+                                l2 = gen_find_local(ctx.func, iname2);
+                                如果(l2 != 空){
+                                    emit("    mov rax, [rbp + " + t_pair + "]");
+                                    emit("    mov rax, [rax + 8]   ; pair->as.list");
+                                    emit("    mov rax, [rax]       ; items (AtlObj**)");
+                                    emit("    mov rax, [rax + 8]   ; items[1] = value");
+                                    emit("    mov [rbp + " + l2.offset + "], rax  ; " + iname2 + " (value)");
+                                };
+                            };
+                            temp_free(ctx, 1);
+                        }否则{
+                            emit("    mov [rbp + " + l.offset + "], rax  ; " + iname);
+                        };
+                    };
+                };
+            };
+            gen_stmt(n.loop_body, ctx);
+            emit("__atl_L" + l_continue + ":");
+            emit("    mov rax, [rbp + " + t_idx + "]");
+            emit("    inc rax");
+            emit("    mov [rbp + " + t_idx + "], rax");
+            emit("    jmp __atl_L" + l_start);
+            emit("__atl_L" + l_break + ":");
+            temp_free(ctx, 3);
+        }又如果(n.loop_kind == LOOP_UNTIL){
+
+            emit("__atl_L" + l_start + ":");
+            gen_stmt(n.loop_body, ctx);
+            emit("__atl_L" + l_continue + ":");
+            如果(n.loop_cond != 空){
+                如果(gen_cond_jmp_false(n.loop_cond, ctx, l_start) == 0){
+
+                    gen_expr(n.loop_cond, ctx);
+                    emit("    mov rcx, rax");
+                    emit("    sub rsp, 32");
+                    emit("    call atl_truthy");
+                    emit("    add rsp, 32");
+                    emit("    test eax, eax");
+                    emit("    jz __atl_L" + l_start);
+                };
+            }否则{
+                emit("    jmp __atl_L" + l_start);
+            };
+            emit("    jmp __atl_L" + l_break);
+            emit("__atl_L" + l_break + ":");
+        };
+
+        如果(ctx.loop_counter_off != 0){
+            emit("    mov [rbp + " + ctx.loop_counter_off + "], r12  ; counter writeback");
+        };
+        如果(saved_counter != 0){
+            emit("    mov r12, [rbp + " + saved_counter + "]  ; restore outer counter");
+            ctx.loop_counter_off = saved_counter;
+        }否则{
+            ctx.loop_counter_off = 0;
+        };
+
+        ctx.loop_break = saved_break;
+        ctx.loop_continue = saved_continue;
+        返回值 0;
+    };
+
+    如果(n.type == AST_RETURN){
+
+        如果(n.ret_value != 空){
+            如果(ctx.func != 空 && ctx.func.ret_type_kind == T_INT){
+                gen_int_value(n.ret_value, ctx);
+            }否则{
+                gen_expr(n.ret_value, ctx);
+            };
+        }否则{
+            emit("    sub rsp, 32");
+            emit("    call atl_null");
+            emit("    add rsp, 32");
+        };
+
+        如果(g_func_is_leaf == 0){
+
+            设 t_ret = temp_alloc(ctx);
+            emit("    mov [rbp + " + t_ret + "], rax  ; save return value");
+            emit("    sub rsp, 32");
+            emit("    call gc_pop_frame");
+            emit("    add rsp, 32");
+            emit("    mov rax, [rbp + " + t_ret + "]  ; restore return value");
+            temp_free(ctx, 1);
+        };
+        emit("    mov rsp, rbp");
+
+        如果(g_func_uses_r12 == 1){
+            emit("    sub rsp, 8");
+            emit("    pop r12  ; T3 counter restore");
+        };
+        emit("    pop rbp");
+        emit("    ret");
+        返回值 0;
+    };
+
+    如果(n.type == AST_BREAK){
+        emit("    jmp __atl_L" + ctx.loop_break);
+        返回值 0;
+    };
+
+    如果(n.type == AST_CONTINUE){
+        emit("    jmp __atl_L" + ctx.loop_continue);
+        返回值 0;
+    };
+
+    如果(n.type == AST_WAIT){
+
+        gen_expr(n.ret_value, ctx);
+        设 mul = 1000;
+        如果(n.wait_unit == TOK_SEC){ mul = 1000; };
+        如果(n.wait_unit == TOK_MIN){ mul = 60000; };
+        如果(n.wait_unit == TOK_HOUR){ mul = 3600000; };
+        设 wid = new_label();
+        设 mid = add_fplit(mul);
+        emit("    mov rcx, [rax]  ; tag");
+        emit("    cmp rcx, 3  ; 浮点 tag=3");
+        emit("    jne .w_int_" + wid);
+        emit("    mov rax, [rax + 8]  ; double 秒值");
+        emit("    movq xmm0, rax");
+        emit("    mulsd xmm0, [__atl_fp_" + mid + "]  ; ×" + mul + " → 毫秒");
+        emit("    cvttsd2si rcx, xmm0  ; 截断转 int 毫秒");
+        emit("    jmp .w_done_" + wid);
+        emit(".w_int_" + wid + ":");
+        emit("    mov rax, [rax + 8]  ; int 值");
+        emit("    imul rcx, rax, " + mul);
+        emit(".w_done_" + wid + ":");
+        emit("    sub rsp, 32");
+        emit("    call atl_sleep_ms");
+        emit("    add rsp, 32");
+        返回值 0;
+    };
+
+    如果(n.type == AST_WAIT_TASK){
+        gen_expr(n.ret_value, ctx);
+        emit("    mov rcx, rax");
+        emit("    sub rsp, 32");
+        emit("    call atl_task_wait");
+        emit("    add rsp, 32");
+        返回值 0;
+    };
+
+    如果(n.type == AST_SHOW){
+        gen_show_node(n, ctx);
+        返回值 0;
+    };
+
+    如果(n.type == AST_READFILE){
+
+        如果(n.rf_path == 空 || n.rf_body == 空){ 返回值 0; };
+        设 path_id = add_strlit(n.rf_path);
+        emit("    lea rcx, [__atl_str_" + path_id + "_data]");
+        emit("    sub rsp, 32");
+        emit("    call atl_str");
+        emit("    add rsp, 32");
+        emit("    mov rcx, rax  ; path (AtlObj*)");
+        emit("    sub rsp, 32");
+        emit("    call atl_file_read");
+        emit("    add rsp, 32");
+        设 t_content = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_content + "], rax");
+
+        emit("    mov rcx, [rbp + " + t_content + "]");
+        emit("    sub rsp, 32");
+        emit("    call atl_str_split_lines");
+        emit("    add rsp, 32");
+        设 t_list = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_list + "], rax");
+
+        emit("    mov rcx, [rbp + " + t_list + "]");
+        emit("    sub rsp, 32");
+        emit("    call atl_list_len");
+        emit("    add rsp, 32");
+        emit("    mov rax, [rax + 8]  ; unbox int");
+        设 t_len = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_len + "], rax");
+
+        emit("    xor rax, rax");
+        设 t_idx = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_idx + "], rax");
+
+        设 l_start = new_label();
+        设 l_break = new_label();
+        设 l_continue = new_label();
+        设 saved_break = ctx.loop_break;
+        设 saved_continue = ctx.loop_continue;
+        ctx.loop_break = l_break;
+        ctx.loop_continue = l_continue;
+        emit("__atl_L" + l_start + ":");
+        emit("    mov rax, [rbp + " + t_idx + "]");
+        emit("    cmp rax, [rbp + " + t_len + "]");
+        emit("    jge __atl_L" + l_break);
+
+        emit("    mov rax, [rbp + " + t_idx + "]");
+        emit("    mov rcx, rax");
+        emit("    sub rsp, 32");
+        emit("    call atl_int");
+        emit("    add rsp, 32");
+        emit("    mov rdx, rax  ; idx");
+        emit("    mov rcx, [rbp + " + t_list + "]  ; list");
+        emit("    sub rsp, 32");
+        emit("    call atl_list_get");
+        emit("    add rsp, 32");
+
+        如果(ctx.func != 空){
+            设 l = gen_find_local(ctx.func, "s");
+            如果(l != 空){
+                emit("    mov [rbp + " + l.offset + "], rax  ; s");
+            };
+        };
+
+        gen_stmt(n.rf_body, ctx);
+        emit("__atl_L" + l_continue + ":");
+        emit("    mov rax, [rbp + " + t_idx + "]");
+        emit("    inc rax");
+        emit("    mov [rbp + " + t_idx + "], rax");
+        emit("    jmp __atl_L" + l_start);
+        emit("__atl_L" + l_break + ":");
+        ctx.loop_break = saved_break;
+        ctx.loop_continue = saved_continue;
+        temp_free(ctx, 4);
+        返回值 0;
+    };
+
+    如果(n.type == AST_DESTROY){
+
+        创建 SemNode:s_dst;
+        s_dst = n.sem;
+        如果(n.operand != 空){
+            gen_expr(n.operand, ctx);
+        }否则{
+            emit("    xor rax, rax");
+        };
+        设 t_obj = temp_alloc(ctx);
+        emit("    mov [rbp + " + t_obj + "], rax  ; destroy target");
+
+        如果(s_dst != 空 && s_dst.target_id != 0){
+            emit("    mov rcx, [rbp + " + t_obj + "]  ; this");
+            emit("    sub rsp, 32");
+            emit("    call " + method_label_by_id(s_dst.target_id));
+            emit("    add rsp, 32");
+        };
+
+        emit("    mov rcx, [rbp + " + t_obj + "]");
+        emit("    sub rsp, 32");
+        emit("    call atl_instance_destroy");
+        emit("    add rsp, 32");
+
+        如果(n.operand != 空 && n.operand.type == AST_VAR && n.operand.sem != 空){
+            创建 SemNode:os;
+            os = n.operand.sem;
+            如果(os.kind == SN_LOCAL && os.offset != 0){
+                emit("    mov qword [rbp + " + os.offset + "], 0  ; " + n.operand.sval + " = 空");
+            }又如果(os.kind == SN_GLOBAL){
+                emit("    mov qword [" + global_label(os.offset) + "], 0  ; " + n.operand.sval + " = 空");
+            };
+        };
+        temp_free(ctx, 1);
+        返回值 0;
+    };
+
+    如果(n.type == AST_THROW){
+
+        如果(n.operand != 空){
+            gen_expr(n.operand, ctx);
+        }否则{
+            emit("    xor rax, rax  ; 抛出 空");
+        };
+        emit("    mov rcx, rax");
+        emit("    mov rdx, " + n.line + "  ; 抛出行号");
+        emit("    sub rsp, 32");
+        emit("    call atl_throw");
+        emit("    add rsp, 32");
+        emit("    xor rax, rax  ; 不可达（atl_throw 不返回）");
+        返回值 0;
+    };
+
+    如果(n.type == AST_TRY){
+
+        设 t_jb = temp_alloc(ctx);
+        设 i2 = 1;
+        循环(i2 < 4){
+            temp_alloc(ctx);
+            i2 = i2 + 1;
+        };
+        设 t_flag = temp_alloc(ctx);
+        设 l_ret = new_label();
+        设 l_branch = new_label();
+        设 l_catch = new_label();
+        设 l_fin = new_label();
+        设 l_done = new_label();
+
+        emit("    lea rax, [rbp + " + t_jb + "]  ; ExcFrame");
+        emit("    mov [rax + 0], rsp");
+        emit("    lea rcx, [__atl_L" + l_ret + "]");
+        emit("    mov [rax + 8], rcx");
+        emit("    mov [rax + 16], rbp");
+        emit("    mov rdx, [rel atl_exc_top]");
+        emit("    mov [rax + 24], rdx");
+        emit("    mov [rel atl_exc_top], rax");
+        emit("    xor eax, eax  ; 首次进入");
+        emit("    jmp __atl_L" + l_branch + "  ; → 分支点");
+        emit("__atl_L" + l_ret + ":  ; 异常返回点（atl_throw 恢复后跳回这里）");
+        emit("    mov eax, 1  ; 异常到达");
+        emit("__atl_L" + l_branch + ":  ; 分支点");
+        如果(n.catch_block != 空){
+
+            emit("    test eax, eax");
+            emit("    jnz __atl_L" + l_catch + "  ; 异常 → 捕获");
+        }否则{
+
+            emit("    mov [rbp + " + t_flag + "], eax  ; exc flag");
+            emit("    test eax, eax");
+            emit("    jnz __atl_L" + l_catch + "  ; 异常 → 跳过 body");
+        };
+        如果(n.then_block != 空){
+            gen_stmt(n.then_block, ctx);
+        };
+        emit("    sub rsp, 32");
+        emit("    call atl_exc_pop  ; 正常退出 try");
+        emit("    add rsp, 32");
+        如果(n.catch_block != 空){
+            如果(n.finally_block != 空){
+                emit("    jmp __atl_L" + l_fin + "  ; 正常路径 → 最终");
+            }否则{
+                emit("    jmp __atl_L" + l_done + "  ; 正常路径 → 结束");
+            };
+        };
+        emit("__atl_L" + l_catch + ":  ; 捕获/异常路径");
+        如果(n.catch_block != 空){
+
+            如果(n.catch_var != 空 && n.sem != 空){
+                创建 SemNode:ts;
+                ts = n.sem;
+                如果(ts.kind == SN_LOCAL){
+                    emit("    sub rsp, 32");
+                    emit("    call atl_exc_value");
+                    emit("    add rsp, 32");
+                    emit("    mov [rbp + " + ts.offset + "], rax  ; " + n.catch_var + " = 错误对象");
+                };
+            };
+            如果(n.catch_block != 空){
+                gen_stmt(n.catch_block, ctx);
+            };
+        };
+        如果(n.finally_block != 空){
+            emit("__atl_L" + l_fin + ":  ; 最终");
+            gen_stmt(n.finally_block, ctx);
+        };
+        如果(n.catch_block == 空){
+
+            emit("    mov eax, [rbp + " + t_flag + "]");
+            emit("    test eax, eax");
+            emit("    jz __atl_L" + l_done + "  ; 正常路径");
+            emit("    sub rsp, 32");
+            emit("    call atl_rethrow  ; 异常 → 重抛");
+            emit("    add rsp, 32");
+        };
+        emit("__atl_L" + l_done + ":  ; try 语句结束");
+        temp_free(ctx, 5);
+        返回值 0;
+    };
+
+    如果(n.type == AST_LISTEN){
+
+        如果(n.cond != 空 && n.cond.type == AST_LIST_LIT){
+
+            创建 ArrayList:keys;
+            keys = n.cond.children;
+            如果(keys != 空 && keys.长度() >= 1){
+                gen_expr(keys.获取(0), ctx);
+                emit("    mov rcx, rax");
+                emit("    sub rsp, 32");
+                emit("    call atl_key_pressed");
+                emit("    add rsp, 32");
+            }否则{
+                emit("    xor rax, rax");
+            };
+        }又如果(n.cond != 空){
+            gen_expr(n.cond, ctx);
+            emit("    mov rcx, rax");
+            emit("    sub rsp, 32");
+            emit("    call atl_truthy");
+            emit("    add rsp, 32");
+        }否则{
+            emit("    mov eax, 1  ; 无条件监听恒真");
+        };
+
+        设 l_skip = new_label();
+        emit("    test rax, rax");
+        emit("    jz __atl_L" + l_skip + "  ; 条件为假跳过 body");
+        如果(n.then_block != 空){
+            gen_stmt(n.then_block, ctx);
+        };
+        emit("__atl_L" + l_skip + ":");
+        返回值 0;
+    };
+
+    如果(n.type == AST_LISTEN_EVENT){
+
+        如果(n.call_node != 空){
+            创建 ASTNode:cc3;
+            cc3 = n.call_node;
+            创建 ArrayList:cc_args3;
+            cc_args3 = cc3.args;
+            创建 ArrayList:slots3;
+            设 ai3 = 0;
+            循环(ai3 < cc_args3.长度()){
+                创建 ASTNode:arg3;
+                arg3 = cc_args3.获取(ai3);
+
+                如果(ai3 == 3 && g_gfx_block_win_off != 0){
+                    emit("    mov rax, [rbp + " + g_gfx_block_win_off + "]  ; block window id");
+                }否则{
+                    gen_expr(arg3, ctx);
+                };
+                设 off3 = temp_alloc(ctx);
+                emit("    mov [rbp + " + off3 + "], rax");
+                slots3.添加(off3);
+                ai3 = ai3 + 1;
+            };
+
+            创建 SemNode:cs3;
+            cs3 = cc3.sem;
+            创建 SemMethod:tm3;
+            tm3 = 空;
+            如果(cs3 != 空 && cs3.kind == SN_FUNC){
+                设 fk3 = 0;
+                循环(fk3 < g_sem_funcs.长度()){
+                    创建 SemMethod:tm4;
+                    tm4 = g_sem_funcs.获取(fk3);
+                    如果(tm4.id == cs3.target_id){
+                        tm3 = tm4;
+                        跳出;
+                    };
+                    fk3 = fk3 + 1;
+                };
+            };
+            如果(tm3 != 空){
+                gen_call_seq(ctx, method_label(tm3), 4, slots3, 0);
+            }否则{
+                emit("    xor rax, rax  ; 事件订阅目标 __事件订阅 未找到");
+            };
+            设 ns3 = slots3.长度();
+            设 si3 = 0;
+            循环(si3 < ns3){
+                temp_free(ctx, 1);
+                si3 = si3 + 1;
+            };
+        }否则{
+            emit("    xor rax, rax  ; listen event no call node");
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_WHEN){
+
+        如果(n.call_node != 空){
+            创建 ASTNode:cw;
+            cw = n.call_node;
+            创建 ArrayList:cw_args;
+            cw_args = cw.args;
+            创建 ArrayList:slots_w;
+            设 aiw = 0;
+            循环(aiw < cw_args.长度()){
+                创建 ASTNode:argw;
+                argw = cw_args.获取(aiw);
+                gen_expr(argw, ctx);
+                设 offw = temp_alloc(ctx);
+                emit("    mov [rbp + " + offw + "], rax");
+                slots_w.添加(offw);
+                aiw = aiw + 1;
+            };
+            创建 SemNode:csw;
+            csw = cw.sem;
+            创建 SemMethod:tmw;
+            tmw = 空;
+            如果(csw != 空 && csw.kind == SN_FUNC){
+                设 fkw = 0;
+                循环(fkw < g_sem_funcs.长度()){
+                    创建 SemMethod:tm5;
+                    tm5 = g_sem_funcs.获取(fkw);
+                    如果(tm5.id == csw.target_id){
+                        tmw = tm5;
+                        跳出;
+                    };
+                    fkw = fkw + 1;
+                };
+            };
+            如果(tmw != 空){
+                gen_call_seq(ctx, method_label(tmw), 2, slots_w, 0);
+            }否则{
+                emit("    xor rax, rax  ; 控件事件目标 __控件事件 未找到");
+            };
+            设 nsw = slots_w.长度();
+            设 siw = 0;
+            循环(siw < nsw){
+                temp_free(ctx, 1);
+                siw = siw + 1;
+            };
+        }否则{
+            emit("    xor rax, rax  ; when no call node");
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_GAMES){
+
+        设 l_start = new_label();
+        设 saved_break = ctx.loop_break;
+        设 saved_continue = ctx.loop_continue;
+
+        ctx.loop_break = l_start + 1;
+        ctx.loop_continue = l_start;
+        emit("__atl_L" + l_start + ":  ; games frame loop");
+        如果(n.then_block != 空){
+            gen_stmt(n.then_block, ctx);
+        };
+        ctx.loop_break = saved_break;
+        ctx.loop_continue = saved_continue;
+        emit("    sub rsp, 32");
+        emit("    call atl_games_tick");
+        emit("    add rsp, 32");
+        emit("    jmp __atl_L" + l_start);
+        emit("__atl_L" + (l_start + 1) + ":  ; games end");
+        返回值 0;
+    };
+
+    如果(n.type == AST_ASM){
+        如果(n.asm_stmts != 空){
+
+            创建 ArrayList:stmts;
+            stmts = n.asm_stmts;
+            设 i = 0;
+            循环(i < stmts.长度()){
+                设 s = stmts.获取(i);
+                如果(s != 空){
+                    如果(s == "cpu"){
+                        emit("    cpuid");
+                    }又如果(s == "time"){
+                        emit("    rdtsc");
+                    }否则{
+                        emit("    " + s);
+                    };
+                };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_EXPRSTMT){
+
+        如果(n.operand != 空 && (n.operand.type == AST_CALL || n.operand.type == AST_METHODCALL || n.operand.type == AST_HOOKCALL)){
+            如果(n.operand.sem != 空 && n.operand.sem.type_kind == T_INT){
+                gen_call(n.operand, ctx);
+                返回值 0;
+            };
+        };
+        gen_expr(n.operand, ctx);
+        返回值 0;
+    };
+
+    如果(n.type == AST_HOOKCALL){
+        创建 SemMethod:h;
+        h = 空;
+        设 i = 0;
+        循环(i < g_sem_hooks.长度()){
+            创建 SemMethod:m;
+            m = g_sem_hooks.获取(i);
+            如果(m.name == n.method_name){
+                h = m;
+                跳出;
+            };
+            i = i + 1;
+        };
+        如果(h != 空){
+            设 h_nargs = 0;
+            如果(n.args != 空){
+                h_nargs = n.args.长度();
+            };
+            创建 ArrayList:slots;
+            设 j = 0;
+            循环(j < h_nargs){
+                gen_expr(n.args.获取(j), ctx);
+                设 off = temp_alloc(ctx);
+                emit("    mov [rbp + " + off + "], rax");
+                slots.添加(off);
+                j = j + 1;
+            };
+            gen_call_seq(ctx, method_label(h), h_nargs, slots, 0);
+            gen_store(n.lhs, ctx);
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_LIST_DECL || n.type == AST_ARRAY_DECL || n.type == AST_GROUP_DECL){
+        如果(n.arr_init != 空){
+            gen_expr(n.arr_init, ctx);
+        }否则{
+            emit("    sub rsp, 32");
+            emit("    call atl_list_new");
+            emit("    add rsp, 32");
+        };
+        如果(n.sval != 空){
+            创建 SemLocal:l;
+            l = gen_find_local(ctx.func, n.sval);
+            如果(l != 空){
+                emit("    mov [rbp + " + l.offset + "], rax  ; " + n.sval);
+            }又如果(ctx.cls != 空){
+                设 fi = sem_find_field(ctx.cls, n.sval);
+                如果(fi >= 0){
+                    emit("    mov rdx, rax  ; save val");
+                    emit("    mov rax, [rbp + " + ctx.this_offset + "]  ; this");
+                    emit("    mov rax, [rax + 8]   ; inst");
+                    emit("    mov rax, [rax + 8]   ; field_vals");
+                    emit("    mov [rax + " + (fi * 8) + "], rdx  ; field " + n.sval);
+                };
+            };
+        };
+        返回值 0;
+    };
+
+    如果(n.type == AST_BUTTON_HANDLER){
+        设 btn_id = n.button_id;
+        设 text_id = -1;
+        如果(n.sval != 空){
+            如果(n.sval.长度() > 0){
+                text_id = add_strlit(n.sval);
+                emit("    mov rcx, " + btn_id + "  ; button id");
+                emit("    lea rdx, [__atl_str_" + text_id + "]  ; text");
+                emit("    sub rsp, 32");
+                emit("    call atl_gfx_button_set_text");
+                emit("    add rsp, 32");
+            };
+        };
+        设 lbl_id = new_label(ctx);
+        设 lbl_skip = new_label(ctx);
+        emit("    jmp __atl_btn_skip_" + lbl_skip + "  ; skip handler body");
+        emit("__atl_btn_handler_" + btn_id + "_:");
+        如果(n.fn_body != 空){
+            gen_stmt(n.fn_body, ctx);
+        };
+        emit("    ret  ; button handler end");
+        emit("__atl_btn_skip_" + lbl_skip + ":");
+        返回值 0;
+    };
+
+    如果(n.type == AST_CALL || n.type == AST_METHODCALL || n.type == AST_HOOKCALL){
+        如果(n.sem != 空 && n.sem.type_kind == T_INT){
+            gen_call(node, ctx);
+            返回值 0;
+        };
+    };
+    gen_expr(node, ctx);
+    返回值 0;
+};
+
+声明 stmt_is_leaf(node){
+    如果(node == 空){ 返回值 1; };
+    创建 ASTNode:n;
+    n = node;
+    如果(n.type == AST_BLOCK){
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                如果(stmt_is_leaf(n.children.获取(i)) != 1){ 返回值 0; };
+                i = i + 1;
+            };
+        };
+        返回值 1;
+    };
+    如果(n.type == AST_VARDECL){
+        如果(n.var_inits != 空){
+            设 i = 0;
+            循环(i < n.var_inits.长度()){
+                如果(stmt_is_leaf(n.var_inits.获取(i)) != 1){ 返回值 0; };
+                i = i + 1;
+            };
+        };
+        返回值 1;
+    };
+    如果(n.type == AST_ASSIGN){
+        如果(stmt_is_leaf(n.lhs) != 1){ 返回值 0; };
+        如果(stmt_is_leaf(n.rhs) != 1){ 返回值 0; };
+        返回值 1;
+    };
+    如果(n.type == AST_VAR || n.type == AST_LITERAL){
+        返回值 1;
+    };
+    如果(n.type == AST_UNARY){
+        如果(n.op != TOK_MINUS && n.op != TOK_NOT && n.op != TOK_AMP){
+            返回值 0;
+        };
+        返回值 stmt_is_leaf(n.operand);
+    };
+    如果(n.type == AST_BINARY){
+        设 op = n.op;
+        如果(op == TOK_EQ || op == TOK_NE || op == TOK_LT || op == TOK_GT || op == TOK_LE || op == TOK_GE){
+            如果(stmt_is_leaf(n.lhs) != 1){ 返回值 0; };
+            如果(stmt_is_leaf(n.rhs) != 1){ 返回值 0; };
+            返回值 1;
+        };
+
+        如果(n.sem != 空 && n.sem.type_kind != 1){
+            返回值 0;
+        };
+        如果(stmt_is_leaf(n.lhs) != 1){ 返回值 0; };
+        如果(stmt_is_leaf(n.rhs) != 1){ 返回值 0; };
+        返回值 1;
+    };
+    如果(n.type == AST_IF){
+        如果(stmt_is_leaf(n.cond) != 1){ 返回值 0; };
+        如果(stmt_is_leaf(n.then_block) != 1){ 返回值 0; };
+        如果(stmt_is_leaf(n.else_block) != 1){ 返回值 0; };
+        返回值 1;
+    };
+    如果(n.type == AST_LOOP){
+        如果(stmt_is_leaf(n.loop_init) != 1){ 返回值 0; };
+        如果(stmt_is_leaf(n.loop_cond) != 1){ 返回值 0; };
+        如果(stmt_is_leaf(n.loop_step) != 1){ 返回值 0; };
+        如果(stmt_is_leaf(n.loop_count) != 1){ 返回值 0; };
+        如果(stmt_is_leaf(n.loop_body) != 1){ 返回值 0; };
+        返回值 1;
+    };
+    如果(n.type == AST_RETURN){
+        返回值 stmt_is_leaf(n.ret_value);
+    };
+    如果(n.type == AST_EXPRSTMT){
+        返回值 stmt_is_leaf(n.operand);
+    };
+
+    返回值 0;
+};
+
+声明 gen_function(sm){
+    创建 SemMethod:m;
+    m = sm;
+    创建 ASTNode:func;
+    func = m.func;
+    创建 SemFunc:sf;
+    sf = m.sem_func;
+    如果(sf == 空){
+
+        如果(func != 空 && func.sem != 空){
+            创建 SemFunc:f2;
+            f2 = func.sem;
+            sf = f2;
+        };
+    };
+    如果(sf == 空){
+        返回值 0;
+    };
+
+    g_func_uses_r12 = 0;
+
+    创建 Ctx:c;
+    c.func = sf;
+    c.cls = m.owner;
+    c.is_method = 0;
+    如果(m.kind == 0){
+        c.is_method = 1;
+    };
+    c.locals_bytes = sf.locals.长度() * 8;
+
+    如果(c.is_method == 1){
+        c.this_offset = -(c.locals_bytes + 8);
+        c.temp_base = c.this_offset - 8;
+    }否则{
+        c.this_offset = 0;
+        c.temp_base = -(c.locals_bytes + 8);
+    };
+
+    设 old_silent = g_silent;
+    g_silent = 1;
+    g_temp_peak = 0;
+    创建 Ctx:mc;
+    mc.func = c.func;
+    mc.cls = c.cls;
+    mc.is_method = c.is_method;
+    mc.this_offset = c.this_offset;
+    mc.locals_bytes = c.locals_bytes;
+    mc.temp_base = c.temp_base;
+    mc.loop_break = c.loop_break;
+    mc.loop_continue = c.loop_continue;
+    gen_stmt(func.then_block, mc);
+    g_silent = old_silent;
+    g_func_is_leaf = stmt_is_leaf(func.then_block);
+    g_cur_func_body = func.then_block;
+    设 temp_slots = g_temp_peak;
+    如果(temp_slots < 1){ temp_slots = 1; };
+    如果(temp_slots > 4096){
+        报错("函数 " + func.name + " 表达式嵌套过深 (temp_slots=" + temp_slots + " > 4096)");
+    };
+    设 method_extra = 0;
+    如果(c.is_method == 1){
+        method_extra = 8;
+    };
+    设 frame = c.locals_bytes + method_extra + temp_slots * 8;
+    frame = align16(frame);
+    c.frame_size = frame;
+
+    设 total_slots = frame / 8;
+    如果(g_func_uses_r12 == 1){
+        total_slots = total_slots + 1;
+    };
+    设 nwords = (total_slots + 63) / 64;
+    emit("section .data");
+    emit("global __gc_mask_" + m.id);
+    emit("__gc_mask_" + m.id + ": dq " + nwords + "  ; 保守掩码 (" + total_slots + " slots)");
+    设 wi = 0;
+    循环(wi < nwords){
+        emit("    dq 0xFFFFFFFFFFFFFFFF");
+        wi = wi + 1;
+    };
+    emit("section .text");
+
+    设 kind_name = "method";
+    如果(m.kind == 1){ kind_name = "func"; };
+    如果(m.kind == 2){ kind_name = "hook"; };
+    如果(m.kind == 3){ kind_name = "lambda"; };
+    设 mname = m.name;
+    如果(mname == 空){ mname = "<anon>"; };
+    emit("; ===== " + kind_name + " " + mname + " =====");
+    emit("global " + method_label(m));
+    emit(method_label(m) + ":");
+    emit("    push rbp");
+    emit("    mov rbp, rsp");
+
+    设 frame_alloc = c.frame_size;
+    如果(g_func_uses_r12 == 1){
+        emit("    push r12  ; T3 counter save");
+
+        frame_alloc = frame_alloc + 8;
+    };
+    emit("    sub rsp, " + frame_alloc);
+
+    设 nparams = sf.nparams;
+    如果(c.is_method == 1){
+
+        emit("    mov [rbp + " + c.this_offset + "], rcx  ; this");
+
+        设 i = 0;
+        循环(i < nparams && i < 3){
+            创建 SemLocal:l;
+            l = sf.locals.获取(i);
+            设 reg = "rdx";
+            如果(i == 1){ reg = "r8"; };
+            如果(i == 2){ reg = "r9"; };
+            emit("    mov [rbp + " + l.offset + "], " + reg + "  ; param " + l.name);
+            i = i + 1;
+        };
+
+        设 i = 3;
+        循环(i < nparams){
+            创建 SemLocal:l;
+            l = sf.locals.获取(i);
+            设 stack_off = 48 + (i - 3) * 8;
+            emit("    mov rax, [rbp + " + stack_off + "]");
+            emit("    mov [rbp + " + l.offset + "], rax  ; param " + l.name);
+            i = i + 1;
+        };
+    }否则{
+
+        设 i = 0;
+        循环(i < nparams && i < 4){
+            创建 SemLocal:l;
+            l = sf.locals.获取(i);
+            设 reg = "rcx";
+            如果(i == 1){ reg = "rdx"; };
+            如果(i == 2){ reg = "r8"; };
+            如果(i == 3){ reg = "r9"; };
+            emit("    mov [rbp + " + l.offset + "], " + reg + "  ; param " + l.name);
+            i = i + 1;
+        };
+
+        设 i = 4;
+        循环(i < nparams){
+            创建 SemLocal:l;
+            l = sf.locals.获取(i);
+            设 stack_off = 48 + (i - 4) * 8;
+            emit("    mov rax, [rbp + " + stack_off + "]");
+            emit("    mov [rbp + " + l.offset + "], rax  ; param " + l.name);
+            i = i + 1;
+        };
+    };
+
+    如果(g_func_is_leaf == 0){
+        emit("    call atl_stack_guard");
+        emit("    mov rcx, rbp");
+        emit("    lea rdx, [__gc_mask_" + m.id + "]");
+        emit("    sub rsp, 32");
+        emit("    call gc_push_frame");
+        emit("    add rsp, 32");
+    };
+
+    gen_stmt(func.then_block, c);
+
+    如果(sf.ret_type_kind == T_INT){
+        emit("    xor rax, rax  ; default return 0 (int)");
+    }否则{
+        emit("    sub rsp, 32");
+        emit("    call atl_null");
+        emit("    add rsp, 32");
+    };
+    如果(g_func_is_leaf == 0){
+        emit("    sub rsp, 32");
+        emit("    call gc_pop_frame");
+        emit("    add rsp, 32");
+    };
+    emit("    mov rsp, rbp");
+
+    如果(g_func_uses_r12 == 1){
+        emit("    sub rsp, 8");
+        emit("    pop r12  ; T3 counter restore");
+    };
+    emit("    pop rbp");
+    emit("    ret");
+    emit("");
+    返回值 0;
+};
+
+声明 gen_task_func(node, seq){
+    创建 ASTNode:an;
+    an = node;
+    设 tlbl = "__atl_task_" + seq;
+    创建 ArrayList:tc;
+    tc = an.children;
+
+    创建 SemFunc:tf;
+    tf = an.async_func;
+    如果(tf == 空){
+        tf.locals = 创建 ArrayList;
+    };
+    设 toff = tf.locals.长度();
+    g_func_uses_r12 = 0;
+
+    设 old_silent = g_silent;
+    g_silent = 1;
+    g_temp_peak = 0;
+    创建 Ctx:amctx;
+    amctx.func = tf;
+    amctx.temp_base = -(toff * 8 + 8);
+    设 ai = 0;
+    循环(ai < tc.长度()){
+        gen_stmt(tc.获取(ai), amctx);
+        ai = ai + 1;
+    };
+    g_silent = old_silent;
+    设 aframe = toff * 8 + (g_temp_peak + 1) * 8 + 8;
+
+    如果(aframe % 16 != 0){ aframe = aframe + 8; };
+
+    emit(tlbl + ":");
+    emit("    push rbp");
+    emit("    mov rbp, rsp");
+
+    设 task_frame_alloc = aframe;
+    如果(g_func_uses_r12 == 1){
+        emit("    push r12  ; T3 counter save");
+        task_frame_alloc = task_frame_alloc + 8;
+    };
+    emit("    sub rsp, " + task_frame_alloc);
+    emit("    call atl_stack_guard");
+    创建 Ctx:actx;
+    actx.func = tf;
+    actx.temp_base = -(toff * 8 + 8);
+    actx.frame_size = aframe;
+    设 aj = 0;
+    循环(aj < tc.长度()){
+        gen_stmt(tc.获取(aj), actx);
+        aj = aj + 1;
+    };
+    emit("    lea rax, [__atl_int_0]  ; task default ret 0 (boxed)");
+    emit("    mov rsp, rbp");
+
+    如果(g_func_uses_r12 == 1){
+        emit("    sub rsp, 8");
+        emit("    pop r12  ; T3 counter restore");
+    };
+    emit("    pop rbp");
+    emit("    ret");
+    返回值 0;
+};
+
+声明 gen_main(){
+    emit("; ===== __atl_main =====");
+    emit("global __atl_main");
+    emit("__atl_main:");
+    emit("    push rbp");
+    emit("    mov rbp, rsp");
+
+    设 ri = 0;
+    循环(ri < g_sem_funcs.长度()){
+        创建 SemMethod:rm;
+        rm = g_sem_funcs.获取(ri);
+        如果(rm.name != 空){
+            设 rid = add_strlit(rm.name);
+            emit("    lea rcx, [__atl_str_" + rid + "_data]  ; func name " + rm.name);
+            emit("    lea rdx, [" + method_label(rm) + "]");
+            emit("    sub rsp, 32");
+            emit("    call atl_func_register");
+            emit("    add rsp, 32");
+        };
+        ri = ri + 1;
+    };
+
+    设 top_locals = g_sem_top_locals_n;
+    设 frame = 32 + top_locals * 8;
+    设 need_measure = 0;
+    如果(g_sem_global_decls.长度() > 0){ need_measure = 1; };
+    如果(g_sem_top_exprs.长度() > 0){ need_measure = 1; };
+    如果(need_measure == 1){
+        设 old_silent = g_silent;
+        g_silent = 1;
+        g_temp_peak = 0;
+        创建 Ctx:mctx;
+        mctx.temp_base = -(top_locals * 8 + 8);
+        设 mi = 0;
+        循环(mi < g_sem_global_decls.长度()){
+            创建 ASTNode:mdecl;
+            mdecl = g_sem_global_decls.获取(mi);
+            如果(mdecl.var_names != 空){
+                设 mj = 0;
+                循环(mj < mdecl.var_inits.长度()){
+                    创建 ASTNode:minit;
+                    minit = mdecl.var_inits.获取(mj);
+                    如果(minit != 空){
+                        gen_expr(minit, mctx);
+                    };
+                    mj = mj + 1;
+                };
+            };
+            mi = mi + 1;
+        };
+        设 mt = 0;
+        循环(mt < g_sem_top_exprs.长度()){
+            gen_stmt(g_sem_top_exprs.获取(mt), mctx);
+            mt = mt + 1;
+        };
+        g_silent = old_silent;
+        如果(g_temp_peak > 0){
+
+            frame = top_locals * 8 + (g_temp_peak + 1) * 8 + 8;
+        };
+    };
+
+    如果(g_sem_entries.长度() > 0){
+        frame = frame + 8;
+    };
+    frame = align16(frame);
+    emit("    sub rsp, " + frame);
+
+    设 i = 0;
+    循环(i < g_sem_classes.长度()){
+        创建 SemClass:cls;
+        cls = g_sem_classes.获取(i);
+        如果(cls.is_interface != 0){ i = i + 1; 继续; };
+        设 sid = add_strlit(cls.name);
+        emit("    lea rcx, [__atl_str_" + sid + "_data]  ; " + cls.name);
+        emit("    mov rdx, " + cls.nfields + "  ; nfields");
+        emit("    call atl_instance_new");
+        emit("    mov [" + singleton_label(cls) + "], rax");
+        i = i + 1;
+    };
+
+    设 i1 = 0;
+    循环(i1 < g_sem_classes.长度()){
+        创建 SemClass:cls;
+        cls = g_sem_classes.获取(i1);
+        如果(cls.is_interface != 0){ i1 = i1 + 1; 继续; };
+        设 cid = add_strlit(cls.name);
+        emit("    lea rcx, [__atl_str_" + cid + "_data]  ; class " + cls.name);
+        如果(cls.parent != 空){
+            设 pid = add_strlit(cls.parent);
+            emit("    lea rdx, [__atl_str_" + pid + "_data]  ; parent " + cls.parent);
+        }否则{
+            emit("    xor rdx, rdx  ; no parent");
+        };
+        emit("    sub rsp, 32");
+        emit("    call atl_class_register");
+        emit("    add rsp, 32");
+
+        设 j = 0;
+        循环(j < cls.methods.长度()){
+            创建 SemMethod:m;
+            m = cls.methods.获取(j);
+            如果(m == 空 || m.name == 空){ j = j + 1; 继续; };
+            设 mid = add_strlit(m.name);
+            emit("    lea rcx, [__atl_str_" + cid + "_data]");
+            emit("    lea rdx, [__atl_str_" + mid + "_data]  ; method " + m.name);
+            emit("    lea r8, [" + method_label(m) + "]");
+            emit("    sub rsp, 32");
+            emit("    call atl_method_register");
+            emit("    add rsp, 32");
+            j = j + 1;
+        };
+
+        如果(cls.nfields > 0){
+            emit("    lea rcx, [__atl_str_" + cid + "_data]");
+            emit("    lea rdx, [__atl_fields_" + i1 + "]");
+            emit("    mov r8, " + cls.nfields + "  ; nfields");
+            emit("    sub rsp, 32");
+            emit("    call atl_class_fields_register");
+            emit("    add rsp, 32");
+        };
+        i1 = i1 + 1;
+    };
+
+    如果(g_sem_global_decls.长度() > 0){
+        创建 Ctx:gctx;
+        gctx.temp_base = -8;
+        gctx.frame_size = frame;
+        设 i2 = 0;
+        循环(i2 < g_sem_global_decls.长度()){
+            创建 ASTNode:decl;
+            decl = g_sem_global_decls.获取(i2);
+            如果(decl.var_names != 空){
+                设 j = 0;
+                循环(j < decl.var_names.长度()){
+                    设 vn = decl.var_names.获取(j);
+                    设 gi = sem_find_global(vn);
+                    如果(gi >= 0){
+                        如果(j < decl.var_inits.长度()){
+                            创建 ASTNode:init;
+                            init = decl.var_inits.获取(j);
+                            如果(init != 空){
+                                gen_expr(init, gctx);
+                                emit("    mov [" + global_label(gi) + "], rax  ; global " + vn);
+                            };
+                        };
+                    };
+                    j = j + 1;
+                };
+            };
+            i2 = i2 + 1;
+        };
+    };
+
+    设 i3 = 0;
+    循环(i3 < g_sem_entries.长度()){
+        创建 SemEntry:e;
+        e = g_sem_entries.获取(i3);
+        如果(e == 空){ i3 = i3 + 1; 继续; };
+        如果(e.cls == 空 || e.method == 空){ i3 = i3 + 1; 继续; };
+        emit("    mov rcx, [" + singleton_label(e.cls) + "]  ; this");
+        emit("    call " + method_label(e.method));
+        emit("    mov [rbp - " + (frame - 8) + "], rax  ; entry retval");
+        i3 = i3 + 1;
+    };
+
+    如果(g_sem_top_exprs.长度() > 0){
+        创建 Ctx:tctx;
+        tctx.func = g_sem_top_func;
+        tctx.locals_bytes = top_locals * 8;
+        tctx.temp_base = -(top_locals * 8 + 8);
+        tctx.frame_size = frame;
+        设 i4 = 0;
+        循环(i4 < g_sem_top_exprs.长度()){
+            gen_stmt(g_sem_top_exprs.获取(i4), tctx);
+            i4 = i4 + 1;
+        };
+    };
+
+    如果(g_sem_entries.长度() > 0){
+        emit("    mov rax, [rbp - " + (frame - 8) + "]  ; entry retval -> exit code");
+    }否则{
+        emit("    xor eax, eax  ; no entries -> exit 0");
+    };
+    emit("    add rsp, " + frame);
+    emit("    pop rbp");
+    emit("    ret");
+    emit("");
+    返回值 0;
+};
+
+声明 codegen_emit(){
+
+    emit("; Atlanage v1.0 generated assembly (NASM win64)");
+    emit("default rel");
+    emit("");
+
+    emit("section .text");
+    emit("");
+
+    设 i = 0;
+    循环(i < g_sem_classes.长度()){
+        创建 SemClass:cls;
+        cls = g_sem_classes.获取(i);
+        如果(cls.is_interface != 0){ i = i + 1; 继续; };
+        如果(cls.methods != 空){
+            设 j = 0;
+            循环(j < cls.methods.长度()){
+                创建 SemMethod:m;
+                m = cls.methods.获取(j);
+                gen_function(m);
+                j = j + 1;
+            };
+        };
+        i = i + 1;
+    };
+
+    设 i2 = 0;
+    循环(i2 < g_sem_funcs.长度()){
+        创建 SemMethod:m;
+        m = g_sem_funcs.获取(i2);
+        gen_function(m);
+        i2 = i2 + 1;
+    };
+
+    设 i3 = 0;
+    循环(i3 < g_sem_hooks.长度()){
+        创建 SemMethod:m;
+        m = g_sem_hooks.获取(i3);
+        gen_function(m);
+        i3 = i3 + 1;
+    };
+
+    设 i4 = 0;
+    循环(i4 < g_sem_lambdas.长度()){
+        创建 SemMethod:m;
+        m = g_sem_lambdas.获取(i4);
+        gen_function(m);
+        i4 = i4 + 1;
+    };
+
+    设 i5 = 0;
+    循环(i5 < g_task_funcs.长度()){
+        创建 ASTNode:tn;
+        tn = g_task_funcs.获取(i5);
+        gen_task_func(tn, i5);
+        i5 = i5 + 1;
+    };
+
+    gen_main();
+
+    设 pr = 0;
+    循环(pr < g_sem_classes.长度()){
+        创建 SemClass:prcls;
+        prcls = g_sem_classes.获取(pr);
+        设 pj = 0;
+        循环(pj < prcls.fields.长度()){
+            设 pfn = prcls.fields.获取(pj);
+            如果(pfn != 空){
+                add_strlit(pfn);
+            };
+            pj = pj + 1;
+        };
+        pr = pr + 1;
+    };
+
+    emit("section .data");
+    设 si = 0;
+    循环(si < g_strlits.长度()){
+        设 s = g_strlits.获取(si);
+        emit("__atl_str_" + si + ": dq 4, __atl_str_" + si + "_data  ; ATL_STRING tag=4");
+        emit_no_nl("__atl_str_" + si + "_data: db ");
+
+        设 first = 1;
+        设 k = 0;
+        设 maxlen = 10000000;
+        循环(k < maxlen){
+            设 b = s.字节(k);
+            如果(b == 0){ 跳出; };
+            如果(first == 1){
+                first = 0;
+            }否则{
+                emit_no_nl(", ");
+            };
+            emit_no_nl("" + b);
+            k = k + 1;
+        };
+        如果(first == 1){
+            emit_no_nl("0");
+        };
+        emit_no_nl(", 0");
+        追加("\n");
+        si = si + 1;
+    };
+
+    emit("__atl_int_0: dq 2, 0  ; ATL_INT tag=2, value=0");
+    emit("__atl_int_1: dq 2, 1  ; ATL_INT tag=2, value=1");
+
+    设 fi = 0;
+    循环(fi < g_fplits.长度()){
+        创建 ArrayList:fp;
+        fp = g_fplits.获取(fi);
+        设 v = fp.获取(0);
+        设 id = fp.获取(1);
+        设 vstr = "" + v;
+        设 has_e = 0;
+        设 ei = 0;
+        循环(ei < vstr.长度()){
+            设 ec = vstr.字节(ei);
+            如果(ec == 101 || ec == 69){ has_e = 1; 跳出; };
+            ei = ei + 1;
+        };
+        如果(has_e == 1){
+
+            设 bits = 浮点位数(v);
+            设 hexs = 格式化("%x", bits);
+            设 pad = 16 - hexs.长度();
+            循环(pad > 0){
+                hexs = "0" + hexs;
+                pad = pad - 1;
+            };
+            emit("__atl_fp_" + id + ": dq 0x" + hexs + "  ; float literal (large)");
+        }否则{
+            设 vi = 整数(v);
+            如果(vi == v){
+                vstr = vstr + ".0";
+            };
+            emit("__atl_fp_" + id + ": dq " + vstr + "  ; float literal");
+        };
+        fi = fi + 1;
+    };
+    emit("");
+
+    设 fc = 0;
+    循环(fc < g_sem_classes.长度()){
+        创建 SemClass:cls;
+        cls = g_sem_classes.获取(fc);
+        如果(cls.nfields > 0){
+            emit("__atl_fields_" + fc + ":");
+            设 fj = 0;
+            循环(fj < cls.fields.长度()){
+                设 fn = cls.fields.获取(fj);
+                如果(fn != 空){
+                    设 fid = add_strlit(fn);
+                    emit("    dq __atl_str_" + fid + "_data  ; field " + fn);
+                }否则{
+                    emit("    dq 0  ; field ?");
+                };
+                fj = fj + 1;
+            };
+            emit("    dq 0  ; 表尾");
+        };
+        fc = fc + 1;
+    };
+    emit("");
+
+    emit("section .bss");
+    emit("__atl_global_0: resq 1  ; fallback global (null)");
+    设 gi = 0;
+    循环(gi < g_sem_globals.长度()){
+        设 gn = g_sem_globals.获取(gi);
+        emit("__atl_global_" + (gi + 1) + ": resq 1  ; global var " + gn);
+        gi = gi + 1;
+    };
+    设 ci = 0;
+    循环(ci < g_sem_classes.长度()){
+        创建 SemClass:cls;
+        cls = g_sem_classes.获取(ci);
+        如果(cls.is_interface != 0){ ci = ci + 1; 继续; };
+        emit(singleton_label(cls) + ": resq 1  ; singleton " + cls.name);
+
+        如果(cls.static_fields != 空){
+            设 si = 0;
+            循环(si < cls.static_fields.长度()){
+                设 sfn = cls.static_fields.获取(si);
+                emit("__atl_static_" + cls.id + "_" + si + ": resq 1  ; static field " + cls.name + "." + sfn);
+                si = si + 1;
+            };
+        };
+        ci = ci + 1;
+    };
+    emit("");
+
+    emit("section .data");
+    emit("global __atl_gc_roots");
+    emit("__atl_gc_roots:");
+    emit("    dq __atl_global_0, " + ((g_sem_globals.长度() + 1) * 8) + "  ; 全局槽区间");
+    设 rci = 0;
+    循环(rci < g_sem_classes.长度()){
+        创建 SemClass:rcls;
+        rcls = g_sem_classes.获取(rci);
+        如果(rcls.is_interface == 0){
+            emit("    dq " + singleton_label(rcls) + ", 8  ; singleton " + rcls.name);
+        };
+        如果(rcls.static_fields != 空 && rcls.static_fields.长度() > 0){
+            emit("    dq __atl_static_" + rcls.id + "_0, " + (rcls.static_fields.长度() * 8) + "  ; static fields " + rcls.name);
+        };
+        rci = rci + 1;
+    };
+    emit("    dq 0, 0  ; 表尾");
+    emit("section .bss");
+
+    emit("extern atl_null");
+    emit("extern atl_is_null");
+    emit("extern atl_bool");
+    emit("extern atl_int");
+    emit("extern atl_float");
+    emit("extern atl_tofloat");
+    emit("extern atl_str_append_self");
+    emit("extern atl_str");
+    emit("extern atl_str_take");
+    emit("extern atl_list_new");
+    emit("extern atl_instance_new");
+    emit("extern atl_class_register");
+    emit("extern atl_method_register");
+    emit("extern atl_class_fields_register");
+    emit("extern atl_ref_new");
+    emit("extern atl_func_wrap");
+    emit("extern atl_truthy");
+    emit("extern atl_to_cstr");
+    emit("extern atl_to_str");
+    emit("extern atl_add");
+    emit("extern atl_sub");
+    emit("extern atl_mul");
+    emit("extern atl_div");
+    emit("extern atl_mod");
+    emit("extern atl_neg");
+    emit("extern atl_not");
+    emit("extern atl_band");
+    emit("extern atl_bor");
+    emit("extern atl_bxor");
+    emit("extern atl_bnot");
+    emit("extern atl_shl");
+    emit("extern atl_shr");
+    emit("extern atl_eq");
+    emit("extern atl_ne");
+    emit("extern atl_lt");
+    emit("extern atl_gt");
+    emit("extern atl_le");
+    emit("extern atl_ge");
+    emit("extern atl_deref");
+    emit("extern atl_deref_set");
+    emit("extern atl_list_get");
+    emit("extern atl_list_set");
+    emit("extern atl_list_add");
+    emit("extern atl_list_add_kv");
+    emit("extern atl_list_len");
+    emit("extern atl_instance_get");
+    emit("extern atl_instance_set");
+    emit("extern atl_print");
+    emit("extern atl_errprint");
+    emit("extern atl_result_new");
+    emit("extern atl_result_ok");
+    emit("extern atl_result_fail");
+    emit("extern atl_strcmp");
+    emit("extern atl_input");
+    emit("extern atl_input_ref");
+    emit("extern atl_num");
+    emit("extern atl_chr");
+    emit("extern atl_codepoint");
+    emit("extern atl_toint");
+    emit("extern atl_str_split_lines");
+    emit("extern atl_format");
+    emit("extern atl_millis");
+    emit("extern atl_micros");
+    emit("extern atl_time_str");
+    emit("extern atl_instance_destroy");
+    emit("extern atl_key_pressed");
+    emit("extern atl_games_tick");
+    emit("extern atl_show_one");
+    emit("extern atl_show_end");
+    emit("extern atl_show_input");
+    emit("extern atl_sleep_ms");
+    emit("extern atl_stack_guard");
+    emit("extern gc_push_frame");
+    emit("extern gc_pop_frame");
+    emit("extern atl_str_len");
+    emit("extern atl_str_contains");
+    emit("extern atl_str_sub");
+    emit("extern atl_str_starts");
+    emit("extern atl_str_ends");
+    emit("extern atl_str_find_count");
+    emit("extern atl_str_find_line");
+    emit("extern atl_str_find_pos");
+    emit("extern atl_str_byte");
+    emit("extern atl_str_byte_sub");
+
+    emit("extern atl_str_upper");
+    emit("extern atl_str_lower");
+    emit("extern atl_str_replace");
+    emit("extern atl_str_split");
+    emit("extern atl_str_trim");
+    emit("extern atl_str_repeat");
+    emit("extern atl_str_equals");
+
+    emit("extern atl_list_delete");
+    emit("extern atl_list_dedup");
+    emit("extern atl_list_clear");
+    emit("extern atl_list_sort");
+    emit("extern atl_list_reverse");
+    emit("extern atl_list_contains");
+    emit("extern atl_list_find");
+    emit("extern atl_dict_has_key");
+    emit("extern atl_dict_delete_key");
+    emit("extern atl_dict_keys");
+    emit("extern atl_dict_values");
+    emit("extern atl_list_map");
+    emit("extern atl_list_filter");
+    emit("extern atl_list_reduce");
+    emit("extern atl_exc_top");
+    emit("extern atl_exc_pop");
+    emit("extern atl_exc_value");
+    emit("extern atl_throw");
+    emit("extern atl_rethrow");
+    emit("extern atl_contains");
+    emit("extern atl_sb_clear");
+    emit("extern atl_sb_append");
+    emit("extern atl_sb_build");
+    emit("extern atl_file_create");
+    emit("extern atl_mkdir");
+    emit("extern atl_file_open");
+    emit("extern atl_file_close");
+    emit("extern atl_file_write");
+    emit("extern atl_file_read");
+    emit("extern atl_file_read_lines");
+    emit("extern atl_bin_write");
+    emit("extern atl_bin_read");
+    emit("extern atl_write_bytes");
+    emit("extern atl_read_bytes");
+    emit("extern atl_file_size");
+    emit("extern atl_dir_list");
+    emit("extern atl_file_delete");
+    emit("extern atl_dir_delete");
+    emit("extern atl_file_load_mem");
+    emit("extern atl_file_save_mem");
+    emit("extern atl_mem_alloc");
+    emit("extern atl_mem_free");
+    emit("extern atl_mem_realloc");
+    emit("extern atl_mem_alloc_exec");
+    emit("extern atl_mem_set_exec");
+    emit("extern atl_mem_readbyte");
+    emit("extern atl_mem_writebyte");
+    emit("extern atl_mem_exec");
+    emit("extern atl_net_get");
+    emit("extern atl_net_post");
+    emit("extern atl_net_resolve");
+    emit("extern atl_net_ping");
+    emit("extern atl_net_alive");
+    emit("extern atl_net_get_file");
+    emit("extern atl_proc_create");
+    emit("extern atl_proc_wait");
+    emit("extern atl_proc_join");
+    emit("extern atl_func_register");
+    emit("extern atl_task_spawn");
+    emit("extern atl_task_wait");
+    emit("extern atl_fprintf_stderr");
+    emit("extern atl_chan_new");
+    emit("extern atl_chan_send");
+    emit("extern atl_chan_recv");
+    emit("extern atl_sync_lock_create");
+    emit("extern atl_sync_lock");
+    emit("extern atl_sync_unlock");
+    emit("extern atl_atomic_inc");
+    emit("extern atl_atomic_dec");
+    emit("extern atl_thread_id");
+    emit("extern atl_sys_exec");
+    emit("extern atl_sys_getfn");
+    emit("extern atl_sys_call");
+    emit("extern atl_chdir");
+    emit("extern atl_getcwd");
+    emit("extern atl_module_import");
+    emit("extern atl_json_parse");
+    emit("extern atl_json_serialize");
+    emit("extern atl_regex_match");
+    emit("extern atl_math_add");
+    emit("extern atl_math_sub");
+    emit("extern atl_math_mul");
+    emit("extern atl_math_div");
+    emit("extern atl_math_abs");
+    emit("extern atl_math_floor");
+    emit("extern atl_math_mod");
+    emit("extern atl_math_avg");
+    emit("extern atl_math_max");
+    emit("extern atl_math_min");
+    emit("extern atl_listen");
+    emit("extern atl_games_run");
+    如果(g_gfx_used == 1){
+    emit("extern atl_gfx_button_reg");
+    emit("extern atl_gfx_button_set_text");
+    emit("extern atl_gfx_button_check");
+    emit("extern atl_gfx_win_create");
+    emit("extern atl_gfx_win_close");
+    emit("extern atl_gfx_win_title");
+    emit("extern atl_gfx_win_size");
+    emit("extern atl_gfx_win_fullscreen");
+    emit("extern atl_gfx_win_vsync");
+    emit("extern atl_gfx_win_fps");
+    emit("extern atl_gfx_win_query");
+    emit("extern atl_gfx_present");
+    emit("extern atl_gfx_poll");
+    emit("extern atl_gfx_fb_pixels");
+    emit("extern atl_gfx_fb_size");
+    emit("extern atl_gfx_clear");
+    emit("extern atl_gfx_draw_rect");
+    emit("extern atl_gfx_draw_pixel");
+    emit("extern atl_gfx_draw_line");
+    emit("extern atl_gfx_draw_circle");
+    emit("extern atl_gfx_draw_triangle");
+    emit("extern atl_gfx_draw_polygon");
+    emit("extern atl_gfx_draw_text");
+    emit("extern atl_gfx_text_size");
+    emit("extern atl_gfx_load_bmp");
+    emit("extern atl_gfx_draw_bmp");
+    emit("extern atl_gfx_begin_frame");
+    emit("extern atl_gfx_end_frame");
+    emit("extern atl_gfx_set_current");
+    emit("extern atl_gfx_button_render");
+    emit("extern atl_gfx_button_handle");
+    emit("extern atl_last_btn_id");
+    };
+    如果(g_gl_used == 1){
+    emit("extern atl_gl_window_create");
+    emit("extern atl_gl_window_close");
+    emit("extern atl_gl_window_show");
+    emit("extern atl_gl_window_title");
+    emit("extern atl_gl_present");
+    emit("extern atl_gl_clear");
+    emit("extern atl_gl_poll");
+    emit("extern atl_gl_version");
+    emit("extern atl_gl_renderer");
+    emit("extern atl_gl_getproc");
+    emit("extern atl_gl_call");
+    emit("extern atl_gl_call_raw");
+    emit("extern atl_gl_begin");
+    emit("extern atl_gl_end");
+    emit("extern atl_gl_vertex");
+    emit("extern atl_gl_color");
+    emit("extern atl_gl_matrix_mode");
+    emit("extern atl_gl_load_identity");
+    emit("extern atl_gl_ortho");
+    emit("extern atl_gl_rotate");
+    emit("extern atl_gl_translate");
+    emit("extern atl_gl_scale");
+    emit("extern atl_gl_draw_arrays");
+    emit("extern atl_gl_text_draw");
+    emit("extern atl_gl_set_current");
+    emit("extern atl_gl_set_vsync");
+    emit("extern atl_gl_present_gdi");
+    emit("extern atl_gl_window_size");
+    emit("extern atl_gl_msg_pump");
+    emit("extern atl_gl_event_take");
+    emit("extern atl_gpu_mem_write");
+    emit("extern atl_gpu_mem_read");
+    emit("extern atl_gpu_mem_zero");
+    emit("extern atl_gpu_mem_writef");
+    emit("extern atl_gpu_mem_puts");
+    };
+    如果(g_vk_used == 1){
+    emit("extern atl_vk_load");
+    emit("extern atl_vk_version");
+    emit("extern atl_vk_getproc");
+    emit("extern atl_vk_getproc_ldr");
+    emit("extern atl_vk_module_handle");
+    emit("extern atl_vk_call");
+    emit("extern atl_vk_call_raw");
+    emit("extern atl_vk_call_addr");
+    emit("extern atl_vk_window_create");
+    emit("extern atl_vk_window_close");
+    emit("extern atl_vk_window_show");
+    emit("extern atl_vk_poll");
+    emit("extern atl_gpu_mem_write");
+    emit("extern atl_gpu_mem_read");
+    emit("extern atl_gpu_mem_zero");
+    emit("extern atl_gpu_mem_writef");
+    emit("extern atl_gpu_mem_puts");
+    };
+    如果(g_input_used == 1){
+    emit("extern atl_input_key_down");
+    emit("extern atl_input_key_pressed");
+    emit("extern atl_input_mouse_pos");
+    emit("extern atl_input_mouse_button");
+    emit("extern atl_input_sync");
+    };
+    emit("extern atl_method_call");
+    emit("extern atl_field_get");
+    emit("extern atl_field_set");
+    emit("extern atl_mem_report");
+    emit("extern atl_str_find_from");
+    emit("extern atl_dict_get");
+    emit("extern atl_dict_set");
+    emit("extern atl_fp_bits");
+    emit("extern atl_str_from_mem");
+    emit("extern g_argc");
+    emit("extern g_argv");
+    返回值 0;
+};
+
+声明 codegen_get_output(){
+    返回值 字符串构建();
+};
+
+声明 codegen_reset(){
+    init_codegen();
+    返回值 0;
+};

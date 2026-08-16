@@ -1,0 +1,93 @@
+引用.文件(../self-hosted/atl_ds.at);
+引用.文件(../self-hosted/atl_lexer.at);
+引用.文件(../self-hosted/atl_parser.at);
+引用.文件(../self-hosted/atl_semantic.at);
+
+类 语义测试 {
+公开:
+    声明 检查1(){
+        打印("=== 语义检查1: 局部变量和赋值 ===");
+        设 src = "设 a = 1;\n设 b = a + 2;\n打印(b);";
+        创建 ArrayList:tokens;
+        tokens = lex(src);
+        打印("tokens.长度=" + tokens.长度());
+        创建 Parser:p(tokens);
+        创建 ArrayList:decls;
+        decls = p.parse_program();
+        打印("decls.长度=" + decls.长度());
+        sem_analyze(decls);
+        设 i = 0;
+        循环(i < decls.长度()){
+            sem_dump(decls.获取(i), 0);
+            i = i + 1;
+        };
+        打印("");
+        返回值 0;
+    };
+
+    声明 检查2(){
+        打印("=== 语义检查2: 类和字段 ===");
+        设 src = "类 点 {\n公开:\n  设 x 存在;\n  设 y 存在;\n  声明 距离() {\n    返回值 x + y;\n  };\n};";
+        创建 ArrayList:tokens;
+        tokens = lex(src);
+        创建 Parser:p(tokens);
+        创建 ArrayList:decls;
+        decls = p.parse_program();
+        打印("decls.长度=" + decls.长度());
+        sem_analyze(decls);
+        设 i = 0;
+        循环(i < decls.长度()){
+            sem_dump(decls.获取(i), 0);
+            i = i + 1;
+        };
+        打印("");
+        返回值 0;
+    };
+
+    声明 检查3(){
+        打印("=== 语义检查3: 函数和参数 ===");
+        设 src = "声明 加法(a, b) {\n  返回值 a + b;\n};\n声明 主() {\n  设 s = 加法(3, 4);\n  返回值 s;\n};";
+        创建 ArrayList:tokens;
+        tokens = lex(src);
+        创建 Parser:p(tokens);
+        创建 ArrayList:decls;
+        decls = p.parse_program();
+        打印("decls.长度=" + decls.长度());
+        sem_analyze(decls);
+        设 i = 0;
+        循环(i < decls.长度()){
+            sem_dump(decls.获取(i), 0);
+            i = i + 1;
+        };
+        打印("");
+        返回值 0;
+    };
+
+    声明 检查4(){
+        打印("=== 语义检查4: 对象创建和方法调用 ===");
+        设 src = "创建 ArrayList:list;\nlist.添加(42);\n设 n = list.长度();";
+        创建 ArrayList:tokens;
+        tokens = lex(src);
+        创建 Parser:p(tokens);
+        创建 ArrayList:decls;
+        decls = p.parse_program();
+        打印("decls.长度=" + decls.长度());
+        sem_analyze(decls);
+        设 i = 0;
+        循环(i < decls.长度()){
+            sem_dump(decls.获取(i), 0);
+            i = i + 1;
+        };
+        打印("");
+        返回值 0;
+    };
+
+    声明 测试运行(){
+        检查1();
+        检查2();
+        检查3();
+        检查4();
+        打印("=== 语义分析器测试完成 ===");
+        返回值 0;
+    };
+};

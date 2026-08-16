@@ -1,0 +1,2734 @@
+设 AST_INVALID = 0;
+设 AST_CLASS = 1;
+设 AST_FUNC = 2;
+设 AST_HOOK = 3;
+设 AST_PACKAGE = 4;
+设 AST_VARDECL = 10;
+设 AST_ASSIGN = 11;
+设 AST_IF = 12;
+设 AST_SELECT = 13;
+设 AST_LOOP = 14;
+设 AST_RETURN = 15;
+设 AST_BREAK = 16;
+设 AST_CONTINUE = 17;
+设 AST_WAIT = 18;
+设 AST_SHOW = 19;
+设 AST_BLOCK = 20;
+设 AST_EXPRSTMT = 21;
+设 AST_BINARY = 30;
+设 AST_UNARY = 31;
+设 AST_LITERAL = 32;
+设 AST_VAR = 33;
+设 AST_MEMBER = 34;
+设 AST_INDEX = 35;
+设 AST_CALL = 36;
+设 AST_METHODCALL = 37;
+设 AST_LIST_LIT = 38;
+设 AST_NEW = 39;
+设 AST_REF = 40;
+设 AST_DEREF = 41;
+设 AST_HOOKCALL = 42;
+设 AST_MODCALL = 43;
+设 AST_RANGE = 44;
+设 AST_ACCESS_LABEL = 45;
+设 AST_CASE = 46;
+设 AST_ASM = 47;
+设 AST_LIST_DECL = 48;
+设 AST_ARRAY_DECL = 49;
+设 AST_GROUP_DECL = 50;
+设 AST_READFILE = 51;
+设 AST_BUTTON_SUFFIX = 52;
+设 AST_BUTTON_HANDLER = 53;
+设 AST_ENUM = 54;
+设 AST_STRUCT = 55;
+设 AST_DESTROY = 56;
+设 AST_LISTEN = 57;
+设 AST_GAMES = 58;
+设 AST_INTERFACE = 59;
+设 AST_TRY = 60;
+设 AST_THROW = 61;
+设 AST_PAIR = 62;
+设 AST_COLOR_SUFFIX = 63;
+设 AST_ASYNC = 64;
+设 AST_WAIT_TASK = 65;
+设 AST_TRY_BUBBLE = 66;
+设 AST_NAMED_ARG = 67;
+设 AST_LISTEN_EVENT = 68;
+设 AST_WHEN = 69;
+设 AST_UI_BLOCK = 70;
+
+设 LIT_INT = 0;
+设 LIT_FLOAT = 1;
+设 LIT_STRING = 2;
+设 LIT_TRUE = 3;
+设 LIT_FALSE = 4;
+设 LIT_NULL = 5;
+
+设 LOOP_INFINITE = 0;
+设 LOOP_COUNT = 1;
+设 LOOP_COND = 2;
+设 LOOP_CFOR = 3;
+设 LOOP_FOREACH = 4;
+设 LOOP_UNTIL = 5;
+
+设 ACCESS_PUBLIC = 0;
+设 ACCESS_PRIVATE = 1;
+设 ACCESS_PROTECTED = 2;
+设 ACCESS_STATIC = 3;
+
+类 ASTNode {
+公开:
+    设 type 存在;
+    设 line 存在;
+    设 col 存在;
+    设 ival 存在;
+    设 fval 存在;
+    设 sval 存在;
+    设 op 存在;
+    设 lhs 存在;
+    设 rhs 存在;
+    设 operand 存在;
+    设 obj 存在;
+    设 member 存在;
+    设 index 存在;
+    设 is_null_safe 存在;
+    设 callee 存在;
+    设 cond 存在;
+    设 then_block 存在;
+    设 else_block 存在;
+    设 ret_value 存在;
+    设 loop_kind 存在;
+    设 loop_init 存在;
+    设 loop_cond 存在;
+    设 loop_step 存在;
+    设 loop_count 存在;
+    设 loop_item 存在;
+    设 loop_item2 存在;
+    设 loop_body 存在;
+    设 is_exist 存在;
+    设 is_group 存在;
+    设 var_type_tag 存在;
+    设 is_const 存在;
+    设 is_ctor 存在;
+    设 is_default 存在;
+    设 is_cond_select 存在;
+    设 case_cond 存在;
+    设 case_kind 存在;
+    设 case_type_name 存在;
+    设 case_type_names 存在;
+    设 async_func 存在;
+    设 case_alt 存在;
+    设 case_destruct_cls 存在;
+    设 case_destruct_vars 存在;
+    设 access_kind 存在;
+    设 cls_access 存在;
+    设 asm_block 存在;
+    设 arr_size 存在;
+    设 arr_init 存在;
+    设 new_cls_name 存在;
+    设 mod_name 存在;
+    设 method_name 存在;
+    设 cls_name 存在;
+    设 cls_parent 存在;
+    设 cls_implements 存在;
+    设 if_parent 存在;
+    设 if_methods 存在;
+    设 catch_block 存在;
+    设 catch_var 存在;
+    设 finally_block 存在;
+    设 fn_name 存在;
+    设 hk_name 存在;
+    设 rf_path 存在;
+    设 rf_body 存在;
+    设 wait_unit 存在;
+    设 show_end 存在;
+    设 show_has_size 存在;
+    设 show_w_expr 存在;
+    设 show_h_expr 存在;
+    设 children 存在;
+    设 args 存在;
+    设 var_names 存在;
+    设 var_inits 存在;
+    设 fn_params 存在;
+    设 fn_param_defaults 存在;
+    设 fn_vararg 存在;
+    设 hk_param_types 存在;
+    设 cls_members 存在;
+    设 new_args 存在;
+    设 asm_stmts 存在;
+    设 show_args 存在;
+    设 struct_types 存在;
+    设 sem 存在;
+    设 base_expr 存在;
+    设 pair_left 存在;
+    设 pair_right 存在;
+    设 color_expr 存在;
+    设 is_filled 存在;
+    设 alpha_expr 存在;
+    设 named_args 存在;
+    设 block_arg 存在;
+    设 second_args 存在;
+    设 pkg_name 存在;
+    设 pkg_members 存在;
+    设 event_expr 存在;
+    设 filters 存在;
+    设 lambda_func 存在;
+    设 call_node 存在;
+
+    构造(t, l, c){
+        type = t;
+        line = l;
+        col = c;
+        ival = 0;
+        fval = 0;
+        sval = 空;
+        op = 0;
+        lhs = 空;
+        rhs = 空;
+        operand = 空;
+        obj = 空;
+        member = 空;
+        is_null_safe = 0;
+        index = 空;
+        callee = 空;
+        cond = 空;
+        then_block = 空;
+        else_block = 空;
+        ret_value = 空;
+        loop_kind = 0;
+        loop_init = 空;
+        loop_cond = 空;
+        loop_step = 空;
+        loop_count = 空;
+        loop_item = 空;
+        loop_item2 = 空;
+        loop_body = 空;
+        is_exist = 0;
+        is_group = 0;
+        var_type_tag = 0;
+        is_const = 0;
+        is_ctor = 0;
+        is_default = 0;
+        is_cond_select = 0;
+        case_cond = 空;
+        case_kind = 0;
+        case_type_name = 空;
+        case_type_names = 空;
+        async_func = 空;
+        case_alt = 空;
+        case_destruct_cls = 空;
+        case_destruct_vars = 空;
+        access_kind = 1;
+        cls_access = 1;
+        asm_block = 0;
+        arr_size = 0;
+        arr_init = 空;
+        new_cls_name = 空;
+        mod_name = 空;
+        method_name = 空;
+        cls_name = 空;
+        cls_parent = 空;
+        cls_implements = 空;
+        if_parent = 空;
+        if_methods = 空;
+        catch_block = 空;
+        catch_var = 空;
+        finally_block = 空;
+        fn_name = 空;
+        hk_name = 空;
+        rf_path = 空;
+        rf_body = 空;
+        wait_unit = 0;
+        show_end = 0;
+        show_has_size = 0;
+        show_w_expr = 空;
+        show_h_expr = 空;
+        children = 空;
+        args = 空;
+        var_names = 空;
+        var_inits = 空;
+        fn_params = 空;
+        fn_param_defaults = 空;
+        fn_vararg = 0;
+        hk_param_types = 空;
+        cls_members = 空;
+        new_args = 空;
+        asm_stmts = 空;
+        show_args = 空;
+        struct_types = 空;
+        sem = 空;
+        base_expr = 空;
+        pair_left = 空;
+        pair_right = 空;
+        color_expr = 空;
+        is_filled = 0;
+        alpha_expr = 空;
+        named_args = 空;
+        block_arg = 空;
+        second_args = 空;
+        pkg_name = 空;
+        pkg_members = 空;
+        event_expr = 空;
+        filters = 空;
+        lambda_func = 空;
+        call_node = 空;
+    };
+
+    声明 ensure_children(){
+        如果(children == 空){
+            children = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_case_alt(){
+        如果(case_alt == 空){
+            case_alt = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_case_type_names(){
+        如果(case_type_names == 空){
+            case_type_names = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_pkg_members(){
+        如果(pkg_members == 空){
+            pkg_members = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_cls_implements(){
+        如果(cls_implements == 空){
+            cls_implements = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_if_methods(){
+        如果(if_methods == 空){
+            if_methods = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_struct_types(){
+        如果(struct_types == 空){
+            struct_types = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_args(){
+        如果(args == 空){
+            args = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_vars(){
+        如果(var_names == 空){
+            var_names = 创建 ArrayList;
+        };
+        如果(var_inits == 空){
+            var_inits = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_show_args(){
+        如果(show_args == 空){
+            show_args = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_fn_params(){
+        如果(fn_params == 空){
+            fn_params = 创建 ArrayList;
+        };
+        如果(fn_param_defaults == 空){
+            fn_param_defaults = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_cls_members(){
+        如果(cls_members == 空){
+            cls_members = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_new_args(){
+        如果(new_args == 空){
+            new_args = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+
+    声明 ensure_hk_param_types(){
+        如果(hk_param_types == 空){
+            hk_param_types = 创建 ArrayList;
+        };
+        返回值 0;
+    };
+};
+
+类 Parser {
+公开:
+    设 tokens 存在;
+    设 pos 存在;
+    设 had_error 存在;
+    设 no_pair 存在;
+    设 saw_listen_event 存在;
+
+    构造(toks){
+        创建 ArrayList:tokens;
+        tokens = toks;
+        pos = 0;
+        had_error = 0;
+        no_pair = 0;
+        saw_listen_event = 0;
+    };
+
+    声明 cur(){
+        如果(pos < tokens.长度()){
+            返回值 tokens.获取(pos);
+        };
+        返回值 tokens.获取(tokens.长度() - 1);
+    };
+
+    声明 cur_type(){
+        设 t = cur();
+        返回值 t.type;
+    };
+
+    声明 cur_text(){
+        设 t = cur();
+        返回值 t.text;
+    };
+
+    声明 cur_line(){
+        设 t = cur();
+        返回值 t.line;
+    };
+
+    声明 cur_col(){
+        设 t = cur();
+        返回值 t.col;
+    };
+
+    声明 advance(){
+        pos = pos + 1;
+        返回值 0;
+    };
+
+    声明 args_has_comma(){
+        设 i = pos;
+        循环(i < tokens.长度()){
+            设 tk = tokens.获取(i);
+            如果(tk.type == TOK_RPAREN){ 返回值 0; };
+            如果(tk.type == TOK_COMMA){ 返回值 1; };
+            i = i + 1;
+        };
+        返回值 0;
+    };
+
+    声明 args_is_index(){
+        如果(pos >= tokens.长度()){ 返回值 0; };
+        设 tk = tokens.获取(pos);
+        如果(tk.type != TOK_IDENT){ 返回值 0; };
+        如果(pos + 1 >= tokens.长度()){ 返回值 0; };
+        设 nk = tokens.获取(pos + 1);
+        如果(nk.type != TOK_LBRACKET){ 返回值 0; };
+        设 i = pos + 2;
+        循环(i < tokens.长度()){
+            设 t2 = tokens.获取(i);
+            如果(t2.type == TOK_RBRACKET){ 返回值 1; };
+            如果(t2.type == TOK_TILDE){ 返回值 0; };
+            i = i + 1;
+        };
+        返回值 0;
+    };
+
+    声明 cur_tok(){
+        返回值 cur();
+    };
+
+    声明 cur_ival(){
+        设 t = cur();
+        返回值 t.ival;
+    };
+
+    声明 lexer_peek(){
+        设 n = pos + 1;
+        如果(n < tokens.长度()){
+            返回值 tokens.获取(n);
+        };
+        返回值 tokens.获取(tokens.长度() - 1);
+    };
+
+    声明 check(t){
+        如果(cur_type() == t){
+            返回值 1;
+        };
+        返回值 0;
+    };
+
+    声明 accept(t){
+        如果(cur_type() == t){
+            advance();
+            返回值 1;
+        };
+        返回值 0;
+    };
+
+    声明 expect(t, what){
+        如果(cur_type() != t){
+            报错("第" + cur_line() + "行: 期望 " + what + " 但得到 '" + cur_text() + "'");
+            had_error = 1;
+            返回值 0;
+        };
+        advance();
+        返回值 1;
+    };
+
+    声明 peek_type(){
+        设 next_pos = pos + 1;
+        如果(next_pos < tokens.长度()){
+            设 t = tokens.获取(next_pos);
+            返回值 t.type;
+        };
+        返回值 TOK_EOF;
+    };
+
+    声明 parse_call_arg(){
+        如果(is_name_token(cur_type()) == 1 && peek_type() == TOK_COLON){
+            设 name = cur_text();
+            advance();
+            expect(TOK_COLON, ":");
+            设 val = parse_expr();
+            创建 ASTNode:n(AST_NAMED_ARG, val.line, val.col);
+            n.sval = name;
+            n.lhs = val;
+            返回值 n;
+        };
+        返回值 parse_expr();
+    };
+
+    声明 is_name_token(t){
+        如果(t == TOK_IDENT){ 返回值 1; };
+        如果(t == TOK_LIST){ 返回值 1; };
+        如果(t == TOK_ARRAY){ 返回值 1; };
+        如果(t == TOK_GROUP){ 返回值 1; };
+        如果(t == TOK_CREATE){ 返回值 1; };
+        如果(t == TOK_WAIT){ 返回值 1; };
+        如果(t == TOK_FUNC){ 返回值 1; };
+        如果(t == TOK_SHOW){ 返回值 1; };
+        如果(t == TOK_RETURN){ 返回值 1; };
+        如果(t == TOK_PUBLIC){ 返回值 1; };
+        如果(t == TOK_PRIVATE){ 返回值 1; };
+        如果(t == TOK_PROTECTED){ 返回值 1; };
+        如果(t == TOK_TIME_KW){ 返回值 1; };
+        如果(t == TOK_LISTEN){ 返回值 1; };
+        如果(t == TOK_READFILE){ 返回值 1; };
+        如果(t == TOK_ASM){ 返回值 1; };
+        返回值 0;
+    };
+
+    声明 expect_name(what){
+        如果(is_name_token(cur_type()) == 1){
+            设 name = cur_text();
+            advance();
+            返回值 name;
+        };
+        报错("第" + cur_line() + "行: 期望 " + what + " 但得到 '" + cur_text() + "'");
+        had_error = 1;
+        返回值 "";
+    };
+
+    声明 synchronize(){
+        循环(cur_type() != TOK_EOF){
+            如果(cur_type() == TOK_SEMI){ advance(); 返回值 0; };
+            如果(cur_type() == TOK_RBRACE){ 返回值 0; };
+            advance();
+        };
+        返回值 0;
+    };
+
+    声明 parse_program(){
+        创建 ArrayList:decls;
+        循环(cur_type() != TOK_EOF){
+
+            设 d = parse_decl();
+            如果(d != 空){
+                decls.添加(d);
+            }否则{
+                synchronize();
+            };
+        };
+
+        如果(saw_listen_event == 1){
+            设 inject_src = "设 g_event_subs = [];\n声明 __事件订阅(事件ID, 键过滤器, 回调, 窗口){ g_event_subs.添加([事件ID, 键过滤器, 回调, 窗口]); 返回值 1; };\n声明 __输入处理(){ 设 buf = 内存.分配(32); 内存.写字节(buf, 0, 0); 内存.写字节(buf, 4, 0); 设 wins = []; 设 subs = g_event_subs; 设 i = 0; 循环(i < subs.个数()){ 设 win = subs[i][3]; 如果(win > 0){ 设 j = 0; 设 found = 0; 循环(j < wins.个数()){ 如果(wins[j] == win){ found = 1; }; j = j + 1; }; 如果(found == 0){ wins.添加(win); }; }; i = i + 1; }; 设 k = 0; 循环(k < wins.个数()){ 设 win2 = wins[k]; 循环{ 设 r = GL.事件.轮询(win2, buf, 0); 如果(r == 0){ 跳出; }; 设 etype = 内存.读字节(buf, 0); 设 ekey = 内存.读字节(buf, 4); 设 m = 0; 循环(m < subs.个数()){ 设 rec2 = subs[m]; 如果(rec2[3] == win2 && rec2[0] == etype){ 设 fk = rec2[1]; 设 mk = fk; 如果(mk >= 97 && mk <= 122){ mk = mk - 32; }; 如果(fk == 0 || mk == ekey){ 设 cb = rec2[2]; cb(); }; }; m = m + 1; }; 如果(r != 1){ 跳出; }; }; k = k + 1; }; 输入.同步(); 返回值 1; };\n";
+
+            设 ci = 0;
+            循环(ci < decls.长度()){
+                创建 ASTNode:cd;
+                cd = decls.获取(ci);
+                如果(cd.type == AST_FUNC){
+                    如果(cd.fn_name == "__事件订阅" || cd.fn_name == "__输入处理"){
+                        报错("第" + cd.line + "行: 函数名「" + cd.fn_name + "」是事件订阅运行时保留名");
+                    };
+                }又如果(cd.type == AST_VARDECL){
+                    如果(cd.var_names != 空){
+                        设 vj2 = 0;
+                        循环(vj2 < cd.var_names.长度()){
+                            如果(cd.var_names.获取(vj2) == "g_event_subs"){
+                                报错("第" + cd.line + "行: 全局变量名「g_event_subs」是事件订阅运行时保留名");
+                            };
+                            vj2 = vj2 + 1;
+                        };
+                    };
+                };
+                ci = ci + 1;
+            };
+
+            设 toks2 = lex(inject_src);
+            创建 Parser:ip(toks2);
+            创建 ArrayList:extra;
+            extra = ip.parse_program();
+            设 ei = 0;
+            循环(ei < extra.长度()){
+                decls.添加(extra.获取(ei));
+                ei = ei + 1;
+            };
+        };
+        返回值 decls;
+    };
+
+    声明 parse_decl(){
+        设 t = cur_type();
+        如果(t == TOK_CLASS){ 返回值 parse_class(); };
+        如果(t == TOK_INTERFACE){ 返回值 parse_interface(); };
+        如果(t == TOK_DECLARE){ 返回值 parse_func_decl(); };
+        如果(t == TOK_HOOK){ 返回值 parse_hook_decl(); };
+        如果(t == TOK_PACKAGE){ 返回值 parse_package(); };
+
+        返回值 parse_statement();
+    };
+
+    声明 parse_package(){
+        创建 ASTNode:n(AST_PACKAGE, cur_line(), cur_col());
+        n.ensure_pkg_members();
+        advance();
+        n.pkg_name = expect_name("包名");
+        expect(TOK_LBRACE, "{");
+        循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+            设 mt = cur_type();
+
+            如果(mt == TOK_PUBLIC || mt == TOK_PRIVATE || mt == TOK_PROTECTED){
+                创建 ASTNode:al(AST_ACCESS_LABEL, cur_line(), cur_col());
+                如果(mt == TOK_PUBLIC){ al.access_kind = ACCESS_PUBLIC; };
+                如果(mt == TOK_PRIVATE){ al.access_kind = ACCESS_PRIVATE; };
+                如果(mt == TOK_PROTECTED){ al.access_kind = ACCESS_PROTECTED; };
+                advance();
+                accept(TOK_COLON);
+                n.pkg_members.添加(al);
+                继续;
+            };
+            设 d = parse_decl();
+            如果(d != 空){ n.pkg_members.添加(d); };
+        };
+        expect(TOK_RBRACE, "}");
+        accept(TOK_SEMI);
+        返回值 n;
+    };
+
+    声明 parse_type_params(){
+        如果(check(TOK_LT) == 0){ 返回值 0; };
+        advance();
+        设 closed = 0;
+        循环(closed == 0){
+            expect_name("类型参数");
+
+            如果(check(TOK_LT)){
+                advance();
+                循环(1){
+                    expect_name("类型参数");
+                    如果(accept(TOK_COMMA)){ 继续; };
+                    如果(accept(TOK_SHR)){ closed = 1; 跳出; };
+                    expect(TOK_GT, ">");
+                    跳出;
+                };
+            };
+            如果(closed == 1){ 跳出; };
+            如果(accept(TOK_COMMA)){ 继续; };
+            如果(accept(TOK_SHR)){ 跳出; };
+            expect(TOK_GT, ">");
+            跳出;
+        };
+        返回值 1;
+    };
+
+    声明 try_type_params(){
+        如果(check(TOK_LT) == 0){ 返回值 0; };
+        设 saved = pos;
+        advance();
+        如果(try_type_params_inner() == 0){ pos = saved; 返回值 0; };
+        返回值 1;
+    };
+    声明 try_type_params_inner(){
+
+        如果(cur_type() != TOK_IDENT){ 返回值 0; };
+        advance();
+        循环(1){
+            如果(check(TOK_LT)){
+
+                advance();
+                如果(cur_type() != TOK_IDENT){ 返回值 0; };
+                advance();
+                循环(1){
+                    如果(accept(TOK_COMMA)){
+                        如果(cur_type() != TOK_IDENT){ 返回值 0; };
+                        advance();
+                        继续;
+                    };
+                    如果(accept(TOK_SHR)){ 返回值 1; };
+                    如果(accept(TOK_GT)){ 跳出; };
+                    返回值 0;
+                };
+                继续;
+            };
+            如果(accept(TOK_COMMA)){
+                如果(cur_type() != TOK_IDENT){ 返回值 0; };
+                advance();
+                继续;
+            };
+            如果(accept(TOK_SHR)){ 返回值 1; };
+            如果(accept(TOK_GT)){ 返回值 1; };
+            返回值 0;
+        };
+    };
+
+    声明 is_wait_task_ahead(){
+        如果(pos + 2 < tokens.长度()){
+            设 t1 = tokens.获取(pos + 1);
+            如果(t1.type == TOK_IDENT && t1.text == "任务"){
+                设 t2 = tokens.获取(pos + 2);
+                如果(t2.type == TOK_LPAREN){ 返回值 1; };
+            };
+        };
+        返回值 0;
+    };
+    声明 parse_wait_task(){
+        创建 ASTNode:wt(AST_WAIT_TASK, cur_line(), cur_col());
+        advance();
+        advance();
+        expect(TOK_LPAREN, "(");
+        wt.ret_value = parse_expr();
+        expect(TOK_RPAREN, ")");
+        返回值 wt;
+    };
+
+    声明 parse_async_block(){
+        创建 ASTNode:n(AST_ASYNC, cur_line(), cur_col());
+        n.ensure_children();
+        advance();
+        expect(TOK_LBRACE, "{");
+        循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+            设 s = parse_statement();
+            如果(s != 空){ n.children.添加(s); };
+        };
+        expect(TOK_RBRACE, "}");
+        返回值 n;
+    };
+
+    声明 parse_class(){
+        创建 ASTNode:n(AST_CLASS, cur_line(), cur_col());
+        n.ensure_cls_members();
+        advance();
+        n.cls_name = expect_name("类名");
+        parse_type_params();
+        如果(accept(TOK_EXTENDS)){
+            n.cls_parent = expect_name("父类名");
+        };
+
+        如果(accept(TOK_IMPLEMENTS)){
+            n.ensure_cls_implements();
+            循环(1){
+                n.cls_implements.添加(expect_name("接口名"));
+                如果(accept(TOK_COMMA) == 0){ 跳出; };
+            };
+        };
+        expect(TOK_LBRACE, "{");
+        n.cls_access = ACCESS_PRIVATE;
+        循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+            设 mt = cur_type();
+            如果(mt == TOK_PUBLIC || mt == TOK_PRIVATE || mt == TOK_PROTECTED || mt == TOK_STATIC){
+                创建 ASTNode:al(AST_ACCESS_LABEL, cur_line(), cur_col());
+                如果(mt == TOK_PUBLIC){ al.access_kind = ACCESS_PUBLIC; };
+                如果(mt == TOK_PRIVATE){ al.access_kind = ACCESS_PRIVATE; };
+                如果(mt == TOK_PROTECTED){ al.access_kind = ACCESS_PROTECTED; };
+                如果(mt == TOK_STATIC){ al.access_kind = ACCESS_STATIC; };
+                n.cls_access = al.access_kind;
+                advance();
+                accept(TOK_COLON);
+                n.cls_members.添加(al);
+                继续;
+            };
+            如果(mt == TOK_CTOR){
+                设 f = parse_func_decl_ctor();
+                如果(f != 空){ n.cls_members.添加(f); };
+                继续;
+            };
+            如果(mt == TOK_DECLARE){
+                设 f = parse_func_decl();
+                如果(f != 空){ n.cls_members.添加(f); };
+                继续;
+            };
+            如果(mt == TOK_CLASS){
+                设 c = parse_class();
+                如果(c != 空){ n.cls_members.添加(c); };
+                继续;
+            };
+
+            设 s = parse_statement();
+            如果(s != 空){ n.cls_members.添加(s); };
+        };
+        expect(TOK_RBRACE, "}");
+        accept(TOK_SEMI);
+        返回值 n;
+    };
+
+    声明 parse_interface(){
+        创建 ASTNode:n(AST_INTERFACE, cur_line(), cur_col());
+        advance();
+        n.cls_name = expect_name("接口名");
+        如果(accept(TOK_EXTENDS)){
+            n.if_parent = expect_name("父接口名");
+        };
+        expect(TOK_LBRACE, "{");
+        n.ensure_if_methods();
+        循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+
+            如果(check(TOK_DECLARE)){
+                创建 ASTNode:f(AST_FUNC, cur_line(), cur_col());
+                f.ensure_fn_params();
+                advance();
+                f.fn_name = expect_name("方法名");
+                expect(TOK_LPAREN, "(");
+                循环(cur_type() != TOK_RPAREN){
+                    设 pname = expect_name("参数名");
+                    f.fn_params.添加(pname);
+                    如果(accept(TOK_ASSIGN)){
+                        f.fn_param_defaults.添加(parse_expr());
+                    }否则{
+                        f.fn_param_defaults.添加(空);
+                    };
+                    如果(accept(TOK_COMMA) == 0){ 跳出; };
+                };
+                expect(TOK_RPAREN, ")");
+
+                accept(TOK_SEMI);
+                n.if_methods.添加(f);
+                继续;
+            };
+
+            如果(check(TOK_SEMI)){ advance(); 继续; };
+            advance();
+        };
+        expect(TOK_RBRACE, "}");
+        accept(TOK_SEMI);
+        返回值 n;
+    };
+    声明 parse_func_decl(){
+        创建 ASTNode:n(AST_FUNC, cur_line(), cur_col());
+        n.ensure_fn_params();
+        advance();
+
+        如果(check(TOK_TILDE)){
+            advance();
+            设 dname = expect_name("析构函数名");
+            n.fn_name = "~" + dname;
+            n.is_ctor = 2;
+        }否则{
+            n.fn_name = expect_name("函数名");
+        };
+        parse_type_params();
+        expect(TOK_LPAREN, "(");
+        循环(cur_type() != TOK_RPAREN){
+            设 pname = expect_name("参数名");
+            n.fn_params.添加(pname);
+
+            如果(accept(TOK_ASSIGN)){
+                n.fn_param_defaults.添加(parse_expr());
+            }否则{
+                n.fn_param_defaults.添加(空);
+            };
+
+            如果(accept(TOK_DOT)){
+                如果(accept(TOK_DOT)){ accept(TOK_DOT); };
+                n.fn_vararg = 1;
+            };
+            如果(accept(TOK_COMMA) == 0){ 跳出; };
+        };
+        expect(TOK_RPAREN, ")");
+        n.then_block = parse_block();
+        accept(TOK_SEMI);
+        返回值 n;
+    };
+
+    声明 parse_func_decl_ctor(){
+        创建 ASTNode:n(AST_FUNC, cur_line(), cur_col());
+        n.ensure_fn_params();
+        advance();
+        n.fn_name = "构造";
+        n.is_ctor = 1;
+        expect(TOK_LPAREN, "(");
+        循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+            设 pname = expect_name("参数名");
+            n.fn_params.添加(pname);
+            如果(accept(TOK_ASSIGN)){
+                n.fn_param_defaults.添加(parse_expr());
+            }否则{
+                n.fn_param_defaults.添加(空);
+            };
+            如果(accept(TOK_DOT)){
+                如果(accept(TOK_DOT)){ accept(TOK_DOT); };
+                n.fn_vararg = 1;
+            };
+            如果(accept(TOK_COMMA) == 0){ 跳出; };
+        };
+        expect(TOK_RPAREN, ")");
+        n.then_block = parse_block();
+        accept(TOK_SEMI);
+        返回值 n;
+    };
+
+    声明 parse_hook_decl(){
+        创建 ASTNode:n(AST_HOOK, cur_line(), cur_col());
+        n.ensure_hk_param_types();
+        advance();
+        n.hk_name = expect_name("引子名");
+        n.method_name = n.hk_name;
+        expect(TOK_LPAREN, "(");
+        循环(cur_type() != TOK_RPAREN){
+            设 tn = expect_name("类型名");
+            n.hk_param_types.添加(tn);
+            如果(accept(TOK_COMMA) == 0){ 跳出; };
+        };
+        expect(TOK_RPAREN, ")");
+        n.then_block = parse_block();
+        accept(TOK_SEMI);
+        返回值 n;
+    };
+
+    声明 parse_block(){
+        创建 ASTNode:n(AST_BLOCK, cur_line(), cur_col());
+        n.ensure_children();
+        expect(TOK_LBRACE, "{");
+        循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+            设 s = parse_statement();
+            如果(s != 空){
+                n.children.添加(s);
+            }否则{
+                synchronize();
+            };
+        };
+        expect(TOK_RBRACE, "}");
+        返回值 n;
+    };
+
+    声明 parse_show_node(){
+        创建 ASTNode:n(AST_SHOW, cur_line(), cur_col());
+        n.ensure_show_args();
+        advance();
+
+        如果(check(TOK_LPAREN)){
+            advance();
+            n.show_w_expr = parse_expr();
+            expect(TOK_COMMA, ",");
+            n.show_h_expr = parse_expr();
+            expect(TOK_RPAREN, ")");
+            n.show_has_size = 1;
+        };
+        循环(accept(TOK_SHL)){
+            如果(check(TOK_END)){ n.show_end = 1; advance(); 跳出; };
+            n.show_args.添加(parse_expr());
+        };
+        返回值 n;
+    };
+
+    声明 parse_vardecl(){
+        创建 ASTNode:n(AST_VARDECL, cur_line(), cur_col());
+        n.ensure_vars();
+        设 is_const = 0;
+        如果(check(TOK_CONST)){ is_const = 1; };
+        advance();
+        如果(is_const == 1){
+            n.is_const = 1;
+
+            如果(check(TOK_GROUP)){ n.is_group = 1; n.var_type_tag = 3; advance(); };
+        };
+        如果(check(TOK_GROUP)){ n.is_group = 1; n.var_type_tag = 3; advance(); };
+        循环{
+            设 name = expect_name("变量名");
+            n.var_names.添加(name);
+            如果(check(TOK_ASSIGN)){
+                advance();
+                设 init = parse_expr();
+                n.var_inits.添加(init);
+            }否则{
+                n.var_inits.添加(空);
+            };
+            如果(accept(TOK_COMMA) == 0){ 跳出; };
+        };
+        如果(accept(TOK_EXIST)){
+            n.is_exist = 1;
+        };
+        accept(TOK_SEMI);
+        返回值 n;
+    };
+
+    声明 parse_statement(){
+        设 t = cur_type();
+        如果(t == TOK_SET){ 返回值 parse_vardecl(); };
+        如果(t == TOK_CONST){ 返回值 parse_vardecl(); };
+        如果(t == TOK_DECLARE){ 返回值 parse_func_decl(); };
+        如果(t == TOK_LBRACE){ 返回值 parse_block(); };
+        如果(t == TOK_IF){ 返回值 parse_if(); };
+        如果(t == TOK_ELIF){ 返回值 parse_if(); };
+        如果(t == TOK_SELECT){ 返回值 parse_select(); };
+        如果(t == TOK_LOOP){ 返回值 parse_loop(); };
+        如果(t == TOK_RETURN){
+            创建 ASTNode:n(AST_RETURN, cur_line(), cur_col());
+            advance();
+            如果(cur_type() != TOK_SEMI && cur_type() != TOK_RBRACE){
+                n.ret_value = parse_expr();
+            };
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_BREAK){
+            创建 ASTNode:n(AST_BREAK, cur_line(), cur_col());
+            advance();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_CONTINUE){
+            创建 ASTNode:n(AST_CONTINUE, cur_line(), cur_col());
+            advance();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_WAIT){
+
+            如果(is_wait_task_ahead() == 1){
+                设 wt = parse_wait_task();
+                accept(TOK_SEMI);
+                返回值 wt;
+            };
+            创建 ASTNode:n(AST_WAIT, cur_line(), cur_col());
+            advance();
+            n.ret_value = parse_expr();
+            如果(check(TOK_SEC)){ n.wait_unit = TOK_SEC; advance(); };
+            如果(check(TOK_MIN)){ n.wait_unit = TOK_MIN; advance(); };
+            如果(check(TOK_HOUR)){ n.wait_unit = TOK_HOUR; advance(); };
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_ASYNC){
+
+            设 n = parse_async_block();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_SHOW){
+            设 n = parse_show_node();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_READFILE){
+
+            创建 ASTNode:n(AST_READFILE, cur_line(), cur_col());
+            advance();
+            expect(TOK_LPAREN, "(");
+
+        创建 StringBuffer:sb_path;
+        设 prev_rf_tok = "";
+        循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+            path_append(sb_path, prev_rf_tok, cur_text());
+            prev_rf_tok = cur_text();
+            advance();
+        };
+        n.rf_path = sb_path.构建();
+            expect(TOK_RPAREN, ")");
+            n.rf_body = parse_block();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_ASM){
+            创建 ASTNode:n(AST_ASM, cur_line(), cur_col());
+            创建 ArrayList:tmp_as;
+            n.asm_stmts = tmp_as;
+            advance();
+            如果(accept(TOK_LBRACE)){
+                n.asm_block = 1;
+                循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+                    创建 StringBuffer:sb;
+                    设 first_tok = 1;
+                    循环(cur_type() != TOK_SEMI && cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+                        如果(first_tok == 0){ sb.追加(" "); };
+                        first_tok = 0;
+                        sb.追加(cur_text());
+                        advance();
+                    };
+                    accept(TOK_SEMI);
+
+                    tmp_as.添加(sb.构建());
+                };
+                expect(TOK_RBRACE, "}");
+            }否则{
+                expect(TOK_LPAREN, "(");
+                如果(check(TOK_STRING)){
+                    tmp_as.添加(cur_text());
+                    advance();
+                };
+                expect(TOK_RPAREN, ")");
+            };
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_ENUM_KW){
+
+            创建 ASTNode:n(AST_ENUM, cur_line(), cur_col());
+            advance();
+            expect(TOK_LBRACE, "{");
+            n.ensure_children();
+            循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+                n.children.添加(expect_name("枚举成员"));
+                如果(accept(TOK_COMMA) == 0){ 跳出; };
+            };
+            expect(TOK_RBRACE, "}");
+            n.sval = expect_name("枚举别名");
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_STRUCT_KW){
+
+            创建 ASTNode:n(AST_STRUCT, cur_line(), cur_col());
+            advance();
+            expect(TOK_LBRACE, "{");
+            n.ensure_children();
+            n.ensure_struct_types();
+            循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+                n.struct_types.添加(expect_name("字段类型"));
+                n.children.添加(expect_name("字段名"));
+                如果(accept(TOK_COMMA) == 0){ 跳出; };
+            };
+            expect(TOK_RBRACE, "}");
+            n.sval = expect_name("结构别名");
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_DESTROY){
+
+            创建 ASTNode:n(AST_DESTROY, cur_line(), cur_col());
+            advance();
+            n.operand = parse_expr();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_THROW){
+
+            创建 ASTNode:n(AST_THROW, cur_line(), cur_col());
+            advance();
+            如果(check(TOK_SEMI) == 0 && check(TOK_RBRACE) == 0){
+                n.operand = parse_expr();
+            };
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_TRY){
+
+            创建 ASTNode:n(AST_TRY, cur_line(), cur_col());
+            advance();
+            n.then_block = parse_block();
+            如果(accept(TOK_CATCH)){
+                expect(TOK_LPAREN, "(");
+                n.catch_var = expect_name("捕获变量名");
+                expect(TOK_RPAREN, ")");
+                n.catch_block = parse_block();
+            };
+            如果(accept(TOK_FINALLY)){
+                n.finally_block = parse_block();
+            };
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_LISTEN){
+
+            advance();
+            expect(TOK_LPAREN, "(");
+            如果(is_name_token(cur_type()) == 1 && cur_text() == "事件" && peek_type() == TOK_COLON){
+                创建 ASTNode:e(AST_LISTEN_EVENT, cur_line(), cur_col());
+                advance();
+                expect(TOK_COLON, ":");
+                e.event_expr = parse_expr();
+
+                如果(accept(TOK_COMMA)){
+                    创建 ArrayList:flt_l;
+                    e.filters = flt_l;
+                    循环{
+                        flt_l.添加(parse_call_arg());
+                        如果(accept(TOK_COMMA) == 0){ 跳出; };
+                    };
+                };
+                expect(TOK_RPAREN, ")");
+                e.then_block = parse_block();
+                accept(TOK_SEMI);
+
+                创建 ASTNode:lf(AST_FUNC, e.line, e.col);
+                lf.fn_name = "";
+                lf.fn_params = 创建 ArrayList;
+                lf.then_block = e.then_block;
+                e.lambda_func = lf;
+                saw_listen_event = 1;
+                返回值 e;
+            };
+
+            创建 ASTNode:n(AST_LISTEN, cur_line(), cur_col());
+            n.cond = parse_expr();
+            expect(TOK_RPAREN, ")");
+            n.then_block = parse_block();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_GAMES){
+
+            创建 ASTNode:n(AST_GAMES, cur_line(), cur_col());
+            advance();
+            如果(accept(TOK_LPAREN)){
+                expect(TOK_RPAREN, ")");
+            };
+            n.then_block = parse_block();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_WHEN){
+
+            advance();
+            expect(TOK_DOT, ".");
+            创建 ASTNode:w(AST_WHEN, t.line, t.col);
+            w.method_name = expect_name("事件名");
+
+            创建 ArrayList:wparams;
+            w.fn_params = wparams;
+            如果(accept(TOK_LPAREN)){
+                循环(is_name_token(cur_type())){
+                    wparams.添加(cur_text());
+                    advance();
+                    如果(accept(TOK_COMMA) == 0){ 跳出; };
+                };
+                expect(TOK_RPAREN, ")");
+            };
+            w.then_block = parse_block();
+            accept(TOK_SEMI);
+
+            创建 ASTNode:wlf(AST_FUNC, w.line, w.col);
+            wlf.fn_name = "";
+            wlf.fn_params = wparams;
+            wlf.then_block = w.then_block;
+            w.lambda_func = wlf;
+            返回值 w;
+        };
+        如果(t == TOK_LIST){
+
+            创建 ASTNode:n(AST_LIST_DECL, cur_line(), cur_col());
+            advance();
+            n.sval = expect_name("列表名");
+            expect(TOK_LBRACKET, "[");
+            如果(check(TOK_INT)){
+                设 tok = cur();
+                n.arr_size = tok.ival;
+                advance();
+            };
+            expect(TOK_RBRACKET, "]");
+            如果(accept(TOK_ASSIGN)){
+                n.arr_init = parse_expr();
+            };
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        如果(t == TOK_ARRAY){
+
+            创建 ASTNode:n(AST_ARRAY_DECL, cur_line(), cur_col());
+            advance();
+            n.sval = expect_name("数组名");
+            如果(accept(TOK_ASSIGN)){
+                n.arr_init = parse_expr();
+            };
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+
+        如果(t == TOK_IDENT){
+            设 id_name = cur_text();
+
+            如果(id_name == "执行"){
+                设 pk = lexer_peek();
+                如果(pk.type == TOK_LBRACE){
+                    创建 ASTNode:n(AST_LOOP, cur_line(), cur_col());
+                    n.loop_kind = LOOP_UNTIL;
+                    n.ensure_children();
+                    advance();
+                    expect(TOK_LBRACE, "{");
+                    循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+                        设 s = parse_statement();
+                        如果(s != 空){ n.children.添加(s); }否则{ synchronize(); };
+                    };
+                    expect(TOK_RBRACE, "}");
+                    创建 ASTNode:body(AST_BLOCK, n.line, n.col);
+                    body.children = n.children;
+                    创建 ArrayList:newkids;
+                    newkids = 创建 ArrayList;
+                    n.children = newkids;
+                    n.loop_body = body;
+                    expect(TOK_UNTIL, "直到");
+                    expect(TOK_LPAREN, "(");
+                    n.loop_cond = parse_expr();
+                    expect(TOK_RPAREN, ")");
+                    accept(TOK_SEMI);
+                    返回值 n;
+                };
+            };
+            如果(id_name == "id"){
+                设 pk = lexer_peek();
+                如果(pk.type == TOK_COLON){
+                    设 id_tok = cur_tok();
+                    advance();
+                    expect(TOK_COLON, ":");
+                    如果(check(TOK_INT)){
+                        创建 ASTNode:n(AST_BUTTON_HANDLER, id_tok.line, id_tok.col);
+                        n.button_id = cur_ival();
+                        advance();
+                         如果(check(TOK_LPAREN)){
+                             advance();
+                             设 txt = "";
+                             循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                                 如果(txt.长度() > 0){ txt = txt + " "; };
+                                 txt = txt + cur_text();
+                                 advance();
+                             };
+                             n.sval = txt;
+                             expect(TOK_RPAREN, ")");
+                        };
+                        n.fn_body = parse_block();
+                        accept(TOK_SEMI);
+                        返回值 n;
+                    };
+                };
+            };
+        };
+
+        返回值 parse_expr_stmt();
+    };
+
+    声明 parse_if(){
+        创建 ASTNode:n(AST_IF, cur_line(), cur_col());
+        advance();
+        expect(TOK_LPAREN, "(");
+        n.cond = parse_expr();
+        expect(TOK_RPAREN, ")");
+        n.then_block = parse_block();
+        accept(TOK_SEMI);
+        如果(check(TOK_ELIF)){
+            n.else_block = parse_if();
+        };
+        如果(accept(TOK_ELSE)){
+            n.else_block = parse_block();
+            accept(TOK_SEMI);
+        };
+        返回值 n;
+    };
+
+    声明 parse_select(){
+        创建 ASTNode:n(AST_SELECT, cur_line(), cur_col());
+        n.ensure_children();
+        advance();
+        expect(TOK_LPAREN, "(");
+        n.obj = parse_expr();
+        expect(TOK_RPAREN, ")");
+        expect(TOK_LBRACE, "{");
+        循环(cur_type() != TOK_RBRACE){
+            创建 ASTNode:c(AST_CASE, cur_line(), cur_col());
+            c.ensure_children();
+            如果(accept(TOK_DEFAULT)){
+                c.is_default = 1;
+                expect(TOK_COLON, ":");
+            }否则{
+                expect(TOK_CASE, "情况");
+                设 saved_no_pair = no_pair;
+                no_pair = 1;
+                c.case_kind = 0;
+
+                如果(check(TOK_IS)){
+                    advance();
+                    c.case_kind = 2;
+                    c.ensure_case_type_names();
+                    c.case_type_name = expect_name("类型名");
+                    c.case_type_names.添加(c.case_type_name);
+                    循环(accept(TOK_BOR)){
+                        c.case_type_names.添加(expect_name("类型名"));
+                    };
+                }否则{
+
+                    如果(check(TOK_CREATE)){
+                        设 saved2 = pos;
+                        advance();
+                        如果(cur_type() == TOK_IDENT){
+                            设 dname = cur().text;
+                            如果(pos + 1 < tokens.长度() && tokens.获取(pos + 1).type == TOK_LPAREN){
+                                advance();
+                                advance();
+                                创建 ArrayList:dv;
+                                设 dest_ok = 1;
+                                循环(1 == 1){
+                                    如果(cur_type() == TOK_IDENT){
+                                        dv.添加(cur().text);
+                                        advance();
+                                        如果(accept(TOK_COMMA)){
+
+                                        }又如果(accept(TOK_RPAREN)){
+                                            跳出;
+                                        }否则{
+                                            dest_ok = 0;
+                                            跳出;
+                                        };
+                                    }否则{
+                                        dest_ok = 0;
+                                        跳出;
+                                    };
+                                };
+                                如果(dest_ok && dv.长度() > 0){
+                                    c.case_kind = 4;
+                                    c.case_destruct_cls = dname;
+                                    c.case_destruct_vars = dv;
+                                }否则{
+                                    pos = saved2;
+                                };
+                            }否则{
+                                pos = saved2;
+                            };
+                        }否则{
+                            pos = saved2;
+                        };
+                    };
+                    如果(c.case_kind != 4){
+                        c.case_cond = parse_bxor();
+                    };
+
+                    如果(c.case_cond != 空 && c.case_cond.type == AST_VAR &&
+                       c.case_cond.sval != 空 && c.case_cond.sval == "_"){
+                        c.case_kind = 1;
+                    };
+
+                    如果(check(TOK_BOR) || check(TOK_COMMA)){
+                        c.ensure_case_alt();
+                        c.case_alt.添加(c.case_cond);
+                        循环(check(TOK_BOR) || check(TOK_COMMA)){
+                            advance();
+                            c.case_alt.添加(parse_bxor());
+                        };
+                    };
+                    如果(accept(TOK_LPAREN)){
+                        n.is_cond_select = 1;
+                        c.case_kind = 3;
+                        c.lhs = parse_expr();
+                        expect(TOK_RPAREN, ")");
+                    };
+                };
+                no_pair = saved_no_pair;
+                expect(TOK_COLON, ":");
+            };
+            循环(cur_type() != TOK_BREAK && cur_type() != TOK_CASE &&
+                 cur_type() != TOK_DEFAULT && cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+                设 s = parse_statement();
+                如果(s != 空){ c.children.添加(s); };
+            };
+            如果(accept(TOK_BREAK)){ accept(TOK_SEMI); };
+            n.children.添加(c);
+        };
+        expect(TOK_RBRACE, "}");
+        accept(TOK_SEMI);
+        返回值 n;
+    };
+
+    声明 parse_loop(){
+        创建 ASTNode:n(AST_LOOP, cur_line(), cur_col());
+        n.ensure_children();
+        advance();
+
+        如果(accept(TOK_LBRACE)){
+            n.loop_kind = LOOP_INFINITE;
+            循环(cur_type() != TOK_RBRACE && cur_type() != TOK_EOF){
+                设 s = parse_statement();
+                如果(s != 空){ n.children.添加(s); }否则{ synchronize(); };
+            };
+            expect(TOK_RBRACE, "}");
+            创建 ASTNode:tmp_block(AST_BLOCK, n.line, n.col);
+            tmp_block.children = n.children;
+            n.loop_body = tmp_block;
+            创建 ArrayList:tmp_ch;
+            n.children = tmp_ch;
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        expect(TOK_LPAREN, "(");
+
+        如果(check(TOK_SET)){
+            advance();
+            设 vname = expect_name("循环变量");
+
+            如果(check(TOK_COMMA)){
+                advance();
+                设 vname2 = expect_name("循环变量");
+                expect(TOK_COLON, ":");
+                n.loop_kind = LOOP_FOREACH;
+                创建 ASTNode:tmp_var(AST_VAR, n.line, n.col);
+                tmp_var.sval = vname;
+                n.loop_item = tmp_var;
+                创建 ASTNode:tmp_var2(AST_VAR, n.line, n.col);
+                tmp_var2.sval = vname2;
+                n.loop_item2 = tmp_var2;
+                n.loop_cond = parse_expr();
+                expect(TOK_RPAREN, ")");
+                n.loop_body = parse_block();
+                accept(TOK_SEMI);
+                返回值 n;
+            };
+            如果(accept(TOK_COLON)){
+
+                n.loop_kind = LOOP_FOREACH;
+                创建 ASTNode:tmp_var(AST_VAR, n.line, n.col);
+                tmp_var.sval = vname;
+                n.loop_item = tmp_var;
+                n.loop_cond = parse_expr();
+                expect(TOK_RPAREN, ")");
+                n.loop_body = parse_block();
+                accept(TOK_SEMI);
+                返回值 n;
+            }否则{
+
+                n.loop_kind = LOOP_CFOR;
+                创建 ASTNode:init(AST_VARDECL, n.line, n.col);
+                init.ensure_vars();
+                init.var_names.添加(vname);
+                expect(TOK_ASSIGN, "=");
+                init.var_inits.添加(parse_expr());
+                n.loop_init = init;
+                expect(TOK_SEMI, ";");
+                n.loop_cond = parse_expr();
+                expect(TOK_SEMI, ";");
+                n.loop_step = parse_expr();
+                expect(TOK_RPAREN, ")");
+                n.loop_body = parse_block();
+                accept(TOK_SEMI);
+                返回值 n;
+            };
+        };
+
+        设 lhs = parse_expr();
+        如果(check(TOK_ASSIGN)){
+            n.loop_kind = LOOP_CFOR;
+            advance();
+            创建 ASTNode:asgn(AST_ASSIGN, lhs.line, lhs.col);
+            asgn.op = TOK_ASSIGN;
+            asgn.lhs = lhs;
+            asgn.rhs = parse_expr();
+            n.loop_init = asgn;
+            expect(TOK_SEMI, ";");
+            n.loop_cond = parse_expr();
+            expect(TOK_SEMI, ";");
+            n.loop_step = parse_expr();
+            expect(TOK_RPAREN, ")");
+            n.loop_body = parse_block();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+
+        expect(TOK_RPAREN, ")");
+        如果(lhs != 空 && lhs.type == AST_LITERAL && lhs.op == LIT_INT){
+            n.loop_kind = LOOP_COUNT;
+            n.loop_count = lhs;
+        }否则{
+            n.loop_kind = LOOP_COND;
+            n.loop_cond = lhs;
+        };
+        n.loop_body = parse_block();
+        accept(TOK_SEMI);
+        返回值 n;
+    };
+
+    声明 parse_expr_stmt(){
+        设 e = parse_expr();
+        如果(e == 空){
+            advance();
+            返回值 空;
+        };
+
+        如果(check(TOK_COLON) && e.type == AST_NEW){
+            advance();
+            设 varname = expect_name("变量名");
+            如果(check(TOK_LPAREN)){
+                advance();
+                e.ensure_new_args();
+                循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                    e.new_args.添加(parse_expr());
+                    如果(accept(TOK_COMMA) == 0){ 跳出; };
+                };
+                expect(TOK_RPAREN, ")");
+            };
+            创建 ASTNode:asgn(AST_ASSIGN, e.line, e.col);
+            asgn.op = TOK_ASSIGN;
+            创建 ASTNode:lhs_var(AST_VAR, e.line, e.col);
+            lhs_var.sval = varname;
+            asgn.lhs = lhs_var;
+            asgn.rhs = e;
+            accept(TOK_SEMI);
+            返回值 asgn;
+        };
+
+        如果(check(TOK_ASSIGN) || check(TOK_PLUSEQ) || check(TOK_MINUSEQ)){
+            创建 ASTNode:n(AST_ASSIGN, cur_line(), cur_col());
+            n.op = cur_type();
+            n.lhs = e;
+            advance();
+            n.rhs = parse_expr();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+
+        如果(check(TOK_INC) || check(TOK_DEC)){
+            创建 ASTNode:n(AST_ASSIGN, cur_line(), cur_col());
+            n.op = cur_type();
+            n.lhs = e;
+            advance();
+            accept(TOK_SEMI);
+            返回值 n;
+        };
+        accept(TOK_SEMI);
+        创建 ASTNode:s(AST_EXPRSTMT, e.line, e.col);
+        s.operand = e;
+        返回值 s;
+    };
+
+    声明 parse_expr(){
+        返回值 parse_or();
+    };
+
+    声明 parse_or(){
+        设 l = parse_and();
+        循环(check(TOK_OR)){
+            设 opv = cur_type();
+            advance();
+            设 r = parse_and();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_and(){
+        设 l = parse_bor();
+        循环(check(TOK_AND)){
+            设 opv = cur_type();
+            advance();
+            设 r = parse_bor();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_bor(){
+        设 l = parse_bxor();
+        循环(check(TOK_BOR)){
+            设 opv = cur_type();
+            advance();
+            设 r = parse_bxor();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_bxor(){
+        设 l = parse_band();
+        循环(check(TOK_BXOR)){
+            设 opv = cur_type();
+            advance();
+            设 r = parse_band();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_band(){
+        设 l = parse_shift();
+        循环(check(TOK_AMP)){
+            设 opv = TOK_AMP;
+            advance();
+            设 r = parse_shift();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_shift(){
+        设 l = parse_eq();
+        循环(check(TOK_SHL) || check(TOK_SHR)){
+
+            如果(check(TOK_SHL)){
+                如果(peek_type() == TOK_END){ 跳出; };
+            };
+            设 opv = cur_type();
+            advance();
+            设 r = parse_eq();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_eq(){
+        设 l = parse_cmp();
+        循环(check(TOK_EQ) || check(TOK_NE)){
+            设 opv = cur_type();
+            advance();
+            设 r = parse_cmp();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_cmp(){
+        设 l = parse_add();
+        循环(check(TOK_GT) || check(TOK_LT) || check(TOK_GE) || check(TOK_LE)){
+            设 opv = cur_type();
+            advance();
+            设 r = parse_add();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_add(){
+        设 l = parse_mul();
+        循环(check(TOK_PLUS) || check(TOK_MINUS)){
+            设 opv = cur_type();
+            advance();
+            设 r = parse_mul();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_mul(){
+        设 l = parse_unary();
+        循环(check(TOK_STAR) || check(TOK_SLASH) || check(TOK_PERCENT)){
+            设 opv = cur_type();
+            advance();
+            设 r = parse_unary();
+            创建 ASTNode:newl(AST_BINARY, l.line, l.col);
+            newl.op = opv;
+            newl.lhs = l;
+            newl.rhs = r;
+            l = newl;
+        };
+        返回值 l;
+    };
+
+    声明 parse_unary(){
+        如果(check(TOK_NOT) || check(TOK_MINUS) || check(TOK_AMP) || check(TOK_TILDE)){
+            设 opv = cur_type();
+            advance();
+            设 operand = parse_unary();
+            设 kind = AST_UNARY;
+            如果(opv == TOK_AMP){ kind = AST_REF; };
+            创建 ASTNode:n(kind, operand.line, operand.col);
+            n.op = opv;
+            n.operand = operand;
+            返回值 n;
+        };
+
+        如果(check(TOK_STAR)){
+            advance();
+            设 operand = parse_unary();
+            创建 ASTNode:n(AST_DEREF, operand.line, operand.col);
+            n.operand = operand;
+            返回值 n;
+        };
+        返回值 parse_postfix();
+    };
+
+    声明 parse_postfix(){
+        设 e = parse_primary();
+        循环{
+            设 null_safe = 0;
+            如果(check(TOK_DOT) || check(TOK_OPT_ACCESS)){
+                如果(check(TOK_OPT_ACCESS)){ null_safe = 1; };
+                advance();
+                设 name = 空;
+
+                如果(check(TOK_ELSE)){
+                    advance();
+                    name = "否则";
+                }否则{
+                    name = expect_name("成员名");
+                };
+                如果(check(TOK_LPAREN)){
+
+                    advance();
+                    创建 ASTNode:n(AST_METHODCALL, e.line, e.col);
+                    n.obj = e;
+                    n.method_name = name;
+                    n.is_null_safe = null_safe;
+                    n.ensure_args();
+                    循环(cur_type() != TOK_RPAREN){
+                        n.args.添加(parse_call_arg());
+                        如果(accept(TOK_COMMA) == 0){ 跳出; };
+                    };
+                    expect(TOK_RPAREN, ")");
+                    e = n;
+                }否则{
+                    创建 ASTNode:n(AST_MEMBER, e.line, e.col);
+                    n.obj = e;
+                    n.member = name;
+                    n.is_null_safe = null_safe;
+                    e = n;
+                };
+            }又如果(check(TOK_LBRACKET)){
+
+                如果(e.type == AST_MODCALL || (e.type == AST_CALL && is_ui_ctor(e) == 1)){
+
+                    advance();
+                    设 color = parse_primary();
+
+                    如果(check(TOK_DOT)){
+                        advance();
+                        创建 ASTNode:cmod(AST_MODCALL, cur_line(), cur_col());
+                        cmod.mod_name = color.sval;
+                        cmod.method_name = expect_name("颜色名");
+                        color = cmod;
+                    };
+                    设 is_filled = 0;
+                    如果(accept(TOK_STAR)){ is_filled = 1; };
+
+                    设 alpha_n = 空;
+                    设 named_l = 空;
+                    循环(check(TOK_COMMA)){
+                        advance();
+                        如果(check(TOK_INT) || check(TOK_FLOAT)){
+
+                            alpha_n = parse_primary();
+                        }又如果(is_name_token(cur_type()) == 1 && peek_type() == TOK_COLON){
+
+                            如果(named_l == 空){
+                                named_l = 创建 ArrayList;
+                            };
+                            named_l.添加(parse_call_arg());
+                        }否则{
+
+                            跳出;
+                        };
+                    };
+                    expect(TOK_RBRACKET, "]");
+                    创建 ASTNode:cs(AST_COLOR_SUFFIX, e.line, e.col);
+                    cs.base_expr = e;
+                    cs.color_expr = color;
+                    cs.is_filled = is_filled;
+                    cs.alpha_expr = alpha_n;
+                    cs.named_args = named_l;
+                    e = cs;
+                }否则{
+                    advance();
+                    设 idx = parse_expr();
+
+                    如果(accept(TOK_TILDE)){
+                        设 endv = parse_expr();
+                        创建 ASTNode:r(AST_RANGE, e.line, e.col);
+                        r.lhs = idx;
+                        r.rhs = endv;
+                        idx = r;
+                    };
+                    expect(TOK_RBRACKET, "]");
+                    创建 ASTNode:n(AST_INDEX, e.line, e.col);
+                    n.obj = e;
+                    n.index = idx;
+                    e = n;
+                };
+            }又如果(check(TOK_LPAREN)){
+
+                如果(e.type == AST_MODCALL){
+                    advance();
+                    如果(e.second_args == 空){
+                        创建 ArrayList:sa;
+                        e.second_args = sa;
+                    };
+                    循环(cur_type() != TOK_RPAREN){
+                        e.second_args.添加(parse_call_arg());
+                        如果(accept(TOK_COMMA) == 0){ 跳出; };
+                    };
+                    expect(TOK_RPAREN, ")");
+
+                }又如果(e.type == AST_LITERAL){
+
+                    跳出;
+                }否则{
+                    advance();
+                    创建 ASTNode:n(AST_CALL, e.line, e.col);
+                    n.callee = e;
+                    n.ensure_args();
+                    循环(cur_type() != TOK_RPAREN){
+                        n.args.添加(parse_call_arg());
+                        如果(accept(TOK_COMMA) == 0){ 跳出; };
+                    };
+                    expect(TOK_RPAREN, ")");
+                    e = n;
+                };
+            }又如果(check(TOK_LBRACE) && e.type == AST_MODCALL){
+
+                e.block_arg = parse_block();
+            }又如果(check(TOK_LBRACE) && e.type == AST_CALL && is_ui_ctor(e) == 1){
+
+                e.block_arg = parse_block();
+            }又如果(check(TOK_LBRACE) && e.type == AST_COLOR_SUFFIX && e.base_expr != 空 &&
+                    (e.base_expr.type == AST_CALL || e.base_expr.type == AST_MODCALL) &&
+                    is_ui_ctor(e.base_expr) == 1){
+
+                e.base_expr.block_arg = parse_block();
+            }又如果(check(TOK_INC) || check(TOK_DEC)){
+                创建 ASTNode:n(AST_UNARY, e.line, e.col);
+                n.op = cur_type();
+                n.operand = e;
+                advance();
+                e = n;
+            }又如果(check(TOK_QUESTION)){
+
+                advance();
+                创建 ASTNode:n(AST_TRY_BUBBLE, e.line, e.col);
+                n.operand = e;
+                e = n;
+            }否则{
+                跳出;
+            };
+        };
+
+        如果(check(TOK_COLON) && no_pair == 0 && e.type != AST_NEW){
+            advance();
+            设 rhs = parse_mul();
+            创建 ASTNode:pn(AST_PAIR, e.line, e.col);
+            pn.pair_left = e;
+            pn.pair_right = rhs;
+            e = pn;
+        };
+        返回值 e;
+    };
+
+    声明 parse_primary(){
+        设 t = cur();
+        设 tt = t.type;
+        如果(tt == TOK_BACKSLASH){
+
+            advance();
+            返回值 parse_primary();
+        };
+        如果(tt == TOK_ASYNC){
+
+            返回值 parse_async_block();
+        };
+        如果(tt == TOK_WAIT){
+
+            如果(is_wait_task_ahead() == 1){
+                返回值 parse_wait_task();
+            };
+        };
+        如果(tt == TOK_INT){
+            创建 ASTNode:n(AST_LITERAL, t.line, t.col);
+            n.ival = t.ival;
+            n.op = LIT_INT;
+            advance();
+            返回值 n;
+        };
+        如果(tt == TOK_FLOAT){
+            创建 ASTNode:n(AST_LITERAL, t.line, t.col);
+            n.fval = t.fval;
+            n.op = LIT_FLOAT;
+            advance();
+            返回值 n;
+        };
+        如果(tt == TOK_STRING){
+
+            如果(t.interp != 空){
+
+                创建 ArrayList:segs;
+                segs = t.interp;
+                设 base = 空;
+                设 idx = 0;
+                循环(idx < segs.长度()){
+                    设 seg = 空;
+                    如果(idx % 2 == 0){
+
+                        创建 ASTNode:ts(AST_LITERAL, t.line, t.col);
+                        ts.sval = segs.获取(idx);
+                        ts.op = LIT_STRING;
+                        seg = ts;
+                    }否则{
+
+                        创建 ArrayList:etoks;
+                        etoks = lex(segs.获取(idx));
+                        创建 Parser:sp(etoks);
+                        设 en = sp.parse_expr();
+                        如果(sp.had_error == 1 || en == 空){
+                            报错("插值表达式解析失败: " + segs.获取(idx));
+                            返回值 空;
+                        };
+                        seg = en;
+                    };
+                    如果(base == 空){
+                        base = seg;
+                    }否则{
+                        创建 ASTNode:bin(AST_BINARY, t.line, t.col);
+                        bin.op = TOK_PLUS;
+                        bin.lhs = base;
+                        bin.rhs = seg;
+                        base = bin;
+                    };
+                    idx = idx + 1;
+                };
+                advance();
+                如果(base != 空){ 返回值 base; };
+            };
+            创建 ASTNode:n(AST_LITERAL, t.line, t.col);
+            n.sval = t.text;
+            n.op = LIT_STRING;
+            advance();
+            返回值 n;
+        };
+        如果(tt == TOK_TRUE){
+            创建 ASTNode:n(AST_LITERAL, t.line, t.col);
+            n.op = LIT_TRUE;
+            advance();
+            返回值 n;
+        };
+        如果(tt == TOK_FALSE){
+            创建 ASTNode:n(AST_LITERAL, t.line, t.col);
+            n.op = LIT_FALSE;
+            advance();
+            返回值 n;
+        };
+        如果(tt == TOK_NULL){
+            创建 ASTNode:n(AST_LITERAL, t.line, t.col);
+            n.op = LIT_NULL;
+            advance();
+            返回值 n;
+        };
+        如果(tt == TOK_LIST || tt == TOK_ARRAY || tt == TOK_GROUP){
+            创建 ASTNode:n(AST_VAR, t.line, t.col);
+            n.sval = t.text;
+            advance();
+            返回值 n;
+        };
+        如果(tt == TOK_TIME_KW){
+
+            创建 ASTNode:n(AST_VAR, t.line, t.col);
+            n.sval = "时间";
+            advance();
+            返回值 n;
+        };
+        如果(tt == TOK_SHOW){
+
+            返回值 parse_show_node();
+        };
+        如果(tt == TOK_FUNC){
+
+            advance();
+            创建 ASTNode:n(AST_FUNC, t.line, t.col);
+            n.ensure_fn_params();
+            n.fn_name = "";
+            expect(TOK_LPAREN, "(");
+            循环(cur_type() != TOK_RPAREN){
+                设 pname = expect_name("参数名");
+                n.fn_params.添加(pname);
+                如果(accept(TOK_COMMA) == 0){ 跳出; };
+            };
+            expect(TOK_RPAREN, ")");
+            n.then_block = parse_block();
+            返回值 n;
+        };
+        如果(tt == TOK_CREATE){
+            advance();
+
+            如果(check(TOK_LPAREN)){
+                advance();
+                创建 ASTNode:n(AST_CALL, t.line, t.col);
+                创建 ASTNode:callee_var(AST_VAR, t.line, t.col);
+                callee_var.sval = "创建";
+                n.callee = callee_var;
+                n.ensure_args();
+
+        设 cr_single = 0;
+        如果(cur_type() == TOK_IDENT && pos + 1 < tokens.长度()){
+            设 cr_nk = tokens.获取(pos + 1);
+            如果(cr_nk.type == TOK_RPAREN || cr_nk.type == TOK_COMMA){ cr_single = 1; };
+        };
+        如果(cr_single == 1){
+            循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                n.args.添加(parse_call_arg());
+                如果(accept(TOK_COMMA) == 0){ 跳出; };
+            };
+        }否则{
+
+        创建 StringBuffer:sb;
+        设 prev_cr_tok = "";
+        循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+            path_append(sb, prev_cr_tok, cur_text());
+            prev_cr_tok = cur_text();
+            advance();
+        };
+                创建 ASTNode:s(AST_LITERAL, t.line, t.col);
+                s.sval = sb.构建();
+                s.op = LIT_STRING;
+                n.args.添加(s);
+                };
+                expect(TOK_RPAREN, ")");
+                返回值 n;
+            };
+
+            创建 ASTNode:n(AST_NEW, t.line, t.col);
+            n.ensure_new_args();
+            设 cls = expect_name("类名");
+            如果(check(TOK_DOT)){
+                advance();
+                设 cls2 = expect_name("类名");
+                n.new_cls_name = cls + "." + cls2;
+            }否则{
+                n.new_cls_name = cls;
+            };
+            parse_type_params();
+
+            如果(check(TOK_LPAREN)){
+                advance();
+                循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                    n.new_args.添加(parse_expr());
+                    如果(accept(TOK_COMMA) == 0){ 跳出; };
+                };
+                expect(TOK_RPAREN, ")");
+            };
+            返回值 n;
+        };
+        如果(tt == TOK_IDENT){
+            设 name = t.text;
+            advance();
+
+            如果((name == "通道" || name == "道") && check(TOK_LPAREN)){
+                advance();
+                创建 ASTNode:cn(AST_MODCALL, t.line, t.col);
+                cn.mod_name = "通道";
+                cn.method_name = "创建";
+                cn.ensure_args();
+                循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                    cn.args.添加(parse_call_arg());
+                    如果(accept(TOK_COMMA) == 0){ 跳出; };
+                };
+                expect(TOK_RPAREN, ")");
+                返回值 cn;
+            };
+
+            如果(name == "引用" && check(TOK_DOT)){
+                advance();
+                创建 StringBuffer:full;
+                创建 StringBuffer:modb;
+                创建 StringBuffer:methb;
+                full.追加(cur_text());
+                modb.追加(cur_text());
+                expect_name("引用名");
+                设 seg = 1;
+                循环(check(TOK_DOT)){
+                    advance();
+                    full.追加(".");
+                    full.追加(cur_text());
+                    如果(seg == 1){
+                        methb.追加(cur_text());
+                    }否则{
+                        methb.追加(".");
+                        methb.追加(cur_text());
+                    };
+                    expect_name("引用名");
+                    seg = seg + 1;
+                };
+                设 m = full.构建();
+                如果(m == "模块导入"){
+                    创建 ASTNode:n(AST_MODCALL, t.line, t.col);
+                    n.mod_name = "引用";
+                    n.method_name = m;
+                    n.ensure_args();
+                    expect(TOK_LPAREN, "(");
+                    设 saved_no_pair = no_pair;
+                    no_pair = 1;
+                    循环(cur_type() != TOK_RPAREN){
+                        n.args.添加(parse_call_arg());
+                        如果(accept(TOK_COMMA)){ 继续; };
+                        如果(accept(TOK_COLON)){ 继续; };
+                        跳出;
+                    };
+                    no_pair = saved_no_pair;
+                    expect(TOK_RPAREN, ")");
+                    返回值 n;
+                };
+
+                如果(check(TOK_LPAREN)){
+                    如果(seg >= 2){
+                        创建 ASTNode:n(AST_MODCALL, t.line, t.col);
+                        n.mod_name = modb.构建();
+                        n.method_name = methb.构建();
+                        n.ensure_args();
+                        advance();
+                        设 saved_no_pair = no_pair;
+                        no_pair = 1;
+                        循环(cur_type() != TOK_RPAREN){
+                            n.args.添加(parse_call_arg());
+                            如果(accept(TOK_COMMA)){ 继续; };
+                            如果(accept(TOK_COLON)){ 继续; };
+                            跳出;
+                        };
+                        no_pair = saved_no_pair;
+                        expect(TOK_RPAREN, ")");
+                        返回值 n;
+                    };
+                    创建 ASTNode:n(AST_HOOKCALL, t.line, t.col);
+                    n.method_name = m;
+                    n.ensure_args();
+                    advance();
+                    设 saved_no_pair = no_pair;
+                    no_pair = 1;
+                    循环(cur_type() != TOK_RPAREN){
+                        n.args.添加(parse_call_arg());
+                        如果(accept(TOK_COMMA)){ 继续; };
+                        如果(accept(TOK_COLON)){ 继续; };
+                        跳出;
+                    };
+                    no_pair = saved_no_pair;
+                    expect(TOK_RPAREN, ")");
+                    返回值 n;
+                };
+
+                创建 ASTNode:n(AST_MODCALL, t.line, t.col);
+                n.mod_name = "引用";
+                n.method_name = m;
+                返回值 n;
+            };
+
+            如果(check(TOK_DOT) && is_module_name(name)){
+                advance();
+                创建 StringBuffer:mbuf;
+                mbuf.追加(cur_text());
+                expect_name("方法名");
+                循环(check(TOK_DOT)){
+                    advance();
+                    mbuf.追加(".");
+                    mbuf.追加(cur_text());
+                    expect_name("方法名");
+                };
+                创建 ASTNode:n(AST_MODCALL, t.line, t.col);
+                n.mod_name = name;
+                n.method_name = mbuf.构建();
+                n.ensure_args();
+                如果(check(TOK_LPAREN)){
+                    advance();
+                    设 saved_no_pair = no_pair;
+                    no_pair = 1;
+                    循环(cur_type() != TOK_RPAREN){
+                        n.args.添加(parse_call_arg());
+                        如果(accept(TOK_COMMA)){ 继续; };
+                        如果(accept(TOK_COLON)){ 继续; };
+                        跳出;
+                    };
+                    no_pair = saved_no_pair;
+                    expect(TOK_RPAREN, ")");
+                };
+
+                设 mname = n.method_name;
+                设 mlen = mname.长度();
+                如果(mlen >= 7){
+                    设 is_btn = 1;
+                    设 btn_bytes = "\x2E\xE6\x8C\x89\xE9\x92\xAE";
+                    设 i = 0;
+                    循环(i < 7){
+                        如果(mname.字节(mlen - 7 + i) != btn_bytes.字节(i)){
+                            is_btn = 0;
+                            跳出;
+                        };
+                        i = i + 1;
+                    };
+                    如果(is_btn == 1){
+
+                        n.method_name = mname.字节子串(0, mlen - 7);
+                        创建 ASTNode:btn(AST_BUTTON_SUFFIX, n.line, n.col);
+                        btn.base_expr = n;
+                        返回值 btn;
+                    };
+                };
+                返回值 n;
+            };
+
+            如果(check(TOK_LPAREN) && is_file_builtin(name)){
+                advance();
+                创建 ASTNode:n(AST_CALL, t.line, t.col);
+                创建 ASTNode:callee_var(AST_VAR, t.line, t.col);
+                callee_var.sval = name;
+                n.callee = callee_var;
+                n.ensure_args();
+
+                如果(check(TOK_STRING)){
+
+                    循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                        n.args.添加(parse_call_arg());
+                        如果(accept(TOK_COMMA) == 0){ 跳出; };
+                    };
+                }又如果(args_has_comma() == 1){
+
+                    循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                        n.args.添加(parse_call_arg());
+                        如果(accept(TOK_COMMA) == 0){ 跳出; };
+                    };
+                }又如果(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+
+                    设 single_ident = 0;
+
+                    如果(cur_type() == TOK_IDENT && name != "创建文件夹" && pos + 1 < tokens.长度()){
+                        设 nk = tokens.获取(pos + 1);
+                        如果(nk.type == TOK_RPAREN || nk.type == TOK_COMMA){ single_ident = 1; };
+                        如果(args_is_index() == 1){ single_ident = 1; };
+                    };
+                    如果(single_ident == 1){
+
+                        循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                            n.args.添加(parse_call_arg());
+                            如果(accept(TOK_COMMA) == 0){ 跳出; };
+                        };
+                    }否则{
+
+                    创建 StringBuffer:sb;
+                    设 prev_path_tok = "";
+                    循环(cur_type() != TOK_COMMA && cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                        path_append(sb, prev_path_tok, cur_text());
+                        prev_path_tok = cur_text();
+                        advance();
+                    };
+                    设 path = sb.构建();
+                    设 has_range = 0;
+                    设 range_start = 0;
+                    设 range_end = -1;
+                    设 plen = path.长度();
+                    如果(plen > 0){
+
+                        设 bracket_pos = -1;
+                        设 bi = plen - 1;
+                        循环(bi >= 0){
+                            如果(path.子字符串(bi, bi + 1) == "["){ bracket_pos = bi; 跳出; };
+                            bi = bi - 1;
+                        };
+                        如果(bracket_pos >= 0){
+
+                            设 tilde_pos = -1;
+                            设 ti = bracket_pos + 1;
+                            循环(ti < plen){
+                                如果(path.子字符串(ti, ti + 1) == "~"){ tilde_pos = ti; 跳出; };
+                                ti = ti + 1;
+                            };
+
+                            设 close_pos = -1;
+                            如果(tilde_pos >= 0){
+                                设 ci = tilde_pos + 1;
+                                循环(ci < plen){
+                                    如果(path.子字符串(ci, ci + 1) == "]"){ close_pos = ci; 跳出; };
+                                    ci = ci + 1;
+                                };
+                            };
+
+                            如果(tilde_pos >= 0 && close_pos >= 0 && close_pos > tilde_pos && close_pos == plen - 1){
+
+                                设 start_str = path.子字符串(bracket_pos + 1, tilde_pos);
+                                设 end_str = path.子字符串(tilde_pos + 1, close_pos);
+                                range_start = 整数(start_str);
+                                range_end = 整数(end_str);
+
+                                path = path.子字符串(0, bracket_pos);
+                                has_range = 1;
+                            };
+                        };
+                    };
+                    创建 ASTNode:s(AST_LITERAL, t.line, t.col);
+                    s.sval = path;
+                    s.op = LIT_STRING;
+                    n.args.添加(s);
+
+                    如果(has_range){
+                        创建 ASTNode:s_node(AST_LITERAL, t.line, t.col);
+                        s_node.ival = range_start;
+                        s_node.op = LIT_INT;
+                        n.args.添加(s_node);
+                        创建 ASTNode:e_node(AST_LITERAL, t.line, t.col);
+                        e_node.ival = range_end;
+                        e_node.op = LIT_INT;
+                        n.args.添加(e_node);
+                    };
+
+                    如果(accept(TOK_COMMA)){
+                        循环(cur_type() != TOK_RPAREN && cur_type() != TOK_EOF){
+                            n.args.添加(parse_call_arg());
+                            如果(accept(TOK_COMMA) == 0){ 跳出; };
+                        };
+                    };
+                    };
+                };
+                expect(TOK_RPAREN, ")");
+                返回值 n;
+            };
+
+            try_type_params();
+
+            创建 ASTNode:ret_var(AST_VAR, t.line, t.col);
+            ret_var.sval = name;
+            返回值 ret_var;
+        };
+        如果(tt == TOK_LPAREN){
+            advance();
+
+            设 e = parse_expr();
+            如果(check(TOK_COMMA)){
+                创建 ASTNode:tup(AST_LIST_LIT, t.line, t.col);
+                tup.ensure_children();
+                tup.children.添加(e);
+                循环(accept(TOK_COMMA)){
+                    如果(check(TOK_RPAREN)){
+                        报错("第" + cur_line() + "行: 元组元素缺失(逗号后需要表达式)");
+                        跳出;
+                    };
+                    tup.children.添加(parse_expr());
+                };
+                expect(TOK_RPAREN, ")");
+                返回值 tup;
+            };
+            expect(TOK_RPAREN, ")");
+            返回值 e;
+        };
+        如果(tt == TOK_LBRACE){
+
+            advance();
+            创建 ASTNode:n(AST_LIST_LIT, t.line, t.col);
+            n.ensure_children();
+            循环(cur_type() != TOK_RBRACE){
+                n.children.添加(parse_expr());
+                如果(accept(TOK_COMMA) == 0){ 跳出; };
+            };
+            expect(TOK_RBRACE, "}");
+            返回值 n;
+        };
+        如果(tt == TOK_LBRACKET){
+
+            advance();
+            创建 ASTNode:n(AST_LIST_LIT, t.line, t.col);
+            n.ensure_children();
+            循环(cur_type() != TOK_RBRACKET){
+                n.children.添加(parse_expr());
+                如果(accept(TOK_COMMA) == 0){ 跳出; };
+            };
+            expect(TOK_RBRACKET, "]");
+            返回值 n;
+        };
+
+        报错("第" + t.line + "行: 意外的 token '" + t.text + "'");
+        had_error = 1;
+        advance();
+        创建 ASTNode:ret_node(AST_INVALID, t.line, t.col);
+        返回值 ret_node;
+    };
+
+    声明 is_ui_ctor(node){
+        如果(node == 空){ 返回值 0; };
+        如果(node.type == AST_CALL && node.callee != 空 && node.callee.type == AST_VAR){
+            如果(node.callee.sval == "行"){ 返回值 1; };
+            如果(node.callee.sval == "列"){ 返回值 1; };
+            如果(node.callee.sval == "标签"){ 返回值 1; };
+            如果(node.callee.sval == "按钮"){ 返回值 1; };
+            如果(node.callee.sval == "输入框"){ 返回值 1; };
+        };
+        如果(node.type == AST_MODCALL && node.mod_name == "界面"){ 返回值 1; };
+        返回值 0;
+    };
+
+    声明 is_module_name(name){
+        如果(name == "网络"){ 返回值 1; };
+        如果(name == "进程"){ 返回值 1; };
+        如果(name == "同步"){ 返回值 1; };
+        如果(name == "原子"){ 返回值 1; };
+        如果(name == "内存"){ 返回值 1; };
+        如果(name == "系统"){ 返回值 1; };
+        如果(name == "数学"){ 返回值 1; };
+        如果(name == "JSON"){ 返回值 1; };
+        如果(name == "正则"){ 返回值 1; };
+        如果(name == "字符串构建"){ 返回值 1; };
+        如果(name == "字符串"){ 返回值 1; };
+        如果(name == "文件"){ 返回值 1; };
+        如果(name == "图形"){ 返回值 1; };
+        如果(name == "图像"){ 返回值 1; };
+        如果(name == "道"){ 返回值 1; };
+        如果(name == "通道"){ 返回值 1; };
+        如果(name == "GL"){ 返回值 1; };
+        如果(name == "VK"){ 返回值 1; };
+        如果(name == "输入"){ 返回值 1; };
+        如果(name == "界面"){ 返回值 1; };
+        如果(name == "主题"){ 返回值 1; };
+        返回值 0;
+    };
+
+声明 is_file_builtin(name){
+    如果(name == "文件"){ 返回值 1; };
+    如果(name == "打开文件"){ 返回值 1; };
+    如果(name == "写入文件"){ 返回值 1; };
+    如果(name == "关闭文件"){ 返回值 1; };
+    如果(name == "创建文件夹"){ 返回值 1; };
+    返回值 0;
+};
+
+声明 path_append(sb, prev, cur){
+    如果(sb.长度() > 0){
+        设 prev_sep = 0;
+        如果(prev.长度() > 0){
+            设 pch = prev.子字符串(prev.长度() - 1, prev.长度());
+            如果(pch == "/" || pch == "\\" || pch == "." || pch == ":"){ prev_sep = 1; };
+        };
+        设 cur_sep = 0;
+        如果(cur.长度() > 0){
+            设 cch = cur.子字符串(0, 1);
+            如果(cch == "/" || cch == "\\" || cch == "." || cch == ":"){ cur_sep = 1; };
+        };
+        如果(prev_sep == 0 && cur_sep == 0){ sb.追加(" "); };
+    };
+    sb.追加(cur);
+};
+};
+
+声明 ast_type_name(t){
+    如果(t == AST_CLASS){ 返回值 "CLASS"; };
+    如果(t == AST_INTERFACE){ 返回值 "INTERFACE"; };
+    如果(t == AST_FUNC){ 返回值 "FUNC"; };
+    如果(t == AST_HOOK){ 返回值 "HOOK"; };
+    如果(t == AST_VARDECL){ 返回值 "VARDECL"; };
+    如果(t == AST_ASSIGN){ 返回值 "ASSIGN"; };
+    如果(t == AST_IF){ 返回值 "IF"; };
+    如果(t == AST_SELECT){ 返回值 "SELECT"; };
+    如果(t == AST_LOOP){ 返回值 "LOOP"; };
+    如果(t == AST_RETURN){ 返回值 "RETURN"; };
+    如果(t == AST_BREAK){ 返回值 "BREAK"; };
+    如果(t == AST_CONTINUE){ 返回值 "CONTINUE"; };
+    如果(t == AST_BLOCK){ 返回值 "BLOCK"; };
+    如果(t == AST_BINARY){ 返回值 "BINARY"; };
+    如果(t == AST_UNARY){ 返回值 "UNARY"; };
+    如果(t == AST_LITERAL){ 返回值 "LITERAL"; };
+    如果(t == AST_VAR){ 返回值 "VAR"; };
+    如果(t == AST_MEMBER){ 返回值 "MEMBER"; };
+    如果(t == AST_INDEX){ 返回值 "INDEX"; };
+    如果(t == AST_CALL){ 返回值 "CALL"; };
+    如果(t == AST_METHODCALL){ 返回值 "METHODCALL"; };
+    如果(t == AST_NEW){ 返回值 "NEW"; };
+    如果(t == AST_EXPRSTMT){ 返回值 "EXPRSTMT"; };
+    如果(t == AST_LIST_LIT){ 返回值 "LIST_LIT"; };
+    如果(t == AST_HOOKCALL){ 返回值 "HOOKCALL"; };
+    如果(t == AST_MODCALL){ 返回值 "MODCALL"; };
+    如果(t == AST_RANGE){ 返回值 "RANGE"; };
+    如果(t == AST_REF){ 返回值 "REF"; };
+    如果(t == AST_DEREF){ 返回值 "DEREF"; };
+    如果(t == AST_WAIT){ 返回值 "WAIT"; };
+    如果(t == AST_SHOW){ 返回值 "SHOW"; };
+    如果(t == AST_ASM){ 返回值 "ASM"; };
+    如果(t == AST_ACCESS_LABEL){ 返回值 "ACCESS_LABEL"; };
+    如果(t == AST_CASE){ 返回值 "CASE"; };
+    如果(t == AST_LIST_DECL){ 返回值 "LIST_DECL"; };
+    如果(t == AST_ARRAY_DECL){ 返回值 "ARRAY_DECL"; };
+    如果(t == AST_ENUM){ 返回值 "ENUM"; };
+    如果(t == AST_STRUCT){ 返回值 "STRUCT"; };
+    如果(t == AST_DESTROY){ 返回值 "DESTROY"; };
+    如果(t == AST_LISTEN){ 返回值 "LISTEN"; };
+    如果(t == AST_GAMES){ 返回值 "GAMES"; };
+    如果(t == AST_NAMED_ARG){ 返回值 "NAMED_ARG"; };
+    如果(t == AST_LISTEN_EVENT){ 返回值 "LISTEN_EVENT"; };
+    如果(t == AST_WHEN){ 返回值 "WHEN"; };
+    如果(t == AST_UI_BLOCK){ 返回值 "UI_BLOCK"; };
+    返回值 "AST_" + t;
+};
+
+声明 ast_dump(raw_node, indent){
+    创建 ASTNode:node(0, 0, 0);
+    node = raw_node;
+    设 pad = "";
+    循环(indent > 0){
+        pad = pad + "  ";
+        indent = indent - 1;
+    };
+    如果(node == 空){
+        打印(pad + "null");
+        返回值 0;
+    };
+    设 name = ast_type_name(node.type);
+    设 info = pad + name;
+    如果(node.type == AST_LITERAL){
+        如果(node.op == LIT_INT){ info = info + " INT=" + node.ival; };
+        如果(node.op == LIT_FLOAT){ info = info + " FLOAT=" + node.fval; };
+        如果(node.op == LIT_STRING){ info = info + " STR='" + node.sval + "'"; };
+        如果(node.op == LIT_TRUE){ info = info + " TRUE"; };
+        如果(node.op == LIT_FALSE){ info = info + " FALSE"; };
+        如果(node.op == LIT_NULL){ info = info + " NULL"; };
+    };
+    如果(node.type == AST_VAR){ info = info + " " + node.sval; };
+    如果(node.type == AST_BINARY){
+        打印(info);
+        ast_dump(node.lhs, indent + 1);
+        ast_dump(node.rhs, indent + 1);
+        返回值 0;
+    };
+    如果(node.type == AST_ASSIGN){
+        打印(info + " op=" + node.op);
+        ast_dump(node.lhs, indent + 1);
+        ast_dump(node.rhs, indent + 1);
+        返回值 0;
+    };
+    如果(node.type == AST_VARDECL){
+        打印(info + " exist=" + node.is_exist);
+        设 i = 0;
+        循环(i < node.var_names.长度()){
+            打印(pad + "  var: " + node.var_names.获取(i));
+            设 init = node.var_inits.获取(i);
+            如果(init != 空){ ast_dump(init, indent + 2); };
+            i = i + 1;
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_IF){
+        打印(info);
+        打印(pad + "  cond:");
+        ast_dump(node.cond, indent + 2);
+        打印(pad + "  then:");
+        ast_dump(node.then_block, indent + 2);
+        如果(node.else_block != 空){
+            打印(pad + "  else:");
+            ast_dump(node.else_block, indent + 2);
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_LOOP){
+        打印(info + " kind=" + node.loop_kind);
+        如果(node.loop_cond != 空){ ast_dump(node.loop_cond, indent + 1); };
+        如果(node.loop_body != 空){ ast_dump(node.loop_body, indent + 1); };
+        返回值 0;
+    };
+    如果(node.type == AST_RETURN){
+        打印(info);
+        如果(node.ret_value != 空){ ast_dump(node.ret_value, indent + 1); };
+        返回值 0;
+    };
+    如果(node.type == AST_BLOCK || node.type == AST_LIST_LIT){
+        打印(info);
+        如果(node.children != 空){
+            设 i = 0;
+            循环(i < node.children.长度()){
+                ast_dump(node.children.获取(i), indent + 1);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_CALL || node.type == AST_METHODCALL){
+        打印(info);
+        如果(node.callee != 空){ ast_dump(node.callee, indent + 1); };
+        如果(node.method_name != 空){ 打印(pad + "  ." + node.method_name); };
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                ast_dump(node.args.获取(i), indent + 1);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_NEW){
+        打印(info + " " + node.new_cls_name);
+        如果(node.new_args != 空){
+            设 i = 0;
+            循环(i < node.new_args.长度()){
+                ast_dump(node.new_args.获取(i), indent + 1);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_FUNC){
+        打印(info + " " + node.fn_name);
+        如果(node.then_block != 空){ ast_dump(node.then_block, indent + 1); };
+        返回值 0;
+    };
+    如果(node.type == AST_CLASS){
+        打印(info + " " + node.cls_name);
+        如果(node.cls_parent != 空){ 打印(pad + "  extends " + node.cls_parent); };
+        如果(node.cls_members != 空){
+            设 i = 0;
+            循环(i < node.cls_members.长度()){
+                ast_dump(node.cls_members.获取(i), indent + 1);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    打印(info);
+    返回值 0;
+};

@@ -1,0 +1,294 @@
+引用.文件(../self-hosted/atl_ds.at);
+引用.文件(../self-hosted/atl_lexer.at);
+引用.文件(../self-hosted/atl_parser.at);
+引用.文件(../self-hosted/atl_semantic.at);
+引用.文件(../self-hosted/atl_codegen.at);
+引用.文件(../self-hosted/atl_runtime.at);
+
+类 运行时测试 {
+公开:
+
+    声明 编译(src){
+        创建 ArrayList:tokens;
+        tokens = lex(src);
+        创建 Parser:p(tokens);
+        创建 ArrayList:decls;
+        decls = p.parse_program();
+        sem_analyze(decls);
+        codegen_reset();
+        codegen_emit();
+        返回值 codegen_get_output();
+    };
+
+    声明 检查模式(asm, pattern){
+        设 slen = asm.长度;
+        设 plen = pattern.长度;
+        如果(plen == 0){ 返回值 1; };
+        如果(slen < plen){ 返回值 0; };
+        设 i = 0;
+        循环(i <= slen - plen){
+            设 sub = asm.子字符串(i, i + plen);
+            如果(sub == pattern){ 返回值 1; };
+            i = i + 1;
+        };
+        返回值 0;
+    };
+
+    声明 断言(asm, pattern, 名称){
+        设 result = 检查模式(asm, pattern);
+        如果(result == 1){
+            打印("  [PASS] " + 名称);
+        }否则{
+            打印("  [FAIL] " + 名称 + " — 未找到: " + pattern);
+        };
+        返回值 result;
+    };
+
+    声明 检查1(){
+        打印("=== 运行时检查1: 构造器调用 ===");
+        设 src = "设 a = 1;\n设 b = 真;\n设 c = 空;\n设 d = 3.14;\n设 s = \"hello\";";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_int", "atl_int 构造");
+        pass = pass + 断言(asm, "call atl_bool", "atl_bool 构造");
+        pass = pass + 断言(asm, "call atl_null", "atl_null 构造");
+        pass = pass + 断言(asm, "call atl_float", "atl_float 构造");
+        pass = pass + 断言(asm, "call atl_str", "atl_str 构造");
+        pass = pass + 断言(asm, "lea rcx, [__atl_str_", "字符串字面量 lea");
+        打印("  检查1: " + pass + "/6 通过");
+        返回值 0;
+    };
+
+    声明 检查2(){
+        打印("=== 运行时检查2: 算术运算 ===");
+        设 src = "声明 测试(a, b) {\n  设 c = a + b;\n  设 d = a - b;\n  设 e = a * b;\n  设 f = a / b;\n  设 g = a % b;\n  返回值 c;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_add", "加法 atl_add");
+        pass = pass + 断言(asm, "call atl_sub", "减法 atl_sub");
+        pass = pass + 断言(asm, "call atl_mul", "乘法 atl_mul");
+        pass = pass + 断言(asm, "call atl_div", "除法 atl_div");
+        pass = pass + 断言(asm, "call atl_mod", "取模 atl_mod");
+        打印("  检查2: " + pass + "/5 通过");
+        返回值 0;
+    };
+
+    声明 检查3(){
+        打印("=== 运行时检查3: 比较运算 ===");
+        设 src = "声明 测试(a, b) {\n  设 r1 = a == b;\n  设 r2 = a != b;\n  设 r3 = a < b;\n  设 r4 = a > b;\n  设 r5 = a <= b;\n  设 r6 = a >= b;\n  返回值 r1;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_eq", "相等 atl_eq");
+        pass = pass + 断言(asm, "call atl_ne", "不等 atl_ne");
+        pass = pass + 断言(asm, "call atl_lt", "小于 atl_lt");
+        pass = pass + 断言(asm, "call atl_gt", "大于 atl_gt");
+        pass = pass + 断言(asm, "call atl_le", "小于等于 atl_le");
+        pass = pass + 断言(asm, "call atl_ge", "大于等于 atl_ge");
+        打印("  检查3: " + pass + "/6 通过");
+        返回值 0;
+    };
+
+    声明 检查4(){
+        打印("=== 运行时检查4: 位运算 ===");
+        设 src = "声明 测试(a, b) {\n  设 r1 = a & b;\n  设 r2 = a | b;\n  设 r3 = a ^ b;\n  设 r4 = a << b;\n  设 r5 = a >> b;\n  返回值 r1;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_band", "按位与 atl_band");
+        pass = pass + 断言(asm, "call atl_bor", "按位或 atl_bor");
+        pass = pass + 断言(asm, "call atl_bxor", "按位异或 atl_bxor");
+        pass = pass + 断言(asm, "call atl_shl", "左移 atl_shl");
+        pass = pass + 断言(asm, "call atl_shr", "右移 atl_shr");
+        打印("  检查4: " + pass + "/5 通过");
+        返回值 0;
+    };
+
+    声明 检查5(){
+        打印("=== 运行时检查5: 内置函数 ===");
+        设 src = "声明 测试() {\n  打印(\"hello\");\n  设 n = 整数(\"42\");\n  设 cp = 码点(\"A\");\n  设 s = 字符(65);\n  设 v = 数值(\"3.14\");\n  设 f = 格式化(\"%d\", 42);\n  返回值 n;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_print", "打印 atl_print");
+        pass = pass + 断言(asm, "call atl_toint", "整数 atl_toint");
+        pass = pass + 断言(asm, "call atl_codepoint", "码点 atl_codepoint");
+        pass = pass + 断言(asm, "call atl_chr", "字符 atl_chr");
+        pass = pass + 断言(asm, "call atl_num", "数值 atl_num");
+        pass = pass + 断言(asm, "call atl_format", "格式化 atl_format");
+        打印("  检查5: " + pass + "/6 通过");
+        返回值 0;
+    };
+
+    声明 检查6(){
+        打印("=== 运行时检查6: 字符串方法 ===");
+        设 src = "声明 测试() {\n  设 s = \"hello world\";\n  设 n = s.长度;\n  设 sub = s.子字符串(0, 5);\n  设 b = s.以开始(\"hello\");\n  设 e = s.以结束(\"world\");\n  设 by = s.字节(0);\n  返回值 n;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_str_len", ".长度 atl_str_len");
+        pass = pass + 断言(asm, "call atl_str_sub", ".子字符串 atl_str_sub");
+        pass = pass + 断言(asm, "call atl_str_starts", ".以开始 atl_str_starts");
+        pass = pass + 断言(asm, "call atl_str_ends", ".以结束 atl_str_ends");
+        pass = pass + 断言(asm, "call atl_str_byte", ".字节 atl_str_byte");
+        打印("  检查6: " + pass + "/5 通过");
+        返回值 0;
+    };
+
+    声明 检查7(){
+        打印("=== 运行时检查7: 列表操作 ===");
+        设 src = "声明 测试() {\n  设 list = [];\n  list.添加(1);\n  list.添加(2);\n  设 x = list.获取(0);\n  设 n = list.长度;\n  返回值 x;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_list_new", "列表创建 atl_list_new");
+        pass = pass + 断言(asm, "call atl_list_add", "列表添加 atl_list_add");
+        pass = pass + 断言(asm, "call atl_list_get", "列表获取 atl_list_get");
+        pass = pass + 断言(asm, "call atl_list_len", "列表长度 atl_list_len");
+        打印("  检查7: " + pass + "/4 通过");
+        返回值 0;
+    };
+
+    声明 检查8(){
+        打印("=== 运行时检查8: 类和实例 ===");
+        设 src = "类 动物 {\n公开:\n  设 名字 存在;\n  设 年龄 存在;\n  声明 介绍() {\n    返回值 名字;\n  };\n};\n声明 测试() {\n  设 a = 创建 动物;\n  返回值 a.介绍();\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_instance_new", "实例创建 atl_instance_new");
+        pass = pass + 断言(asm, "call atl_instance_set", "实例字段设置 atl_instance_set");
+        pass = pass + 断言(asm, "__atl_method_", "方法标号 __atl_method_");
+        pass = pass + 断言(asm, "__atl_singleton_", "类单例 __atl_singleton_");
+        打印("  检查8: " + pass + "/4 通过");
+        返回值 0;
+    };
+
+    声明 检查9(){
+        打印("=== 运行时检查9: 控制流 ===");
+        设 src = "声明 测试(x) {\n  如果(x > 0) {\n    打印(\"正\");\n  } 否则 {\n    打印(\"负\");\n  };\n  循环(x > 0) {\n    打印(x);\n    x = x - 1;\n  };\n  返回值 0;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_truthy", "真值判定 atl_truthy");
+        pass = pass + 断言(asm, "test eax, eax", "test 指令");
+        pass = pass + 断言(asm, "jz __atl_L", "条件跳转 jz");
+        pass = pass + 断言(asm, "jmp __atl_L", "无条件跳转 jmp");
+        pass = pass + 断言(asm, "__atl_L", "标号定义");
+        打印("  检查9: " + pass + "/5 通过");
+        返回值 0;
+    };
+
+    声明 检查10(){
+        打印("=== 运行时检查10: 函数调用序列 ===");
+        设 src = "声明 加法(a, b) {\n  返回值 a + b;\n};\n声明 测试() {\n  设 r = 加法(3, 4);\n  返回值 r;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "push rbp", "prologue push rbp");
+        pass = pass + 断言(asm, "mov rbp, rsp", "prologue mov rbp,rsp");
+        pass = pass + 断言(asm, "sub rsp, 32", "shadow space sub rsp,32");
+        pass = pass + 断言(asm, "add rsp, 32", "shadow space add rsp,32");
+        pass = pass + 断言(asm, "pop rbp", "epilogue pop rbp");
+        pass = pass + 断言(asm, "ret", "返回 ret");
+        pass = pass + 断言(asm, "call __atl_func_", "函数调用 call __atl_func_");
+        打印("  检查10: " + pass + "/7 通过");
+        返回值 0;
+    };
+
+    声明 检查11(){
+        打印("=== 运行时检查11: 字符串构建器 ===");
+        设 src = "声明 测试() {\n  清空();\n  追加(\"hello\");\n  追加(\" world\");\n  设 s = 字符串构建();\n  返回值 s;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_sb_clear", "清空 atl_sb_clear");
+        pass = pass + 断言(asm, "call atl_sb_append", "追加 atl_sb_append");
+        pass = pass + 断言(asm, "call atl_sb_build", "字符串构建 atl_sb_build");
+        打印("  检查11: " + pass + "/3 通过");
+        返回值 0;
+    };
+
+    声明 检查12(){
+        打印("=== 运行时检查12: 短路逻辑运算 ===");
+        设 src = "声明 测试(a, b) {\n  设 r1 = a && b;\n  设 r2 = a || b;\n  返回值 r1;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "call atl_truthy", "真值判定");
+        pass = pass + 断言(asm, "jz __atl_L", "AND 短路跳转");
+        pass = pass + 断言(asm, "jnz __atl_L", "OR 短路跳转");
+        pass = pass + 断言(asm, "call atl_bool", "结果包装 atl_bool");
+        打印("  检查12: " + pass + "/4 通过");
+        返回值 0;
+    };
+
+    声明 检查13(){
+        打印("=== 运行时检查13: 全局变量和入口 ===");
+        设 src = "设 x = 42;\n设 y = \"hello\";\n声明 主() {\n  打印(x);\n  返回值 0;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "__atl_global_", "全局变量标号");
+        pass = pass + 断言(asm, "__atl_main:", "入口点 __atl_main");
+        pass = pass + 断言(asm, "section .data", "data 段");
+        pass = pass + 断言(asm, "section .bss", "bss 段");
+        pass = pass + 断言(asm, "section .text", "text 段");
+        打印("  检查13: " + pass + "/5 通过");
+        返回值 0;
+    };
+
+    声明 检查14(){
+        打印("=== 运行时检查14: extern 声明完整性 ===");
+        设 src = "设 x = 1;";
+        设 asm = 编译(src);
+        设 pass = 0;
+        pass = pass + 断言(asm, "extern atl_null", "extern atl_null");
+        pass = pass + 断言(asm, "extern atl_int", "extern atl_int");
+        pass = pass + 断言(asm, "extern atl_str", "extern atl_str");
+        pass = pass + 断言(asm, "extern atl_list_new", "extern atl_list_new");
+        pass = pass + 断言(asm, "extern atl_instance_new", "extern atl_instance_new");
+        pass = pass + 断言(asm, "extern atl_print", "extern atl_print");
+        pass = pass + 断言(asm, "extern atl_method_call", "extern atl_method_call");
+        pass = pass + 断言(asm, "extern atl_mem_alloc", "extern atl_mem_alloc");
+        pass = pass + 断言(asm, "extern atl_mem_readbyte", "extern atl_mem_readbyte");
+        pass = pass + 断言(asm, "extern atl_sys_getfn", "extern atl_sys_getfn");
+        打印("  检查14: " + pass + "/10 通过");
+        返回值 0;
+    };
+
+    声明 检查15(){
+        打印("=== 运行时检查15: 端到端完整程序 ===");
+        设 src = "类 计数器 {\n公开:\n  设 值 存在;\n  构造(初始) {\n    值 = 初始;\n  };\n  声明 增加(n) {\n    值 = 值 + n;\n    返回值 值;\n  };\n  声明 获取() {\n    返回值 值;\n  };\n};\n声明 主() {\n  设 c = 创建 计数器(10);\n  设 r = c.增加(5);\n  打印(r);\n  如果(r > 10) {\n    打印(\"大\");\n  } 否则 {\n    打印(\"小\");\n  };\n  返回值 0;\n};";
+        设 asm = 编译(src);
+        设 pass = 0;
+
+        pass = pass + 断言(asm, "call atl_instance_new", "实例创建");
+        pass = pass + 断言(asm, "call atl_instance_set", "字段设置");
+        pass = pass + 断言(asm, "call atl_instance_get", "字段获取");
+        pass = pass + 断言(asm, "call atl_add", "加法运算");
+        pass = pass + 断言(asm, "call atl_gt", "比较运算");
+        pass = pass + 断言(asm, "call atl_print", "打印");
+        pass = pass + 断言(asm, "call atl_truthy", "条件判定");
+        pass = pass + 断言(asm, "__atl_main:", "入口点");
+        pass = pass + 断言(asm, "push rbp", "栈帧 prologue");
+        pass = pass + 断言(asm, "pop rbp", "栈帧 epilogue");
+        pass = pass + 断言(asm, "section .data", "data 段");
+        pass = pass + 断言(asm, "section .bss", "bss 段");
+        pass = pass + 断言(asm, "section .text", "text 段");
+        打印("  检查15: " + pass + "/13 通过");
+        打印("--- 端到端汇编预览（前200字符）---");
+        设 预览 = asm.子字符串(0, 200);
+        打印(预览);
+        打印("--- 预览结束 ---");
+        返回值 0;
+    };
+
+    声明 测试运行(){
+        检查1();
+        检查2();
+        检查3();
+        检查4();
+        检查5();
+        检查6();
+        检查7();
+        检查8();
+        检查9();
+        检查10();
+        检查11();
+        检查12();
+        检查13();
+        检查14();
+        检查15();
+        打印("=== 运行时接口测试完成 ===");
+        返回值 0;
+    };
+};

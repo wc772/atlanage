@@ -1,0 +1,81 @@
+声明 图形_开始帧(win){
+    图形.设备.开始帧(win);
+};
+
+声明 图形_结束帧(win){
+    图形.设备.结束帧(win);
+};
+
+声明 图形_事件循环(win, callback){
+    设 buf = 内存.分配(64);
+    循环(真){
+        设 r = 图形.事件.轮询(win, buf, 1);
+        如果(r == -1){ 跳出; };
+        如果(r == 1){
+            设 etype = 内存.读字节(buf, 0);
+            设 ekey = 内存.读字节(buf, 4);
+            设 ex = 内存.读字节(buf, 8);
+            设 ey = 内存.读字节(buf, 12);
+            设 ret = callback(etype, ekey, ex, ey);
+            如果(ret == 1){ 跳出; };
+        };
+    };
+    内存.释放(buf);
+};
+
+声明 图形_轮询事件(win, buf){
+    返回值 图形.事件.轮询(win, buf, 0);
+};
+
+声明 图形_加载BMP(path){
+    设 w_addr = 内存.分配(8);
+    设 h_addr = 内存.分配(8);
+    设 pix = 图像.创建(path, w_addr, h_addr);
+    如果(pix == 0){
+        内存.释放(w_addr);
+        内存.释放(h_addr);
+        返回值 空;
+    };
+    设 w = 内存.读字节(w_addr, 0);
+    设 h = 内存.读字节(h_addr, 0);
+    内存.释放(w_addr);
+    内存.释放(h_addr);
+
+    创建 HashMap:bmp;
+    bmp.设置("pixels", pix);
+    bmp.设置("w", w);
+    bmp.设置("h", h);
+    返回值 bmp;
+};
+
+声明 图形_释放BMP(bmp){
+    如果(bmp == 空){ 返回值; };
+    设 pix = bmp.获取("pixels");
+    如果(pix != 0){ 内存.释放(pix); };
+};
+
+声明 图形_绘制BMP(win, bmp, dx, dy){
+    如果(bmp == 空){ 返回值; };
+    设 pix = bmp.获取("pixels");
+    设 w = bmp.获取("w");
+    设 h = bmp.获取("h");
+    图像.绘制(win, dx, dy, pix, w, h);
+};
+
+声明 图形_文本尺寸(win, text, size){
+    设 w_addr = 内存.分配(8);
+    设 h_addr = 内存.分配(8);
+    图像.尺寸(win, text, size, w_addr, h_addr);
+    设 w = 内存.读字节(w_addr, 0);
+    设 h = 内存.读字节(h_addr, 0);
+    内存.释放(w_addr);
+    内存.释放(h_addr);
+    创建 HashMap:sz;
+    sz.设置("w", w);
+    sz.设置("h", h);
+    返回值 sz;
+};
+
+声明 图形_颜色(r, g, b){
+    返回值 (b << 16) | (g << 8) | r;
+};
