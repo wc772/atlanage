@@ -1,0 +1,261 @@
+类 ArrayList {
+公开:
+    设 data 存在;
+    设 size 存在;
+
+    构造(){
+        data = [];
+        size = 0;
+    };
+
+    声明 添加(元素){
+        data.添加(元素);
+        size = size + 1;
+        返回值 size;
+    };
+
+    声明 获取(索引){
+        如果(索引 < 0 || 索引 >= size){
+            返回值 空;
+        };
+        返回值 data[索引];
+    };
+
+    声明 设置(索引, 值){
+        如果(索引 < 0 || 索引 >= size){
+            返回值 空;
+        };
+        data[索引] = 值;
+        返回值 值;
+    };
+
+    声明 长度(){
+        返回值 size;
+    };
+
+    声明 查找(元素){
+        设 i = 0;
+        循环(i < size){
+            如果(data[i] == 元素){
+                返回值 i;
+            };
+            i = i + 1;
+        };
+        返回值 -1;
+    };
+
+    声明 弹出(){
+        如果(size == 0){
+            返回值 空;
+        };
+        size = size - 1;
+        设 v = data[size];
+        返回值 v;
+    };
+
+    声明 清空(){
+        data = [];
+        size = 0;
+    };
+};
+
+类 HashMap {
+公开:
+    设 keys 存在;
+    设 vals 存在;
+    设 count 存在;
+
+    构造(){
+        keys = [];
+        vals = [];
+        count = 0;
+    };
+
+    声明 设置(键, 值){
+        设 i = 0;
+        循环(i < count){
+            如果(keys[i] == 键){
+                vals[i] = 值;
+                返回值 值;
+            };
+            i = i + 1;
+        };
+
+        keys.添加(键);
+        vals.添加(值);
+        count = count + 1;
+        返回值 值;
+    };
+
+    声明 获取(键){
+        设 i = 0;
+        如果(count == 0){ 返回值 空; };
+        循环(i < count){
+            如果(keys[i] == 键){
+                返回值 vals[i];
+            };
+            i = i + 1;
+        };
+        返回值 空;
+    };
+
+    声明 包含(键){
+        设 i = 0;
+        循环(i < count){
+            如果(keys[i] == 键){
+                返回值 1;
+            };
+            i = i + 1;
+        };
+        返回值 0;
+    };
+
+    声明 清空(){
+        keys = [];
+        vals = [];
+        count = 0;
+    };
+};
+
+类 StringBuffer {
+公开:
+    设 buf 存在;
+
+    构造(){
+        buf = "";
+    };
+
+    声明 追加(s){
+        buf = buf + s;
+        返回值 0;
+    };
+
+    声明 追加字符(c){
+        buf = buf + 字符(c);
+        返回值 0;
+    };
+
+    声明 追加整数(n){
+        buf = buf + n;
+        返回值 0;
+    };
+
+    声明 追加换行(){
+        buf = buf + "\n";
+        返回值 0;
+    };
+
+    声明 构建(){
+        返回值 buf;
+    };
+
+    声明 清空(){
+        buf = "";
+        返回值 0;
+    };
+
+    声明 长度(){
+        返回值 buf.长度();
+    };
+};
+
+设 g_error_count = 0;
+
+声明 报错(msg){
+    g_error_count = g_error_count + 1;
+    错误打印("杂鱼~ " + msg + " —— 欧尼酱真是废物,这都解决不了?");
+    返回值 0;
+};
+
+声明 警告(msg){
+    错误打印("警告~ " + msg + " —— 才、才不是担心欧尼酱,只是顺便一说");
+    返回值 0;
+};
+
+声明 str_byte_len(s){
+    返回值 s.长度;
+};
+
+声明 str_concat(a, b){
+    返回值 a + b;
+};
+
+声明 str_eq(a, b){
+    如果(a == b){
+        返回值 1;
+    };
+    返回值 0;
+};
+
+声明 str_starts_with(s, prefix){
+    返回值 s.以开始(prefix);
+};
+
+声明 str_ends_with(s, suffix){
+    返回值 s.以结束(suffix);
+};
+
+声明 str_contains(s, sub){
+    返回值 s.包含(sub);
+};
+
+声明 str_substring(s, start, 结束位置){
+    返回值 s.子字符串(start, 结束位置);
+};
+
+声明 str_to_int(s){
+    返回值 整数(s);
+};
+
+声明 str_to_float(s){
+    返回值 数值(s);
+};
+
+声明 int_to_str(n){
+    返回值 "" + n;
+};
+
+声明 char_to_codepoint(c){
+    返回值 码点(c);
+};
+
+声明 codepoint_to_char(cp){
+    返回值 字符(cp);
+};
+
+声明 mem_alloc(n){
+    返回值 内存.分配(n);
+};
+
+声明 mem_free(p){
+    内存.释放(p);
+    返回值 0;
+};
+
+声明 mem_write_byte(p, offset, val){
+    内存.写字节(p, offset, val);
+    返回值 0;
+};
+
+声明 mem_read_byte(p, offset){
+    返回值 内存.读字节(p, offset);
+};
+
+声明 mem_alloc_exec(n){
+    返回值 内存.分配可执行内存(n);
+};
+
+声明 mem_exec(p){
+    返回值 内存.执行(p);
+};
+
+声明 file_read(path){
+    返回值 文件.读取(path);
+};
+
+声明 file_write(path, content){
+    设 h = 文件.创建(path);
+    文件.写入(h, content);
+    文件.关闭(h);
+    返回值 0;
+};

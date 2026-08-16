@@ -1,0 +1,4940 @@
+设 SN_NONE = 0;
+
+设 SN_LOCAL = 1;
+设 SN_FIELD = 2;
+设 SN_GLOBAL = 3;
+设 SN_CLASS = 4;
+设 SN_SPECIAL = 5;
+设 SN_BUILTIN_VAR = 6;
+
+设 SN_FUNC = 7;
+设 SN_METHOD = 8;
+设 SN_BUILTIN = 9;
+设 SN_LAMBDA = 10;
+设 SN_PKGFUNC = 11;
+设 SN_STRMETHOD = 12;
+设 SN_MODCALL = 13;
+设 SN_DISPATCH = 14;
+
+设 SN_MEM_FIELD = 15;
+设 SN_MEM_STRLEN = 16;
+设 SN_MEM_STRMETHOD = 17;
+设 SN_MEM_ENUM = 18;
+设 SN_MEM_ARGC = 19;
+设 SN_MEM_LISTLEN = 20;
+设 SN_MEM_BUILTIN = 21;
+设 SN_MEM_STATIC_FIELD = 22;
+设 SN_RESULT_CHAIN = 23;
+
+设 B_PRINT = 1;
+设 B_ERRPRINT = 2;
+设 B_INPUT = 3;
+设 B_NUM = 4;
+设 B_CHR = 5;
+设 B_FORMAT = 6;
+设 B_MILLIS = 7;
+设 B_TIME = 8;
+设 B_FILE_CREATE = 9;
+设 B_FILE_OPEN = 10;
+设 B_FILE_CLOSE = 11;
+设 B_FILE_WRITE = 12;
+设 B_FILE_READ = 13;
+设 B_BIN_WRITE = 14;
+设 B_BIN_READ = 15;
+设 B_WRITE_BYTES = 16;
+设 B_READ_BYTES = 17;
+设 B_FILE_SIZE = 18;
+设 B_SB_CLEAR = 19;
+设 B_SB_APPEND = 20;
+设 B_SB_BUILD = 21;
+设 B_LISTEN = 22;
+设 B_GAMES = 23;
+设 B_SHOW_ONE = 24;
+设 B_SHOW_END = 25;
+设 B_MEM_ALLOC = 26;
+设 B_MEM_FREE = 27;
+设 B_MEM_REALLOC = 28;
+设 B_MEM_ALLOC_EXEC = 29;
+设 B_MEM_SET_EXEC = 30;
+设 B_NET_GET = 31;
+设 B_NET_POST = 32;
+设 B_NET_RESOLVE = 33;
+设 B_NET_PING = 34;
+设 B_NET_ALIVE = 35;
+设 B_PROC_CREATE = 36;
+设 B_PROC_WAIT = 37;
+设 B_PROC_JOIN = 38;
+设 B_SYNC_LOCK = 39;
+设 B_SYNC_UNLOCK = 40;
+设 B_ATOMIC_INC = 41;
+设 B_ATOMIC_DEC = 42;
+设 B_THREAD_ID = 43;
+设 B_SYS_EXEC = 44;
+设 B_SYS_GETFN = 45;
+设 B_SYS_CALL = 46;
+设 B_JSON_PARSE = 47;
+设 B_JSON_SER = 48;
+设 B_REGEX_MATCH = 49;
+设 B_CODEPOINT = 50;
+设 B_TOINT = 51;
+设 B_SPLIT_LINES = 52;
+设 B_FILE_READ_LINES = 53;
+设 B_MEM_REPORT = 54;
+设 B_FIND_FROM = 55;
+设 B_DICT_GET = 56;
+设 B_DICT_SET = 57;
+设 B_OK = 58;
+设 B_FAIL = 59;
+设 B_FP_BITS = 60;
+设 B_MKDIR = 61;
+设 B_MICROS = 62;
+
+设 SM_LEN = 1;
+设 SM_CONTAINS = 2;
+设 SM_SUB = 3;
+设 SM_STARTS = 4;
+设 SM_ENDS = 5;
+设 SM_FIND_COUNT = 6;
+设 SM_FIND_LINE = 7;
+设 SM_FIND_POS = 8;
+设 SM_ADD = 9;
+设 SM_LIST_ADD = 10;
+设 SM_BYTE = 11;
+设 SM_BYTE_SUB = 12;
+
+设 SM_UPPER = 13;
+设 SM_LOWER = 14;
+设 SM_REPLACE = 15;
+设 SM_SPLIT = 16;
+设 SM_TRIM = 17;
+设 SM_REPEAT = 18;
+设 SM_EQUALS = 19;
+
+设 SM_LIST_DELETE = 20;
+设 SM_LIST_CLEAR = 21;
+设 SM_LIST_SORT = 22;
+设 SM_LIST_REVERSE = 23;
+设 SM_LIST_CONTAINS = 24;
+设 SM_LIST_FIND = 25;
+设 SM_LIST_COUNT = 26;
+设 SM_DICT_HAS_KEY = 27;
+设 SM_DICT_DELETE_KEY = 28;
+设 SM_DICT_KEYS = 29;
+设 SM_DICT_VALUES = 30;
+
+设 SM_LIST_MAP = 31;
+设 SM_LIST_FILTER = 32;
+设 SM_LIST_REDUCE = 33;
+设 SM_DICT_GET = 34;
+设 SM_LIST_DEDUP = 36;
+设 SM_DICT_SET = 35;
+
+设 MC_MATH_ADD = 1;
+设 MC_MATH_SUB = 2;
+设 MC_MATH_MUL = 3;
+设 MC_MATH_DIV = 4;
+设 MC_MATH_ABS = 5;
+设 MC_MATH_FLOOR = 6;
+设 MC_MATH_MOD = 7;
+设 MC_MATH_AVG = 8;
+设 MC_MATH_MAX = 9;
+设 MC_MATH_MIN = 10;
+设 MC_NET_GET = 11;
+设 MC_NET_POST = 12;
+设 MC_NET_RESOLVE = 13;
+设 MC_NET_PING = 14;
+设 MC_NET_ALIVE = 15;
+设 MC_PROC_CREATE = 16;
+设 MC_PROC_WAIT = 17;
+设 MC_PROC_JOIN = 18;
+设 MC_SYNC_LOCK = 19;
+设 MC_SYNC_UNLOCK = 20;
+设 MC_ATOMIC_INC = 21;
+设 MC_ATOMIC_DEC = 22;
+设 MC_THREAD_ID = 23;
+设 MC_MEM_ALLOC = 24;
+设 MC_MEM_FREE = 25;
+设 MC_MEM_REALLOC = 26;
+设 MC_MEM_ALLOC_EXEC = 27;
+设 MC_MEM_SET_EXEC = 28;
+设 MC_MEM_READBYTE = 29;
+设 MC_MEM_WRITEBYTE = 30;
+设 MC_MEM_EXEC = 31;
+设 MC_SYS_EXEC = 32;
+设 MC_SYS_GETFN = 33;
+设 MC_SYS_CALL = 34;
+设 MC_JSON_PARSE = 35;
+设 MC_JSON_SER = 36;
+设 MC_REGEX_MATCH = 37;
+设 MC_FILE_CREATE = 38;
+设 MC_FILE_OPEN = 39;
+设 MC_FILE_CLOSE = 40;
+设 MC_FILE_WRITE = 41;
+设 MC_FILE_READ = 42;
+设 MC_BIN_WRITE = 43;
+设 MC_BIN_READ = 44;
+设 MC_MOD_IMPORT = 45;
+设 MC_LISTEN = 46;
+设 MC_GAMES = 47;
+设 MC_GFX_BUTTON_REG = 48;
+设 MC_GFX_WIN_OPEN = 49;
+设 MC_GFX_WIN_CLOSE = 50;
+设 MC_GFX_WIN_TITLE = 51;
+设 MC_GFX_WIN_SIZE = 52;
+设 MC_GFX_WIN_FULLSCREEN = 53;
+设 MC_GFX_WIN_VSYNC = 54;
+设 MC_GFX_WIN_FPS = 55;
+设 MC_GFX_WIN_QUERY = 56;
+设 MC_GFX_PRESENT = 57;
+设 MC_GFX_POLL = 58;
+设 MC_GFX_FB_PIXELS = 59;
+设 MC_GFX_FB_SIZE = 60;
+设 MC_GFX_CLEAR = 61;
+设 MC_GFX_FILL_RECT = 62;
+设 MC_GFX_DRAW_PIXEL = 63;
+设 MC_GFX_DRAW_LINE = 64;
+设 MC_GFX_DRAW_CIRCLE = 65;
+设 MC_GFX_DRAW_TRIANGLE = 66;
+设 MC_GFX_DRAW_POLYGON = 67;
+设 MC_GFX_DRAW_TEXT = 68;
+设 MC_GFX_TEXT_SIZE = 69;
+设 MC_GFX_LOAD_BMP = 70;
+设 MC_GFX_DRAW_BMP = 71;
+设 MC_GFX_BEGIN_FRAME = 72;
+设 MC_GFX_END_FRAME = 73;
+设 MC_GFX_SET_CURRENT = 74;
+设 MC_GFX_BUTTON_RENDER = 75;
+设 MC_GFX_BUTTON_HANDLE = 76;
+设 MC_SYNC_LOCK_CREATE = 77;
+设 MC_CHAN_NEW = 78;
+设 MC_CHAN_SEND = 79;
+设 MC_CHAN_RECV = 80;
+设 MC_SYS_CHDIR = 81;
+设 MC_SYS_GETCWD = 82;
+设 MC_FILE_LIST_DIR = 83;
+设 MC_FILE_DELETE = 84;
+设 MC_FILE_RMDIR = 85;
+设 MC_FILE_LOAD_MEM = 86;
+设 MC_FILE_SAVE_MEM = 87;
+设 MC_NET_GET_FILE = 88;
+
+设 MC_GL_WIN_CREATE = 89;
+设 MC_GL_WIN_CLOSE = 90;
+设 MC_GL_WIN_SHOW = 91;
+设 MC_GL_WIN_TITLE = 92;
+设 MC_GL_PRESENT = 93;
+设 MC_GL_CLEAR = 94;
+设 MC_GL_POLL = 95;
+设 MC_GL_VERSION = 96;
+设 MC_GL_RENDERER = 97;
+设 MC_GL_GETPROC = 98;
+设 MC_GL_CALL = 99;
+设 MC_GL_CALL_RAW = 100;
+设 MC_GL_BEGIN = 101;
+设 MC_GL_END = 102;
+设 MC_GL_VERTEX = 103;
+设 MC_GL_COLOR = 104;
+设 MC_GL_MATRIX_MODE = 105;
+设 MC_GL_LOAD_IDENTITY = 106;
+设 MC_GL_ORTHO = 107;
+设 MC_GL_ROTATE = 108;
+设 MC_GL_TRANSLATE = 109;
+设 MC_GL_SCALE = 110;
+设 MC_GL_DRAW_ARRAYS = 111;
+设 MC_GPU_MEM_WRITE = 112;
+设 MC_GPU_MEM_READ = 113;
+设 MC_GPU_MEM_ZERO = 114;
+设 MC_GPU_MEM_WRITEF = 115;
+设 MC_GPU_MEM_PUTS = 116;
+设 MC_VK_LOAD = 117;
+设 MC_VK_VERSION = 118;
+设 MC_VK_GETPROC = 119;
+设 MC_VK_GETPROC_LDR = 120;
+设 MC_VK_MODULE_HANDLE = 121;
+设 MC_VK_CALL = 122;
+设 MC_VK_CALL_RAW = 123;
+设 MC_VK_CALL_ADDR = 124;
+设 MC_VK_WIN_CREATE = 125;
+设 MC_VK_WIN_CLOSE = 126;
+设 MC_VK_WIN_SHOW = 127;
+设 MC_VK_POLL = 128;
+设 MC_STR_FROM_MEM = 129;
+设 MC_GL_TEXT_DRAW = 130;
+设 MC_GL_SET_CURRENT = 131;
+设 MC_GL_SET_VSYNC = 132;
+设 MC_INPUT_KEY_DOWN = 133;
+设 MC_INPUT_KEY_PRESSED = 134;
+设 MC_INPUT_MOUSE_POS = 135;
+设 MC_INPUT_MOUSE_BUTTON = 136;
+设 MC_INPUT_SYNC = 137;
+设 MC_GL_PRESENT_GDI = 138;
+设 MC_STR_CONTAINS = 139;
+设 MC_GL_WIN_SIZE = 140;
+设 MC_GL_MSG_PUMP = 141;
+设 MC_GL_EVENT_TAKE = 142;
+
+类 SemClass {
+公开:
+    设 name 存在;
+    设 parent 存在;
+    设 parent_cls 存在;
+    设 fields 存在;
+    设 field_types 存在;
+    设 methods 存在;
+    设 nfields 存在;
+    设 id 存在;
+    设 pkg_name 存在;
+    设 enum_vals 存在;
+    设 static_fields 存在;
+    设 is_interface 存在;
+    设 implements 存在;
+    设 access 存在;
+
+    构造(){
+        name = 空;
+        parent = 空;
+        parent_cls = 空;
+        fields = 创建 ArrayList;
+        field_types = 创建 ArrayList;
+        methods = 创建 ArrayList;
+        nfields = 0;
+        id = 0;
+        pkg_name = 空;
+        enum_vals = 创建 ArrayList;
+        static_fields = 创建 ArrayList;
+        is_interface = 0;
+        implements = 创建 ArrayList;
+        access = 0;
+    };
+};
+
+类 SemMethod {
+公开:
+    设 name 存在;
+    设 owner 存在;
+    设 func 存在;
+    设 nparams 存在;
+    设 param_names 存在;
+    设 id 存在;
+    设 kind 存在;
+    设 is_ctor 存在;
+    设 is_static 存在;
+    设 access 存在;
+    设 pkg_name 存在;
+    设 vararg 存在;
+    设 param_defaults 存在;
+    设 sem_func 存在;
+
+    构造(){
+        name = 空;
+        owner = 空;
+        func = 空;
+        nparams = 0;
+        id = 0;
+        kind = 0;
+        is_ctor = 0;
+        is_static = 0;
+        access = 1;
+        pkg_name = 空;
+        vararg = 0;
+        param_defaults = 创建 ArrayList;
+        sem_func = 空;
+    };
+};
+
+类 SemLocal {
+公开:
+    设 name 存在;
+    设 offset 存在;
+    设 type_cls 存在;
+    设 type_kind 存在;
+    设 is_const 存在;
+
+    构造(n){
+        name = n;
+        offset = 0;
+        type_cls = 空;
+        type_kind = 0;
+        is_const = 0;
+    };
+};
+
+类 SemFunc {
+公开:
+    设 owner_cls 存在;
+    设 nparams 存在;
+    设 frame_size 存在;
+    设 locals 存在;
+    设 ret_type_kind 存在;
+    设 is_task_func 存在;
+    设 is_top_func 存在;
+    设 pkg_name 存在;
+    设 param_names 存在;
+
+    构造(){
+        owner_cls = 空;
+        nparams = 0;
+        frame_size = 0;
+        locals = 创建 ArrayList;
+        ret_type_kind = 0;
+        is_task_func = 0;
+        is_top_func = 0;
+        pkg_name = 空;
+        param_names = "";
+    };
+};
+
+类 SemNode {
+公开:
+    设 kind 存在;
+    设 offset 存在;
+    设 cls 存在;
+    设 target_id 存在;
+    设 n_args 存在;
+    设 builtin_id 存在;
+    设 strmethod_id 存在;
+    设 modcall_id 存在;
+    设 enum_val 存在;
+    设 type_kind 存在;
+
+    构造(k){
+        kind = k;
+        offset = 0;
+        cls = 空;
+        target_id = 0;
+        n_args = 0;
+        builtin_id = 0;
+        strmethod_id = 0;
+        modcall_id = 0;
+        enum_val = 0;
+        type_kind = 0;
+    };
+};
+
+类 SemEntry {
+公开:
+    设 cls 存在;
+    设 method 存在;
+
+    构造(c, m){
+        cls = c;
+        method = m;
+    };
+};
+
+设 g_sem_classes = [];
+设 g_sem_funcs = [];
+设 g_sem_hooks = [];
+设 g_sem_lambdas = [];
+设 g_sem_globals = [];
+设 g_sem_global_decls = [];
+设 g_sem_global_types = [];
+设 g_sem_global_consts = [];
+设 g_sem_top_exprs = [];
+设 g_sem_top_func 存在;
+设 g_sem_top_locals_n 存在;
+设 g_sem_entries = [];
+设 g_next_id = 1;
+
+声明 sem_find_class(name){
+    如果(name == 空){ 返回值 空; };
+    设 i = 0;
+    循环(i < g_sem_classes.长度()){
+        创建 SemClass:c;
+        c = g_sem_classes.获取(i);
+        如果(c.name == name){ 返回值 c; };
+        i = i + 1;
+    };
+    返回值 空;
+};
+
+声明 sem_resolve_class_name(name){
+    如果(name == 空){ 返回值 空; };
+    设 c = sem_find_class(name);
+    如果(c != 空){ 返回值 c; };
+
+    设 i = 0;
+    循环(i < g_sem_classes.长度()){
+        创建 SemClass:cl;
+        cl = g_sem_classes.获取(i);
+        如果(cl.pkg_name != 空){
+            如果(cl.pkg_name + "." + cl.name == name){ 返回值 cl; };
+        };
+        i = i + 1;
+    };
+    返回值 空;
+};
+
+声明 sem_find_field(cls, name){
+    如果(cls == 空 || name == 空){ 返回值 -1; };
+    创建 SemClass:c;
+    c = cls;
+    创建 ArrayList:fields;
+    fields = c.fields;
+    设 i = 0;
+    循环(i < fields.长度()){
+        设 fn = fields.获取(i);
+        如果(fn == name){ 返回值 i; };
+        i = i + 1;
+    };
+    返回值 -1;
+};
+
+声明 sem_find_field_type(cls, fi){
+    如果(cls == 空 || fi < 0){ 返回值 空; };
+    创建 SemClass:c;
+    c = cls;
+    如果(fi >= c.field_types.长度()){ 返回值 空; };
+    返回值 c.field_types.获取(fi);
+};
+
+声明 拼接形参名(node){
+    设 s = "";
+    设 i = 0;
+    创建 ArrayList:fp;
+    fp = node.fn_params;
+    循环(i < fp.长度()){
+        如果(i > 0){ s = s + "|"; };
+        s = s + fp.获取(i);
+        i = i + 1;
+    };
+    返回值 s;
+};
+
+声明 sem_set_field_type(cls, fi, type_cls){
+    如果(cls == 空 || fi < 0){ 返回值 0; };
+    创建 SemClass:c;
+    c = cls;
+
+    循环(c.field_types.长度() <= fi){
+        c.field_types.添加(空);
+    };
+    c.field_types.设置(fi, type_cls);
+    返回值 0;
+};
+
+声明 sem_find_method(cls, name){
+    如果(cls == 空 || name == 空){ 返回值 空; };
+    创建 SemClass:c;
+    c = cls;
+
+    设 i = 0;
+    循环(i < c.methods.长度()){
+        创建 SemMethod:m;
+        m = c.methods.获取(i);
+        如果(m.name == name){ 返回值 m; };
+        i = i + 1;
+    };
+
+    如果(c.parent_cls != 空){
+        返回值 sem_find_method(c.parent_cls, name);
+    };
+    返回值 空;
+};
+
+声明 sem_find_topfunc(name){
+    如果(name == 空){ 返回值 空; };
+    设 i = 0;
+    循环(i < g_sem_funcs.长度()){
+        创建 SemMethod:m;
+        m = g_sem_funcs.获取(i);
+        如果(m.name == name){ 返回值 m; };
+        i = i + 1;
+    };
+    返回值 空;
+};
+
+声明 sem_find_hook(name){
+    如果(name == 空){ 返回值 空; };
+    设 i = 0;
+    循环(i < g_sem_hooks.长度()){
+        创建 SemMethod:m;
+        m = g_sem_hooks.获取(i);
+        如果(m.name == name){ 返回值 m; };
+        i = i + 1;
+    };
+    返回值 空;
+};
+
+声明 sem_find_global(name){
+    如果(name == 空){ 返回值 -1; };
+    设 i = 0;
+    循环(i < g_sem_globals.长度()){
+        设 gn = g_sem_globals.获取(i);
+        如果(gn == name){ 返回值 i + 1; };
+        i = i + 1;
+    };
+    返回值 -1;
+};
+
+声明 sem_find_global_type(name){
+    设 i = 0;
+    循环(i < g_sem_globals.长度()){
+        设 gn = g_sem_globals.获取(i);
+        如果(gn == name){
+            如果(i < g_sem_global_types.长度()){
+                返回值 g_sem_global_types.获取(i);
+            };
+            返回值 空;
+        };
+        i = i + 1;
+    };
+    返回值 空;
+};
+
+声明 sem_recv_static_type(obj, func, cls){
+    如果(obj == 空){ 返回值 空; };
+    创建 ASTNode:ob;
+    ob = obj;
+    如果(ob.type == AST_VAR && ob.sval != 空){
+        设 t1 = sem_find_local_type(func, ob.sval);
+        如果(t1 != 空){ 返回值 t1; };
+        设 t2 = sem_find_global_type(ob.sval);
+        如果(t2 != 空){ 返回值 t2; };
+        如果(cls != 空){
+            设 fi = sem_find_field(cls, ob.sval);
+            如果(fi >= 0){
+                设 ft = sem_find_field_type(cls, fi);
+                如果(ft != 空){ 返回值 ft; };
+            };
+        };
+    }又如果(ob.type == AST_MEMBER && ob.sem != 空){
+        创建 SemNode:osn;
+        osn = ob.sem;
+        如果(osn.kind == SN_MEM_FIELD && osn.cls != 空 && osn.offset >= 0){
+            设 ft2 = sem_find_field_type(osn.cls, osn.offset);
+            如果(ft2 != 空){ 返回值 ft2; };
+        };
+    };
+    返回值 空;
+};
+
+声明 sem_set_global_type(name, type_cls){
+    设 i = 0;
+    循环(i < g_sem_globals.长度()){
+        设 gn = g_sem_globals.获取(i);
+        如果(gn == name){
+            循环(g_sem_global_types.长度() <= i){
+                g_sem_global_types.添加(空);
+            };
+            g_sem_global_types.设置(i, type_cls);
+            返回值 0;
+        };
+        i = i + 1;
+    };
+    返回值 0;
+};
+
+声明 参数别名序号(name){
+    如果(name == "参数一"){ 返回值 1; };
+    如果(name == "参数二"){ 返回值 2; };
+    如果(name == "参数三"){ 返回值 3; };
+    如果(name == "参数四"){ 返回值 4; };
+    如果(name == "参数五"){ 返回值 5; };
+    如果(name == "参数六"){ 返回值 6; };
+    如果(name == "参数七"){ 返回值 7; };
+    如果(name == "参数八"){ 返回值 8; };
+    如果(name == "参数九"){ 返回值 9; };
+    如果(name == "参数十"){ 返回值 10; };
+    返回值 0;
+};
+
+声明 sem_find_local(func, name){
+    如果(func == 空){ 返回值 空; };
+    创建 SemFunc:f;
+    f = func;
+    设 i = 0;
+    循环(i < f.locals.长度()){
+        创建 SemLocal:l;
+        l = f.locals.获取(i);
+        如果(l.name == name){ 返回值 l; };
+        i = i + 1;
+    };
+
+    设 ai = 参数别名序号(name);
+    如果(ai > 0){
+        设 pname = "参数" + ai;
+        设 j = 0;
+        循环(j < f.locals.长度()){
+            创建 SemLocal:l2;
+            l2 = f.locals.获取(j);
+            如果(l2.name == pname){ 返回值 l2; };
+            j = j + 1;
+        };
+    };
+    返回值 空;
+};
+
+声明 sem_add_local(func, name){
+    创建 SemFunc:f;
+    f = func;
+    创建 SemLocal:l(name);
+    f.locals.添加(l);
+    返回值 l;
+};
+
+声明 sem_find_local_type(func, name){
+    如果(func == 空){ 返回值 空; };
+    设 l = sem_find_local(func, name);
+    如果(l != 空){
+        创建 SemLocal:local;
+        local = l;
+        返回值 local.type_cls;
+    };
+    返回值 空;
+};
+
+声明 lookup_builtin(name){
+    如果(name == "打印"){ 返回值 B_PRINT; };
+    如果(name == "错误打印"){ 返回值 B_ERRPRINT; };
+    如果(name == "输入"){ 返回值 B_INPUT; };
+    如果(name == "数值"){ 返回值 B_NUM; };
+    如果(name == "字符"){ 返回值 B_CHR; };
+    如果(name == "格式化"){ 返回值 B_FORMAT; };
+    如果(name == "毫秒时间"){ 返回值 B_MILLIS; };
+    如果(name == "微秒时间"){ 返回值 B_MICROS; };
+    如果(name == "创建"){ 返回值 B_FILE_CREATE; };
+    如果(name == "创建文件夹"){ 返回值 B_MKDIR; };
+    如果(name == "文件"){ 返回值 B_FILE_READ; };
+    如果(name == "打开文件"){ 返回值 B_FILE_OPEN; };
+    如果(name == "关闭文件"){ 返回值 B_FILE_CLOSE; };
+    如果(name == "写入文件"){ 返回值 B_FILE_WRITE; };
+    如果(name == "读取文件"){ 返回值 B_FILE_READ; };
+    如果(name == "二进制写入"){ 返回值 B_BIN_WRITE; };
+    如果(name == "字节读取"){ 返回值 B_BIN_READ; };
+    如果(name == "写入字节"){ 返回值 B_WRITE_BYTES; };
+    如果(name == "读取字节"){ 返回值 B_READ_BYTES; };
+    如果(name == "文件大小"){ 返回值 B_FILE_SIZE; };
+    如果(name == "清空"){ 返回值 B_SB_CLEAR; };
+    如果(name == "追加"){ 返回值 B_SB_APPEND; };
+    如果(name == "字符串构建"){ 返回值 B_SB_BUILD; };
+    如果(name == "监听"){ 返回值 B_LISTEN; };
+    如果(name == "games"){ 返回值 B_GAMES; };
+    如果(name == "分配"){ 返回值 B_MEM_ALLOC; };
+    如果(name == "释放"){ 返回值 B_MEM_FREE; };
+    如果(name == "再分配"){ 返回值 B_MEM_REALLOC; };
+    如果(name == "分配可执行内存"){ 返回值 B_MEM_ALLOC_EXEC; };
+    如果(name == "设为可执行"){ 返回值 B_MEM_SET_EXEC; };
+    如果(name == "码点"){ 返回值 B_CODEPOINT; };
+    如果(name == "整数"){ 返回值 B_TOINT; };
+    如果(name == "分割行"){ 返回值 B_SPLIT_LINES; };
+    如果(name == "内存报告"){ 返回值 B_MEM_REPORT; };
+    如果(name == "检索从"){ 返回值 B_FIND_FROM; };
+    如果(name == "字典获取"){ 返回值 B_DICT_GET; };
+    如果(name == "字典设置"){ 返回值 B_DICT_SET; };
+    如果(name == "浮点位数"){ 返回值 B_FP_BITS; };
+    如果(name == "成功"){ 返回值 B_OK; };
+    如果(name == "失败"){ 返回值 B_FAIL; };
+    返回值 0;
+};
+
+声明 lookup_strmethod(name){
+    如果(name == "长度"){ 返回值 SM_LEN; };
+    如果(name == "包含"){ 返回值 SM_CONTAINS; };
+    如果(name == "子字符串"){ 返回值 SM_SUB; };
+    如果(name == "以开始"){ 返回值 SM_STARTS; };
+    如果(name == "以结束"){ 返回值 SM_ENDS; };
+    如果(name == "检索"){ 返回值 SM_FIND_COUNT; };
+    如果(name == "检索行"){ 返回值 SM_FIND_LINE; };
+    如果(name == "添加"){ 返回值 SM_LIST_ADD; };
+    如果(name == "字节"){ 返回值 SM_BYTE; };
+    如果(name == "字节子串"){ 返回值 SM_BYTE_SUB; };
+
+    如果(name == "大写"){ 返回值 SM_UPPER; };
+    如果(name == "小写"){ 返回值 SM_LOWER; };
+    如果(name == "替换"){ 返回值 SM_REPLACE; };
+    如果(name == "分割"){ 返回值 SM_SPLIT; };
+    如果(name == "去除空白"){ 返回值 SM_TRIM; };
+    如果(name == "重复"){ 返回值 SM_REPEAT; };
+    如果(name == "等值"){ 返回值 SM_EQUALS; };
+
+    如果(name == "删除"){ 返回值 SM_LIST_DELETE; };
+    如果(name == "清空"){ 返回值 SM_LIST_CLEAR; };
+    如果(name == "排序"){ 返回值 SM_LIST_SORT; };
+    如果(name == "反转"){ 返回值 SM_LIST_REVERSE; };
+    如果(name == "去重"){ 返回值 SM_LIST_DEDUP; };
+    如果(name == "查找"){ 返回值 SM_LIST_FIND; };
+    如果(name == "个数"){ 返回值 SM_LIST_COUNT; };
+    如果(name == "存在键"){ 返回值 SM_DICT_HAS_KEY; };
+    如果(name == "删除键"){ 返回值 SM_DICT_DELETE_KEY; };
+    如果(name == "键列表"){ 返回值 SM_DICT_KEYS; };
+    如果(name == "值列表"){ 返回值 SM_DICT_VALUES; };
+    如果(name == "获取"){ 返回值 SM_DICT_GET; };
+    如果(name == "设置"){ 返回值 SM_DICT_SET; };
+
+    如果(name == "映射"){ 返回值 SM_LIST_MAP; };
+    如果(name == "过滤"){ 返回值 SM_LIST_FILTER; };
+    如果(name == "归并"){ 返回值 SM_LIST_REDUCE; };
+    返回值 0;
+};
+
+声明 事件id(名称){
+    如果(名称 == "键盘按下"){ 返回值 1; };
+    如果(名称 == "鼠标移动"){ 返回值 2; };
+    如果(名称 == "鼠标点击"){ 返回值 3; };
+    如果(名称 == "鼠标抬起"){ 返回值 4; };
+    如果(名称 == "滚轮"){ 返回值 5; };
+    如果(名称 == "关闭窗口"){ 返回值 6; };
+    如果(名称 == "大小变化"){ 返回值 7; };
+    如果(名称 == "字符输入"){ 返回值 8; };
+    如果(名称 == "键盘松开"){ 返回值 9; };
+    返回值 0;
+};
+
+声明 lookup_modcall(name){
+    如果(name == "数学.加"){ 返回值 MC_MATH_ADD; };
+    如果(name == "数学.减"){ 返回值 MC_MATH_SUB; };
+    如果(name == "数学.乘"){ 返回值 MC_MATH_MUL; };
+    如果(name == "数学.除"){ 返回值 MC_MATH_DIV; };
+    如果(name == "数学.绝对值"){ 返回值 MC_MATH_ABS; };
+    如果(name == "数学.向下取整"){ 返回值 MC_MATH_FLOOR; };
+    如果(name == "数学.取整"){ 返回值 MC_MATH_FLOOR; };
+    如果(name == "数学.取模"){ 返回值 MC_MATH_MOD; };
+    如果(name == "数学.取余"){ 返回值 MC_MATH_MOD; };
+    如果(name == "数学.平均"){ 返回值 MC_MATH_AVG; };
+    如果(name == "数学.平均值"){ 返回值 MC_MATH_AVG; };
+    如果(name == "数学.最大"){ 返回值 MC_MATH_MAX; };
+    如果(name == "数学.最大值"){ 返回值 MC_MATH_MAX; };
+    如果(name == "数学.最小"){ 返回值 MC_MATH_MIN; };
+    如果(name == "数学.最小值"){ 返回值 MC_MATH_MIN; };
+    如果(name == "网络.获取"){ 返回值 MC_NET_GET; };
+    如果(name == "网络.提交"){ 返回值 MC_NET_POST; };
+    如果(name == "网络.解析"){ 返回值 MC_NET_RESOLVE; };
+    如果(name == "网络.连通"){ 返回值 MC_NET_PING; };
+    如果(name == "网络.延迟"){ 返回值 MC_NET_PING; };
+    如果(name == "网络.延时"){ 返回值 MC_NET_PING; };
+    如果(name == "网络.存活"){ 返回值 MC_NET_ALIVE; };
+    如果(name == "网络.检活"){ 返回值 MC_NET_ALIVE; };
+    如果(name == "网络.获取文件"){ 返回值 MC_NET_GET_FILE; };
+    如果(name == "进程.创建"){ 返回值 MC_PROC_CREATE; };
+    如果(name == "进程.等待"){ 返回值 MC_PROC_WAIT; };
+    如果(name == "进程.合并"){ 返回值 MC_PROC_JOIN; };
+    如果(name == "进程.自身"){ 返回值 MC_THREAD_ID; };
+    如果(name == "进程.自身编号"){ 返回值 MC_THREAD_ID; };
+    如果(name == "同步.锁创建"){ 返回值 MC_SYNC_LOCK_CREATE; };
+    如果(name == "同步.加锁"){ 返回值 MC_SYNC_LOCK; };
+    如果(name == "同步.锁获取"){ 返回值 MC_SYNC_LOCK; };
+    如果(name == "同步.解锁"){ 返回值 MC_SYNC_UNLOCK; };
+    如果(name == "同步.锁释放"){ 返回值 MC_SYNC_UNLOCK; };
+    如果(name == "原子.增加"){ 返回值 MC_ATOMIC_INC; };
+    如果(name == "原子.减少"){ 返回值 MC_ATOMIC_DEC; };
+    如果(name == "线程.编号"){ 返回值 MC_THREAD_ID; };
+    如果(name == "通道.创建"){ 返回值 MC_CHAN_NEW; };
+    如果(name == "通道.发送"){ 返回值 MC_CHAN_SEND; };
+    如果(name == "通道.接收"){ 返回值 MC_CHAN_RECV; };
+    如果(name == "道.创建"){ 返回值 MC_CHAN_NEW; };
+    如果(name == "道.发送"){ 返回值 MC_CHAN_SEND; };
+    如果(name == "道.接收"){ 返回值 MC_CHAN_RECV; };
+    如果(name == "内存.分配"){ 返回值 MC_MEM_ALLOC; };
+    如果(name == "内存.释放"){ 返回值 MC_MEM_FREE; };
+    如果(name == "内存.再分配"){ 返回值 MC_MEM_REALLOC; };
+    如果(name == "内存.分配可执行内存"){ 返回值 MC_MEM_ALLOC_EXEC; };
+    如果(name == "内存.设为可执行"){ 返回值 MC_MEM_SET_EXEC; };
+    如果(name == "内存.读字节"){ 返回值 MC_MEM_READBYTE; };
+    如果(name == "内存.写字节"){ 返回值 MC_MEM_WRITEBYTE; };
+    如果(name == "内存.执行"){ 返回值 MC_MEM_EXEC; };
+    如果(name == "系统.执行"){ 返回值 MC_SYS_EXEC; };
+    如果(name == "系统.获取函数"){ 返回值 MC_SYS_GETFN; };
+    如果(name == "系统.调用"){ 返回值 MC_SYS_CALL; };
+    如果(name == "系统.切换目录"){ 返回值 MC_SYS_CHDIR; };
+    如果(name == "系统.获取目录"){ 返回值 MC_SYS_GETCWD; };
+    如果(name == "JSON.解析"){ 返回值 MC_JSON_PARSE; };
+    如果(name == "JSON.序列化"){ 返回值 MC_JSON_SER; };
+    如果(name == "正则.匹配"){ 返回值 MC_REGEX_MATCH; };
+    如果(name == "文件.创建"){ 返回值 MC_FILE_CREATE; };
+    如果(name == "文件.打开"){ 返回值 MC_FILE_OPEN; };
+    如果(name == "文件.关闭"){ 返回值 MC_FILE_CLOSE; };
+    如果(name == "文件.写入"){ 返回值 MC_FILE_WRITE; };
+    如果(name == "文件.读取"){ 返回值 MC_FILE_READ; };
+    如果(name == "文件.二进制写入"){ 返回值 MC_BIN_WRITE; };
+    如果(name == "文件.字节读取"){ 返回值 MC_BIN_READ; };
+    如果(name == "文件.遍历目录"){ 返回值 MC_FILE_LIST_DIR; };
+    如果(name == "文件.删除"){ 返回值 MC_FILE_DELETE; };
+    如果(name == "文件.删除目录"){ 返回值 MC_FILE_RMDIR; };
+    如果(name == "文件.读入内存"){ 返回值 MC_FILE_LOAD_MEM; };
+    如果(name == "文件.写入内存"){ 返回值 MC_FILE_SAVE_MEM; };
+    如果(name == "引用.模块导入"){ 返回值 MC_MOD_IMPORT; };
+
+    如果(name == "引用.数学"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.JSON"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.正则"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.系统"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.文件"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.字符串"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.网络"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.进程"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.内存"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.同步"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.原子"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.时间"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.图形"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "引用.图像"){ 返回值 MC_MOD_IMPORT; };
+    如果(name == "监听"){ 返回值 MC_LISTEN; };
+    如果(name == "games"){ 返回值 MC_GAMES; };
+    如果(name == "绘制.矩形.按钮"){ 返回值 MC_GFX_BUTTON_REG; };
+    如果(name == "绘制.圆.按钮"){ 返回值 MC_GFX_BUTTON_REG; };
+    如果(name == "绘制.三角形.按钮"){ 返回值 MC_GFX_BUTTON_REG; };
+    如果(name == "绘制.像素.按钮"){ 返回值 MC_GFX_BUTTON_REG; };
+
+    如果(name == "图形.窗口.创建"){ 返回值 MC_GFX_WIN_OPEN; };
+    如果(name == "图形.窗口.关闭"){ 返回值 MC_GFX_WIN_CLOSE; };
+    如果(name == "图形.窗口.标题"){ 返回值 MC_GFX_WIN_TITLE; };
+    如果(name == "图形.窗口.大小"){ 返回值 MC_GFX_WIN_SIZE; };
+    如果(name == "图形.窗口.全屏"){ 返回值 MC_GFX_WIN_FULLSCREEN; };
+    如果(name == "图形.窗口.垂直同步"){ 返回值 MC_GFX_WIN_VSYNC; };
+    如果(name == "图形.窗口.帧率"){ 返回值 MC_GFX_WIN_FPS; };
+    如果(name == "图形.窗口"){ 返回值 MC_GFX_WIN_QUERY; };
+    如果(name == "图形.设备.呈现"){ 返回值 MC_GFX_PRESENT; };
+    如果(name == "图形.设备.清屏"){ 返回值 MC_GFX_CLEAR; };
+    如果(name == "图形.设备.开始帧"){ 返回值 MC_GFX_BEGIN_FRAME; };
+    如果(name == "图形.设备.结束帧"){ 返回值 MC_GFX_END_FRAME; };
+    如果(name == "图形.绘制.像素"){ 返回值 MC_GFX_DRAW_PIXEL; };
+    如果(name == "图形.绘制.线"){ 返回值 MC_GFX_DRAW_LINE; };
+    如果(name == "图形.绘制.矩形"){ 返回值 MC_GFX_FILL_RECT; };
+    如果(name == "图形.绘制.圆"){ 返回值 MC_GFX_DRAW_CIRCLE; };
+    如果(name == "图形.绘制.三角形"){ 返回值 MC_GFX_DRAW_TRIANGLE; };
+    如果(name == "图形.绘制.多边形"){ 返回值 MC_GFX_DRAW_POLYGON; };
+    如果(name == "图形.绘制.文本"){ 返回值 MC_GFX_DRAW_TEXT; };
+    如果(name == "图形.事件.轮询"){ 返回值 MC_GFX_POLL; };
+    如果(name == "图形.帧缓冲.地址"){ 返回值 MC_GFX_FB_PIXELS; };
+    如果(name == "图形.帧缓冲.尺寸"){ 返回值 MC_GFX_FB_SIZE; };
+
+    如果(name == "图像.创建"){ 返回值 MC_GFX_LOAD_BMP; };
+    如果(name == "图像.绘制"){ 返回值 MC_GFX_DRAW_BMP; };
+    如果(name == "图像.尺寸"){ 返回值 MC_GFX_TEXT_SIZE; };
+
+    如果(name == "GL.窗口.创建"){ 返回值 MC_GL_WIN_CREATE; };
+    如果(name == "GL.窗口.关闭"){ 返回值 MC_GL_WIN_CLOSE; };
+    如果(name == "GL.窗口.显示"){ 返回值 MC_GL_WIN_SHOW; };
+    如果(name == "GL.窗口.标题"){ 返回值 MC_GL_WIN_TITLE; };
+    如果(name == "GL.呈现"){ 返回值 MC_GL_PRESENT; };
+    如果(name == "GL.清屏"){ 返回值 MC_GL_CLEAR; };
+    如果(name == "GL.事件.轮询"){ 返回值 MC_GL_POLL; };
+    如果(name == "GL.版本"){ 返回值 MC_GL_VERSION; };
+    如果(name == "GL.渲染器"){ 返回值 MC_GL_RENDERER; };
+    如果(name == "GL.获取函数"){ 返回值 MC_GL_GETPROC; };
+    如果(name == "GL.调用"){ 返回值 MC_GL_CALL; };
+    如果(name == "GL.调用原始"){ 返回值 MC_GL_CALL_RAW; };
+    如果(name == "GL.开始"){ 返回值 MC_GL_BEGIN; };
+    如果(name == "GL.结束"){ 返回值 MC_GL_END; };
+    如果(name == "GL.顶点"){ 返回值 MC_GL_VERTEX; };
+    如果(name == "GL.颜色"){ 返回值 MC_GL_COLOR; };
+    如果(name == "GL.矩阵"){ 返回值 MC_GL_MATRIX_MODE; };
+    如果(name == "GL.单位矩阵"){ 返回值 MC_GL_LOAD_IDENTITY; };
+    如果(name == "GL.正交"){ 返回值 MC_GL_ORTHO; };
+    如果(name == "GL.旋转"){ 返回值 MC_GL_ROTATE; };
+    如果(name == "GL.平移"){ 返回值 MC_GL_TRANSLATE; };
+    如果(name == "GL.缩放"){ 返回值 MC_GL_SCALE; };
+    如果(name == "GL.绘制数组"){ 返回值 MC_GL_DRAW_ARRAYS; };
+    如果(name == "GL.内存.写"){ 返回值 MC_GPU_MEM_WRITE; };
+    如果(name == "GL.内存.读"){ 返回值 MC_GPU_MEM_READ; };
+    如果(name == "GL.内存.清零"){ 返回值 MC_GPU_MEM_ZERO; };
+    如果(name == "GL.内存.写浮点"){ 返回值 MC_GPU_MEM_WRITEF; };
+    如果(name == "GL.内存.写字符串"){ 返回值 MC_GPU_MEM_PUTS; };
+    如果(name == "GL.文本.绘制"){ 返回值 MC_GL_TEXT_DRAW; };
+    如果(name == "GL.设置当前"){ 返回值 MC_GL_SET_CURRENT; };
+    如果(name == "GL.垂直同步"){ 返回值 MC_GL_SET_VSYNC; };
+     如果(name == "GL.呈现GDI"){ 返回值 MC_GL_PRESENT_GDI; };
+     如果(name == "GL.窗口.大小"){ 返回值 MC_GL_WIN_SIZE; };
+     如果(name == "GL.消息泵"){ 返回值 MC_GL_MSG_PUMP; };
+     如果(name == "GL.事件.取出"){ 返回值 MC_GL_EVENT_TAKE; };
+
+    如果(name == "输入.按键按下"){ 返回值 MC_INPUT_KEY_DOWN; };
+    如果(name == "输入.按键按下瞬间"){ 返回值 MC_INPUT_KEY_PRESSED; };
+    如果(name == "输入.鼠标位置"){ 返回值 MC_INPUT_MOUSE_POS; };
+    如果(name == "输入.鼠标按钮"){ 返回值 MC_INPUT_MOUSE_BUTTON; };
+    如果(name == "输入.同步"){ 返回值 MC_INPUT_SYNC; };
+
+    如果(name == "VK.载入"){ 返回值 MC_VK_LOAD; };
+    如果(name == "VK.版本"){ 返回值 MC_VK_VERSION; };
+    如果(name == "VK.获取函数"){ 返回值 MC_VK_GETPROC; };
+    如果(name == "VK.加载函数"){ 返回值 MC_VK_GETPROC_LDR; };
+    如果(name == "VK.模块句柄"){ 返回值 MC_VK_MODULE_HANDLE; };
+    如果(name == "VK.调用"){ 返回值 MC_VK_CALL; };
+    如果(name == "VK.调用原始"){ 返回值 MC_VK_CALL_RAW; };
+    如果(name == "VK.调用地址"){ 返回值 MC_VK_CALL_ADDR; };
+    如果(name == "VK.窗口.创建"){ 返回值 MC_VK_WIN_CREATE; };
+    如果(name == "VK.窗口.关闭"){ 返回值 MC_VK_WIN_CLOSE; };
+    如果(name == "VK.窗口.显示"){ 返回值 MC_VK_WIN_SHOW; };
+    如果(name == "VK.事件.轮询"){ 返回值 MC_VK_POLL; };
+    如果(name == "VK.内存.写"){ 返回值 MC_GPU_MEM_WRITE; };
+    如果(name == "VK.内存.读"){ 返回值 MC_GPU_MEM_READ; };
+    如果(name == "VK.内存.清零"){ 返回值 MC_GPU_MEM_ZERO; };
+    如果(name == "VK.内存.写浮点"){ 返回值 MC_GPU_MEM_WRITEF; };
+    如果(name == "VK.内存.写字符串"){ 返回值 MC_GPU_MEM_PUTS; };
+
+    如果(name == "字符串.从内存"){ 返回值 MC_STR_FROM_MEM; };
+    如果(name == "字符串.包含"){ 返回值 MC_STR_CONTAINS; };
+    返回值 0;
+};
+
+声明 collect_class(raw_node, pkg_name){
+    创建 ASTNode:node;
+    node = raw_node;
+    创建 SemClass:c;
+    c.name = node.cls_name;
+    c.parent = node.cls_parent;
+    c.id = g_next_id;
+    g_next_id = g_next_id + 1;
+    如果(node.cls_implements != 空){
+        设 ii = 0;
+        循环(ii < node.cls_implements.长度()){
+            c.implements.添加(node.cls_implements.获取(ii));
+            ii = ii + 1;
+        };
+    };
+    如果(pkg_name != 空){
+        c.pkg_name = pkg_name;
+    };
+
+    创建 ArrayList:members;
+    members = node.cls_members;
+    设 cur_access = ACCESS_PRIVATE;
+    设 i = 0;
+    循环(i < members.长度()){
+        创建 ASTNode:m;
+        m = members.获取(i);
+        如果(m.type == AST_ACCESS_LABEL){
+            cur_access = m.access_kind;
+        }又如果(m.type == AST_FUNC){
+            创建 SemMethod:sm;
+            sm.name = m.fn_name;
+            sm.is_ctor = m.is_ctor;
+            sm.owner = c;
+            sm.func = m;
+            sm.nparams = m.fn_params.长度();
+            sm.id = g_next_id;
+            g_next_id = g_next_id + 1;
+            sm.kind = 0;
+            sm.access = cur_access;
+            如果(cur_access == ACCESS_STATIC){
+                sm.is_static = 1;
+                sm.access = ACCESS_PUBLIC;
+            };
+            sm.vararg = m.fn_vararg;
+            如果(m.fn_param_defaults != 空){
+                设 pd = 0;
+                循环(pd < m.fn_param_defaults.长度()){
+                    sm.param_defaults.添加(m.fn_param_defaults.获取(pd));
+                    pd = pd + 1;
+                };
+            };
+            c.methods.添加(sm);
+        }又如果(m.type == AST_VARDECL){
+
+            创建 ArrayList:names;
+            names = m.var_names;
+            设 j = 0;
+            循环(j < names.长度()){
+                设 fn = names.获取(j);
+                如果(cur_access == ACCESS_STATIC){
+                    c.static_fields.添加(fn);
+                }否则{
+                    c.fields.添加(fn);
+                };
+                j = j + 1;
+            };
+        }又如果(m.type == AST_LIST_DECL || m.type == AST_ARRAY_DECL || m.type == AST_GROUP_DECL){
+            如果(m.sval != 空){
+                如果(cur_access == ACCESS_STATIC){
+                    c.static_fields.添加(m.sval);
+                }否则{
+                    c.fields.添加(m.sval);
+                };
+            };
+        }又如果(m.type == AST_CLASS){
+
+            设 inner = collect_class(m, pkg_name);
+            g_sem_classes.添加(inner);
+        };
+        i = i + 1;
+    };
+    c.nfields = c.fields.长度();
+    返回值 c;
+};
+
+声明 is_pure_init(node){
+    如果(node == 空){ 返回值 1; };
+    创建 ASTNode:n0;
+    n0 = node;
+    如果(n0.type == AST_LITERAL){ 返回值 1; };
+    如果(n0.type == AST_NEW){ 返回值 1; };
+    如果(n0.type == AST_LIST_DECL || n0.type == AST_ARRAY_DECL || n0.type == AST_GROUP_DECL){
+
+        如果(n0.arr_init != 空){
+            设 ei = 0;
+            循环(ei < n0.arr_init.长度()){
+                如果(is_pure_init(n0.arr_init.获取(ei)) == 0){ 返回值 0; };
+                ei = ei + 1;
+            };
+        };
+        返回值 1;
+    };
+    返回值 0;
+};
+
+声明 collect_decl(raw_node){
+    创建 ASTNode:node;
+    node = raw_node;
+    如果(node.type == AST_CLASS){
+        设 c = collect_class(node, 空);
+        g_sem_classes.添加(c);
+    }又如果(node.type == AST_INTERFACE){
+
+        创建 SemClass:c;
+        c.name = node.cls_name;
+        c.parent = node.if_parent;
+        c.id = g_next_id;
+        g_next_id = g_next_id + 1;
+        c.is_interface = 1;
+
+        如果(node.if_methods != 空){
+            设 im = 0;
+            循环(im < node.if_methods.长度()){
+                创建 ASTNode:fm;
+                fm = node.if_methods.获取(im);
+                创建 SemMethod:sm;
+                sm.name = fm.fn_name;
+                sm.owner = c;
+                sm.func = fm;
+                sm.nparams = fm.fn_params.长度();
+                sm.id = g_next_id;
+                g_next_id = g_next_id + 1;
+                sm.kind = 0;
+                sm.access = ACCESS_PUBLIC;
+                sm.vararg = fm.fn_vararg;
+                c.methods.添加(sm);
+                im = im + 1;
+            };
+        };
+        g_sem_classes.添加(c);
+    }又如果(node.type == AST_FUNC){
+        创建 SemMethod:sm;
+        sm.name = node.fn_name;
+        sm.owner = 空;
+        sm.func = node;
+        sm.nparams = node.fn_params.长度();
+        sm.id = g_next_id;
+        g_next_id = g_next_id + 1;
+        sm.kind = 1;
+        sm.vararg = node.fn_vararg;
+        如果(node.fn_param_defaults != 空){
+            设 pd = 0;
+            循环(pd < node.fn_param_defaults.长度()){
+
+                sm.param_defaults.添加(node.fn_param_defaults.获取(pd));
+                pd = pd + 1;
+            };
+        };
+        g_sem_funcs.添加(sm);
+    }又如果(node.type == AST_PACKAGE){
+
+        设 pkg_name = node.pkg_name;
+        设 cur_access = 0;
+        如果(node.pkg_members != 空){
+            设 pm = 0;
+            循环(pm < node.pkg_members.长度()){
+                创建 ASTNode:m;
+                m = node.pkg_members.获取(pm);
+                如果(m.type == AST_ACCESS_LABEL){
+                    cur_access = m.access_kind;
+                }又如果(m.type == AST_CLASS){
+                    设 c = collect_class(m, pkg_name);
+                    c.access = cur_access;
+                    g_sem_classes.添加(c);
+                }又如果(m.type == AST_FUNC){
+                    创建 SemMethod:sm;
+                    sm.name = pkg_name + "." + m.fn_name;
+                    sm.owner = 空;
+                    sm.func = m;
+                    sm.nparams = m.fn_params.长度();
+                    sm.id = g_next_id;
+                    g_next_id = g_next_id + 1;
+                    sm.kind = 1;
+                    sm.access = cur_access;
+                    sm.pkg_name = pkg_name;
+                    如果(m.fn_param_defaults != 空){
+                        设 pd = 0;
+                        循环(pd < m.fn_param_defaults.长度()){
+                            sm.param_defaults.添加(m.fn_param_defaults.获取(pd));
+                            pd = pd + 1;
+                        };
+                    };
+                    g_sem_funcs.添加(sm);
+                }又如果(m.type == AST_HOOK){
+
+                    创建 SemMethod:sm2;
+                    sm2.name = pkg_name + "." + m.hk_name;
+                    sm2.owner = 空;
+                    sm2.func = m;
+                    sm2.nparams = m.hk_param_types.长度();
+                    sm2.id = g_next_id;
+                    g_next_id = g_next_id + 1;
+                    sm2.kind = 2;
+                    sm2.pkg_name = pkg_name;
+                    g_sem_hooks.添加(sm2);
+                }又如果(m.type == AST_VARDECL){
+
+                    设 vj = 0;
+                    循环(vj < m.var_names.长度()){
+                        设 vn = m.var_names.获取(vj);
+                        m.var_names.设置(vj, pkg_name + "." + vn);
+                        g_sem_globals.添加(m.var_names.获取(vj));
+                        g_sem_global_consts.添加(m.is_const);
+                        vj = vj + 1;
+                    };
+                    g_sem_global_decls.添加(m);
+                }又如果(m.type == AST_PACKAGE){
+
+                    m.pkg_name = pkg_name + "." + m.pkg_name;
+                    collect_decl(m);
+                }否则{
+
+                    警告("包「" + pkg_name + "」内不支持的成员类型，已忽略");
+                };
+                pm = pm + 1;
+            };
+        };
+    }又如果(node.type == AST_HOOK){
+        创建 SemMethod:sm;
+        sm.name = node.hk_name;
+        sm.owner = 空;
+        sm.func = node;
+        sm.nparams = node.hk_param_types.长度();
+        sm.id = g_next_id;
+        g_next_id = g_next_id + 1;
+        sm.kind = 2;
+        g_sem_hooks.添加(sm);
+    }又如果(node.type == AST_ENUM){
+
+        创建 SemClass:c;
+        c.name = node.sval;
+        c.id = g_next_id;
+        g_next_id = g_next_id + 1;
+        如果(node.children != 空){
+            设 ei = 0;
+            循环(ei < node.children.长度()){
+                c.enum_vals.添加(node.children.获取(ei));
+                ei = ei + 1;
+            };
+        };
+        c.nfields = 0;
+        g_sem_classes.添加(c);
+    }又如果(node.type == AST_STRUCT){
+
+        创建 SemClass:c;
+        c.name = node.sval;
+        c.id = g_next_id;
+        g_next_id = g_next_id + 1;
+        如果(node.children != 空){
+            设 fi = 0;
+            循环(fi < node.children.长度()){
+                c.fields.添加(node.children.获取(fi));
+                fi = fi + 1;
+            };
+        };
+        c.nfields = c.fields.长度();
+        g_sem_classes.添加(c);
+    }又如果(node.type == AST_VARDECL){
+
+        创建 ArrayList:names;
+        names = node.var_names;
+        设 j = 0;
+        循环(j < names.长度()){
+            设 vn = names.获取(j);
+            g_sem_globals.添加(vn);
+            如果(node.is_const != 空 && node.is_const == 1){
+                g_sem_global_consts.添加(1);
+            }否则{
+                g_sem_global_consts.添加(0);
+            };
+            j = j + 1;
+        };
+
+        设 has_show_init = 0;
+        设 si = 0;
+        循环(si < node.var_inits.长度()){
+            创建 ASTNode:si0;
+            si0 = node.var_inits.获取(si);
+            如果(si0 != 空 && is_pure_init(si0) == 0){ has_show_init = 1; };
+            si = si + 1;
+        };
+        如果(has_show_init == 1){
+            创建 ASTNode:vd2(AST_VARDECL, node.line, node.col);
+            vd2.ensure_vars();
+            vd2.is_const = node.is_const;
+            设 sj = 0;
+            循环(sj < node.var_names.长度()){
+                vd2.var_names.添加(node.var_names.获取(sj));
+                sj = sj + 1;
+            };
+            设 sk = 0;
+            循环(sk < node.var_inits.长度()){
+                创建 ASTNode:sk0;
+                sk0 = node.var_inits.获取(sk);
+                如果(sk0 != 空 && is_pure_init(sk0) == 0){
+                    vd2.var_inits.添加(空);
+                    创建 ASTNode:asn(AST_ASSIGN, node.line, node.col);
+                    asn.op = TOK_ASSIGN;
+                    创建 ASTNode:lhs_v(AST_VAR, node.line, node.col);
+                    lhs_v.sval = node.var_names.获取(sk);
+                    asn.lhs = lhs_v;
+                    asn.rhs = sk0;
+                    g_sem_top_exprs.添加(asn);
+                }否则{
+                    vd2.var_inits.添加(sk0);
+                };
+                sk = sk + 1;
+            };
+            g_sem_global_decls.添加(vd2);
+        }否则{
+            g_sem_global_decls.添加(node);
+        };
+    }又如果(node.type == AST_EXPRSTMT){
+
+        设 is_entry_expr = 0;
+        如果(node.operand != 空 && node.operand.type == AST_METHODCALL){
+
+            设 is_entry_call = 0;
+            如果(node.operand.method_name != 空 && node.operand.method_name.长度() >= 2){
+                如果(node.operand.method_name.子字符串(0, 2) == "测试" ||
+                   node.operand.method_name.子字符串(0, 2) == "运行"){
+                    is_entry_call = 1;
+                };
+            };
+            如果(is_entry_call == 1){
+
+            创建 ASTNode:oc;
+            oc = node.operand.obj;
+            循环(oc != 空){
+                如果(oc.type == AST_METHODCALL || oc.type == AST_MEMBER || oc.type == AST_INDEX){
+                    oc = oc.obj;
+                }又如果(oc.type == AST_CALL){
+                    oc = oc.callee;
+                }否则{
+                    跳出;
+                };
+            };
+            如果(oc != 空 && oc.type == AST_VAR && oc.sval != 空){
+                设 ci2 = 0;
+                循环(ci2 < g_sem_classes.长度()){
+                    创建 SemClass:c2;
+                    c2 = g_sem_classes.获取(ci2);
+                    如果(c2.name == oc.sval){
+                        is_entry_expr = 1;
+                        跳出;
+                    };
+                    ci2 = ci2 + 1;
+                };
+            };
+            };
+        };
+        如果(is_entry_expr == 0){
+            g_sem_top_exprs.添加(node);
+        };
+    }又如果(node.type == AST_ASSIGN){
+
+        设 is_new_global = 0;
+        如果(node.lhs != 空 && node.lhs.type == AST_VAR && node.lhs.sval != 空 &&
+           node.rhs != 空 && node.rhs.type == AST_NEW){
+            is_new_global = 1;
+        };
+        如果(is_new_global == 1){
+            创建 ASTNode:vd(AST_VARDECL, node.line, node.col);
+            vd.ensure_vars();
+            vd.var_names.添加(node.lhs.sval);
+            vd.var_inits.添加(node.rhs);
+            g_sem_globals.添加(node.lhs.sval);
+            g_sem_global_consts.添加(0);
+            g_sem_global_decls.添加(vd);
+        }否则{
+            g_sem_top_exprs.添加(node);
+        };
+    }又如果(node.type == AST_IF || node.type == AST_LOOP || node.type == AST_SELECT){
+
+        g_sem_top_exprs.添加(node);
+    }又如果(node.type == AST_SHOW){
+
+        g_sem_top_exprs.添加(node);
+    }又如果(node.type == AST_LISTEN_EVENT){
+
+        g_sem_top_exprs.添加(node);
+    };
+    返回值 0;
+};
+
+声明 prescan_global_types(raw_node){
+    创建 ASTNode:node;
+    node = raw_node;
+    如果(node == 空){ 返回值 0; };
+
+    如果(node.type == AST_BLOCK){
+        如果(node.children != 空){
+            设 i = 0;
+            循环(i < node.children.长度()){
+                prescan_global_types(node.children.获取(i));
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    如果(node.type == AST_IF){
+        prescan_global_types(node.cond);
+        prescan_global_types(node.then_block);
+        prescan_global_types(node.else_block);
+        返回值 0;
+    };
+
+    如果(node.type == AST_LOOP){
+        prescan_global_types(node.loop_init);
+        prescan_global_types(node.loop_cond);
+        prescan_global_types(node.loop_step);
+        prescan_global_types(node.loop_body);
+        prescan_global_types(node.loop_count);
+        prescan_global_types(node.loop_item);
+        prescan_global_types(node.loop_item2);
+        返回值 0;
+    };
+    如果(node.type == AST_SELECT){
+        prescan_global_types(node.obj);
+        创建 ArrayList:sel_ch;
+        sel_ch = node.children;
+        如果(sel_ch != 空){
+            设 i = 0;
+            循环(i < sel_ch.长度()){
+                创建 ASTNode:cs;
+                cs = sel_ch.获取(i);
+                如果(cs.case_cond != 空){ prescan_global_types(cs.case_cond); };
+                如果(cs.lhs != 空){ prescan_global_types(cs.lhs); };
+                创建 ArrayList:case_bodies;
+                case_bodies = cs.children;
+                如果(case_bodies != 空){
+                    设 j = 0;
+                    循环(j < case_bodies.长度()){
+                        prescan_global_types(case_bodies.获取(j));
+                        j = j + 1;
+                    };
+                };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    如果(node.type == AST_RETURN){
+        prescan_global_types(node.ret_value);
+        返回值 0;
+    };
+
+    如果(node.type == AST_ASSIGN){
+        创建 ASTNode:lhs_n;
+        lhs_n = node.lhs;
+        创建 ASTNode:rhs_n;
+        rhs_n = node.rhs;
+        如果(lhs_n != 空 && lhs_n.type == AST_VAR && lhs_n.sval != 空){
+            如果(rhs_n != 空 && rhs_n.type == AST_NEW && rhs_n.new_cls_name != 空){
+                设 vn = lhs_n.sval;
+                设 fg = sem_find_global(vn);
+                如果(fg >= 0){
+                    设 rc = sem_resolve_class_name(rhs_n.new_cls_name);
+                    如果(rc != 空){
+                        sem_set_global_type(vn, rc);
+                    };
+                };
+            };
+        };
+        prescan_global_types(node.lhs);
+        prescan_global_types(node.rhs);
+        返回值 0;
+    };
+
+    如果(node.type == AST_BINARY){
+        prescan_global_types(node.lhs);
+        prescan_global_types(node.rhs);
+        返回值 0;
+    };
+
+    如果(node.type == AST_UNARY){
+        prescan_global_types(node.operand);
+        返回值 0;
+    };
+
+    如果(node.type == AST_MEMBER){
+        prescan_global_types(node.obj);
+        返回值 0;
+    };
+
+    如果(node.type == AST_INDEX){
+        prescan_global_types(node.obj);
+        prescan_global_types(node.index);
+        返回值 0;
+    };
+
+    如果(node.type == AST_CALL){
+        prescan_global_types(node.callee);
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                prescan_global_types(node.args.获取(i));
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    如果(node.type == AST_METHODCALL){
+        prescan_global_types(node.obj);
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                prescan_global_types(node.args.获取(i));
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    如果(node.type == AST_MODCALL){
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                prescan_global_types(node.args.获取(i));
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    如果(node.type == AST_LIST_LIT){
+        如果(node.children != 空){
+            设 i = 0;
+            循环(i < node.children.长度()){
+                prescan_global_types(node.children.获取(i));
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    如果(node.type == AST_NEW){
+        如果(node.new_args != 空){
+            设 i = 0;
+            循环(i < node.new_args.长度()){
+                prescan_global_types(node.new_args.获取(i));
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+
+    返回值 0;
+};
+
+声明 resolve_inheritance(){
+
+    设 i = 0;
+    循环(i < g_sem_classes.长度()){
+        创建 SemClass:c;
+        c = g_sem_classes.获取(i);
+        如果(c.parent != 空){
+            c.parent_cls = sem_find_class(c.parent);
+        };
+        i = i + 1;
+    };
+
+    设 i2 = 0;
+    循环(i2 < g_sem_classes.长度()){
+        创建 SemClass:c2;
+        c2 = g_sem_classes.获取(i2);
+        如果(c2.parent_cls != 空){
+
+            创建 ArrayList:all_fields;
+            设 p = c2.parent_cls;
+            循环(p != 空){
+                创建 SemClass:pc;
+                pc = p;
+                设 k = pc.fields.长度() - 1;
+                循环(k >= 0){
+                    设 fn = pc.fields.获取(k);
+
+                    设 found = 0;
+                    设 j = 0;
+                    循环(j < all_fields.长度()){
+                        如果(all_fields.获取(j) == fn){
+                            found = 1;
+                            跳出;
+                        };
+                        j = j + 1;
+                    };
+                    如果(found == 0){
+                        all_fields.添加(fn);
+                    };
+                    k = k - 1;
+                };
+                p = pc.parent_cls;
+            };
+
+            创建 ArrayList:new_fields;
+
+            设 a = all_fields.长度() - 1;
+            循环(a >= 0){
+                设 fn = all_fields.获取(a);
+
+                设 found = 0;
+                设 j = 0;
+                循环(j < new_fields.长度()){
+                    如果(new_fields.获取(j) == fn){
+                        found = 1;
+                        跳出;
+                    };
+                    j = j + 1;
+                };
+                如果(found == 0){
+                    new_fields.添加(fn);
+                };
+                a = a - 1;
+            };
+
+            设 b = 0;
+            循环(b < c2.fields.长度()){
+                设 fn = c2.fields.获取(b);
+                设 found = 0;
+                设 j = 0;
+                循环(j < new_fields.长度()){
+                    如果(new_fields.获取(j) == fn){
+                        found = 1;
+                        跳出;
+                    };
+                    j = j + 1;
+                };
+                如果(found == 0){
+                    new_fields.添加(fn);
+                };
+                b = b + 1;
+            };
+            c2.fields = new_fields;
+            c2.nfields = new_fields.长度();
+        };
+        i2 = i2 + 1;
+    };
+    返回值 0;
+};
+
+声明 collect_locals(raw_node, func, cls){
+    如果(raw_node == 空){ 返回值 0; };
+    创建 ASTNode:node;
+    node = raw_node;
+    如果(node.type == AST_FUNC){
+
+        如果(node.fn_name != 空 && node.fn_name != ""){
+            创建 SemMethod:sm;
+            sm.name = node.fn_name;
+            sm.owner = 空;
+            sm.func = node;
+            sm.nparams = node.fn_params.长度();
+            sm.id = g_next_id;
+            g_next_id = g_next_id + 1;
+            sm.kind = 1;
+            如果(node.fn_vararg != 0){ sm.vararg = node.fn_vararg; };
+            如果(node.fn_param_defaults != 空){
+                设 pd = 0;
+                循环(pd < node.fn_param_defaults.长度()){
+                    sm.param_defaults.添加(node.fn_param_defaults.获取(pd));
+                    pd = pd + 1;
+                };
+            };
+            g_sem_funcs.添加(sm);
+        };
+        collect_locals(node.then_block, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_BLOCK){
+        创建 ArrayList:children;
+        children = node.children;
+        设 i = 0;
+        循环(i < children.长度()){
+            collect_locals(children.获取(i), func, cls);
+            i = i + 1;
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_VARDECL){
+        创建 ArrayList:names;
+        names = node.var_names;
+        创建 ArrayList:inits;
+        inits = node.var_inits;
+        设 i = 0;
+        循环(i < names.长度()){
+            设 vn = names.获取(i);
+
+            如果(cls != 空 && sem_find_field(cls, vn) >= 0){
+
+            }否则{
+                如果(sem_find_local(func, vn) == 空){
+                    设 nl = sem_add_local(func, vn);
+                    如果(node.is_const != 空 && node.is_const == 1){ nl.is_const = 1; };
+                };
+            };
+
+            设 init = inits.获取(i);
+            如果(init != 空){
+                collect_locals(init, func, cls);
+
+                创建 ASTNode:init_n;
+                init_n = init;
+                如果(init_n.type == AST_NEW && init_n.new_cls_name != 空){
+                    设 rc = sem_resolve_class_name(init_n.new_cls_name);
+                    如果(rc != 空){
+                        设 l2 = sem_find_local(func, vn);
+                        如果(l2 != 空){
+                            l2.type_cls = rc;
+                        };
+                    };
+                };
+            };
+            i = i + 1;
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_IF){
+        collect_locals(node.cond, func, cls);
+        collect_locals(node.then_block, func, cls);
+        collect_locals(node.else_block, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_LOOP){
+        collect_locals(node.loop_init, func, cls);
+        collect_locals(node.loop_cond, func, cls);
+        collect_locals(node.loop_step, func, cls);
+        collect_locals(node.loop_count, func, cls);
+
+        如果(node.loop_kind == LOOP_FOREACH && node.loop_item != 空){
+            创建 ASTNode:item;
+            item = node.loop_item;
+            如果(item.sval != 空){
+                设 vn = item.sval;
+                如果(!(cls != 空 && sem_find_field(cls, vn) >= 0) &&
+                   sem_find_local(func, vn) == 空){
+                    sem_add_local(func, vn);
+                };
+            };
+        };
+
+        如果(node.loop_kind == LOOP_FOREACH && node.loop_item2 != 空){
+            创建 ASTNode:item2;
+            item2 = node.loop_item2;
+            如果(item2.sval != 空){
+                设 vn2 = item2.sval;
+                如果(!(cls != 空 && sem_find_field(cls, vn2) >= 0) &&
+                   sem_find_local(func, vn2) == 空){
+                    sem_add_local(func, vn2);
+                };
+            };
+        };
+        collect_locals(node.loop_body, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_SELECT){
+        collect_locals(node.obj, func, cls);
+        创建 ArrayList:sel_ch;
+        sel_ch = node.children;
+        如果(sel_ch != 空){
+            设 i = 0;
+            循环(i < sel_ch.长度()){
+                创建 ASTNode:cs;
+                cs = sel_ch.获取(i);
+                如果(cs.case_cond != 空){
+
+                    如果(cs.case_cond.type == AST_VAR && cs.case_cond.sval == "_"){
+
+                    }否则{
+                        collect_locals(cs.case_cond, func, cls);
+                    };
+                };
+                如果(cs.lhs != 空){ collect_locals(cs.lhs, func, cls); };
+
+                如果(cs.case_kind == 4 && cs.case_destruct_vars != 空){
+                    创建 ArrayList:dv_l;
+                    dv_l = cs.case_destruct_vars;
+                    设 di = 0;
+                    循环(di < dv_l.长度()){
+                        设 dvn = dv_l.获取(di);
+                        如果(!(cls != 空 && sem_find_field(cls, dvn) >= 0) &&
+                           sem_find_local(func, dvn) == 空){
+                            sem_add_local(func, dvn);
+                        };
+                        di = di + 1;
+                    };
+                };
+
+                如果(cs.case_alt != 空){
+                    创建 ArrayList:alt_l;
+                    alt_l = cs.case_alt;
+                    设 ai = 0;
+                    循环(ai < alt_l.长度()){
+                        创建 ASTNode:alt_e;
+                        alt_e = alt_l.获取(ai);
+                        如果(alt_e != 空){ collect_locals(alt_e, func, cls); };
+                        ai = ai + 1;
+                    };
+                };
+                创建 ArrayList:case_bodies;
+                case_bodies = cs.children;
+                如果(case_bodies != 空){
+                    设 j = 0;
+                    循环(j < case_bodies.长度()){
+                        collect_locals(case_bodies.获取(j), func, cls);
+                        j = j + 1;
+                    };
+                };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_RETURN){
+        collect_locals(node.ret_value, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_ASSIGN){
+
+        创建 ASTNode:lhs_node;
+        lhs_node = node.lhs;
+        如果(lhs_node != 空 && lhs_node.type == AST_VAR && lhs_node.sval != 空){
+            设 vn = lhs_node.sval;
+            设 l = 空;
+            设 is_global = 0;
+            如果(cls != 空 && sem_find_field(cls, vn) >= 0){
+
+            }又如果(sem_find_global(vn) >= 0){
+                is_global = 1;
+            }否则{
+
+                如果(func != 空 && func.pkg_name != 空 && sem_find_global(func.pkg_name + "." + vn) >= 0){
+                    is_global = 1;
+                }否则{
+                    l = sem_find_local(func, vn);
+                    如果(l == 空){ l = sem_add_local(func, vn); };
+                };
+            };
+
+            创建 ASTNode:rhs_node;
+            rhs_node = node.rhs;
+            如果(rhs_node != 空 && rhs_node.type == AST_NEW && rhs_node.new_cls_name != 空){
+                设 rc = sem_resolve_class_name(rhs_node.new_cls_name);
+                如果(rc != 空){
+                    如果(l != 空){
+                        创建 SemLocal:local;
+                        local = l;
+                        local.type_cls = rc;
+                    };
+                    如果(is_global != 0){
+                        sem_set_global_type(vn, rc);
+                    };
+                    如果(cls != 空){
+                        设 fi = sem_find_field(cls, vn);
+                        如果(fi >= 0){
+                            sem_set_field_type(cls, fi, rc);
+                        };
+                    };
+                };
+            };
+        };
+        collect_locals(node.lhs, func, cls);
+        collect_locals(node.rhs, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_BINARY){
+        collect_locals(node.lhs, func, cls);
+        collect_locals(node.rhs, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_UNARY){
+        collect_locals(node.operand, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_MEMBER){
+        collect_locals(node.obj, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_INDEX){
+        collect_locals(node.obj, func, cls);
+        collect_locals(node.index, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_CALL){
+        collect_locals(node.callee, func, cls);
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                collect_locals(node.args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+
+        如果(node.block_arg != 空){
+            collect_locals(node.block_arg, func, cls);
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_METHODCALL){
+        collect_locals(node.obj, func, cls);
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                collect_locals(node.args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_MODCALL){
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                collect_locals(node.args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        如果(node.second_args != 空){
+            设 i = 0;
+            循环(i < node.second_args.长度()){
+                collect_locals(node.second_args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        如果(node.block_arg != 空){
+            collect_locals(node.block_arg, func, cls);
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_PAIR){
+        collect_locals(node.pair_left, func, cls);
+        collect_locals(node.pair_right, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_COLOR_SUFFIX){
+        collect_locals(node.base_expr, func, cls);
+        collect_locals(node.color_expr, func, cls);
+        如果(node.alpha_expr != 空){
+            collect_locals(node.alpha_expr, func, cls);
+        };
+
+        创建 ArrayList:na_sem;
+        na_sem = node.named_args;
+        如果(na_sem != 空){
+            设 ni = 0;
+            循环(ni < na_sem.长度()){
+                创建 ASTNode:na;
+                na = na_sem.获取(ni);
+                collect_locals(na.lhs, func, cls);
+                ni = ni + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_LIST_LIT){
+        如果(node.children != 空){
+            设 i = 0;
+            循环(i < node.children.长度()){
+                collect_locals(node.children.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_NEW){
+        如果(node.new_args != 空){
+            设 i = 0;
+            循环(i < node.new_args.长度()){
+                collect_locals(node.new_args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_EXPRSTMT){
+        collect_locals(node.operand, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_LIST_DECL || node.type == AST_ARRAY_DECL || node.type == AST_GROUP_DECL){
+        如果(node.sval != 空){
+            设 vn = node.sval;
+            如果(!(cls != 空 && sem_find_field(cls, vn) >= 0) &&
+               sem_find_local(func, vn) == 空){
+                sem_add_local(func, vn);
+            };
+        };
+        collect_locals(node.arr_init, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_READFILE){
+
+        如果(sem_find_local(func, "s") == 空){
+            sem_add_local(func, "s");
+        };
+        collect_locals(node.rf_body, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_DESTROY){
+        collect_locals(node.operand, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_THROW){
+        collect_locals(node.operand, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_TRY){
+        collect_locals(node.then_block, func, cls);
+
+        如果(node.catch_var != 空){
+            创建 SemLocal:cl;
+            cl = sem_find_local(func, node.catch_var);
+            如果(cl == 空){
+                如果(cls == 空 || sem_find_field(cls, node.catch_var) < 0){
+                    sem_add_local(func, node.catch_var);
+                };
+            };
+        };
+        collect_locals(node.catch_block, func, cls);
+        collect_locals(node.finally_block, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_LISTEN){
+        collect_locals(node.cond, func, cls);
+        collect_locals(node.then_block, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_LISTEN_EVENT){
+
+        创建 ArrayList:flt_c;
+        flt_c = node.filters;
+        如果(flt_c != 空){
+            设 fi_c = 0;
+            循环(fi_c < flt_c.长度()){
+                创建 ASTNode:fa_c;
+                fa_c = flt_c.获取(fi_c);
+                如果(fa_c != 空 && fa_c.type == AST_NAMED_ARG){
+                    collect_locals(fa_c.lhs, func, cls);
+                };
+                fi_c = fi_c + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_WHEN){
+
+        返回值 0;
+    };
+    如果(node.type == AST_GAMES){
+        collect_locals(node.then_block, func, cls);
+        返回值 0;
+    };
+    返回值 0;
+};
+
+声明 resolve_var(name, func, cls){
+
+    设 l = sem_find_local(func, name);
+    如果(l != 空){
+        创建 SemLocal:local;
+        local = l;
+        创建 SemNode:n(SN_LOCAL);
+        n.offset = local.offset;
+        返回值 n;
+    };
+
+    如果(cls != 空){
+        设 fi = sem_find_field(cls, name);
+        如果(fi >= 0){
+            创建 SemNode:n(SN_FIELD);
+            n.offset = fi;
+            n.cls = cls;
+            返回值 n;
+        };
+    };
+
+    设 gi = sem_find_global(name);
+
+    如果(gi < 0 && func != 空 && func.pkg_name != 空){
+        gi = sem_find_global(func.pkg_name + "." + name);
+    };
+    如果(gi >= 0){
+        创建 SemNode:n(SN_GLOBAL);
+        n.offset = gi;
+        返回值 n;
+    };
+
+    设 c = sem_resolve_class_name(name);
+    如果(c != 空){
+        创建 SemNode:n(SN_CLASS);
+        n.cls = c;
+        返回值 n;
+    };
+
+    如果(name == "参数"){
+        创建 SemNode:n(SN_SPECIAL);
+        返回值 n;
+    };
+    如果(name == "时间"){
+        创建 SemNode:n(SN_BUILTIN_VAR);
+        返回值 n;
+    };
+
+    设 h = sem_find_hook(name);
+    如果(h != 空){
+        创建 SemMethod:hm;
+        hm = h;
+        创建 SemNode:n(SN_GLOBAL);
+        n.target_id = hm.id;
+        返回值 n;
+    };
+
+    设 f = sem_find_topfunc(name);
+    如果(f != 空){
+        创建 SemMethod:fm;
+        fm = f;
+        创建 SemNode:n(SN_GLOBAL);
+        n.target_id = fm.id;
+        返回值 n;
+    };
+
+    如果(cls != 空){
+        设 m = sem_find_method(cls, name);
+        如果(m != 空){
+            创建 SemMethod:mm;
+            mm = m;
+            创建 SemNode:n(SN_GLOBAL);
+            n.target_id = mm.id;
+            返回值 n;
+        };
+    };
+
+    如果(name != "文件" && name != "内存" && name != "系统" && name != "JSON" && name != "模块" && name != "正则" && name != "绘制" && name != "games"){
+
+        如果(func != 空 && func.is_task_func == 1){
+            报错("异步块不能访问外部局部/未定义变量 '" + name + "'——异步块是独立作用域,共享数据请用全局变量");
+        }又如果(func != 空 && func.is_task_func == 2){
+            报错("函数字面量不能访问外部局部/未定义变量 '" + name + "'——函数字面量是独立作用域(不捕获外层变量),共享数据请用全局变量");
+        }否则{
+            警告("未定义变量 '" + name + "' 已解析为保留全局槽(空)");
+        };
+    };
+    创建 SemNode:n(SN_GLOBAL);
+    返回值 n;
+};
+
+声明 bind_named_args(node, sm){
+    如果(node == 空 || sm == 空 || sm.func == 空){ 返回值 0; };
+
+    创建 ASTNode:fn;
+    fn = sm.func;
+    如果(fn.fn_params == 空){ 返回值 0; };
+    创建 ArrayList:params;
+    params = fn.fn_params;
+    设 nparam = params.长度();
+    如果(nparam <= 0){ 返回值 0; };
+    设 has_named = 0;
+    设 i = 0;
+
+    创建 ArrayList:args_list;
+    args_list = node.args;
+    循环(i < args_list.长度()){
+        设 a = args_list.获取(i);
+        如果(a != 空 && a.type == AST_NAMED_ARG){ has_named = 1; 跳出; };
+        i = i + 1;
+    };
+    如果(has_named == 0){ 返回值 0; };
+    创建 ArrayList:by_name;
+    创建 ArrayList:by_hit;
+    创建 ArrayList:positional;
+    设 k = 0;
+    循环(k < nparam){ by_name.添加(空); by_hit.添加(0); k = k + 1; };
+    设 i2 = 0;
+    循环(i2 < args_list.长度()){
+        设 a2 = args_list.获取(i2);
+        如果(a2 != 空 && a2.type == AST_NAMED_ARG){
+            设 kk = 0;
+            循环(kk < nparam){
+                如果(by_hit.获取(kk) == 0 && params.获取(kk) == a2.sval){
+                    by_name.设置(kk, a2.lhs);
+                    by_hit.设置(kk, 1);
+                    跳出;
+                };
+                kk = kk + 1;
+            };
+        }否则{
+            positional.添加(a2);
+        };
+        i2 = i2 + 1;
+    };
+    创建 ArrayList:ordered;
+    设 pos_idx = 0;
+    设 k3 = 0;
+    循环(k3 < nparam){
+        如果(by_hit.获取(k3) == 1){
+            ordered.添加(by_name.获取(k3));
+        }又如果(pos_idx < positional.长度()){
+            ordered.添加(positional.获取(pos_idx));
+            pos_idx = pos_idx + 1;
+        }又如果(sm.param_defaults != 空 && k3 < sm.param_defaults.长度() && sm.param_defaults.获取(k3) != 空){
+
+            ordered.添加(sm.param_defaults.获取(k3));
+        }否则{
+
+            跳出;
+        };
+        k3 = k3 + 1;
+    };
+    循环(pos_idx < positional.长度()){
+        ordered.添加(positional.获取(pos_idx));
+        pos_idx = pos_idx + 1;
+    };
+    node.args = ordered;
+    返回值 1;
+};
+
+声明 modcall_param_names(name){
+    创建 ArrayList:ps;
+    如果(name == "GL.窗口.创建"){ ps.添加("宽"); ps.添加("高"); ps.添加("标题"); 返回值 ps; };
+    如果(name == "GL.窗口.关闭"){ ps.添加("窗口"); 返回值 ps; };
+    如果(name == "GL.窗口.显示"){ ps.添加("窗口"); ps.添加("开关"); 返回值 ps; };
+    如果(name == "GL.窗口.标题"){ ps.添加("窗口"); ps.添加("标题"); 返回值 ps; };
+    如果(name == "GL.呈现"){ ps.添加("窗口"); 返回值 ps; };
+    如果(name == "GL.清屏"){ ps.添加("红"); ps.添加("绿"); ps.添加("蓝"); ps.添加("透明度"); 返回值 ps; };
+    如果(name == "GL.事件.轮询"){ ps.添加("窗口"); ps.添加("缓冲"); ps.添加("阻塞"); 返回值 ps; };
+    如果(name == "GL.文本.绘制"){ ps.添加("窗口"); ps.添加("x"); ps.添加("y"); ps.添加("字号"); ps.添加("红"); ps.添加("绿"); ps.添加("蓝"); ps.添加("透明度"); ps.添加("文本"); 返回值 ps; };
+    如果(name == "GL.设置当前"){ ps.添加("窗口"); 返回值 ps; };
+    如果(name == "GL.垂直同步"){ ps.添加("窗口"); ps.添加("开启"); 返回值 ps; };
+     如果(name == "GL.呈现GDI"){ ps.添加("窗口"); 返回值 ps; };
+    如果(name == "输入.按键按下"){ ps.添加("键"); 返回值 ps; };
+    如果(name == "输入.按键按下瞬间"){ ps.添加("键"); 返回值 ps; };
+    如果(name == "输入.鼠标位置"){ ps.添加("缓冲"); 返回值 ps; };
+    如果(name == "输入.鼠标按钮"){ ps.添加("按钮"); 返回值 ps; };
+
+    如果(name == "GL.颜色"){ ps.添加("红"); ps.添加("绿"); ps.添加("蓝"); ps.添加("透明度"); 返回值 ps; };
+    如果(name == "GL.正交"){ ps.添加("左"); ps.添加("右"); ps.添加("下"); ps.添加("上"); ps.添加("近"); ps.添加("远"); 返回值 ps; };
+    如果(name == "VK.窗口.创建"){ ps.添加("宽"); ps.添加("高"); ps.添加("标题"); 返回值 ps; };
+    如果(name == "VK.窗口.关闭"){ ps.添加("窗口"); 返回值 ps; };
+    如果(name == "VK.窗口.显示"){ ps.添加("窗口"); ps.添加("开关"); 返回值 ps; };
+    如果(name == "VK.事件.轮询"){ ps.添加("窗口"); ps.添加("缓冲"); ps.添加("阻塞"); 返回值 ps; };
+    如果(name == "字符串.包含"){ ps.添加("字符串"); ps.添加("子串"); 返回值 ps; };
+    如果(name == "GL.窗口.大小"){ ps.添加("窗口"); ps.添加("缓冲"); 返回值 ps; };
+    如果(name == "GL.消息泵"){ ps.添加("窗口"); 返回值 ps; };
+    如果(name == "GL.事件.取出"){ ps.添加("窗口"); ps.添加("缓冲"); 返回值 ps; };
+    返回值 空;
+};
+
+声明 bind_named_args_modcall(node, mname){
+    如果(node == 空){ 返回值 0; };
+    创建 ArrayList:args_list;
+    args_list = node.args;
+    如果(args_list == 空){ 返回值 0; };
+    设 has_named = 0;
+    设 i = 0;
+    循环(i < args_list.长度()){
+        设 a = args_list.获取(i);
+        如果(a != 空 && a.type == AST_NAMED_ARG){ has_named = 1; 跳出; };
+        i = i + 1;
+    };
+    如果(has_named == 0){ 返回值 0; };
+    创建 ArrayList:params;
+    params = modcall_param_names(mname);
+    如果(params == 空){
+        报错("第" + node.line + "行: modcall「" + mname + "」未注册形参名, 不支持命名参数");
+        返回值 0;
+    };
+    设 nparam = params.长度();
+    创建 ArrayList:by_name;
+    创建 ArrayList:by_hit;
+    创建 ArrayList:positional;
+    设 k = 0;
+    循环(k < nparam){ by_name.添加(空); by_hit.添加(0); k = k + 1; };
+    设 i2 = 0;
+    循环(i2 < args_list.长度()){
+        设 a2 = args_list.获取(i2);
+        如果(a2 != 空 && a2.type == AST_NAMED_ARG){
+            设 kk = 0;
+            设 hit = 0;
+            循环(kk < nparam){
+                如果(by_hit.获取(kk) == 0 && params.获取(kk) == a2.sval){
+                    by_name.设置(kk, a2.lhs);
+                    by_hit.设置(kk, 1);
+                    hit = 1;
+                    跳出;
+                };
+                kk = kk + 1;
+            };
+            如果(hit == 0){
+                设 known2 = 0;
+                设 kk2 = 0;
+                循环(kk2 < nparam){
+                    如果(params.获取(kk2) == a2.sval){ known2 = 1; 跳出; };
+                    kk2 = kk2 + 1;
+                };
+                如果(known2 == 1){
+                    报错("第" + node.line + "行: 重复命名参数「" + a2.sval + "」(modcall " + mname + ")");
+                }否则{
+                    报错("第" + node.line + "行: 未知命名参数「" + a2.sval + "」(modcall " + mname + ")");
+                };
+            };
+        }否则{
+            positional.添加(a2);
+        };
+        i2 = i2 + 1;
+    };
+    创建 ArrayList:ordered;
+    设 pos_idx = 0;
+    设 k3 = 0;
+    循环(k3 < nparam){
+        如果(by_hit.获取(k3) == 1){
+            ordered.添加(by_name.获取(k3));
+        }又如果(pos_idx < positional.长度()){
+            ordered.添加(positional.获取(pos_idx));
+            pos_idx = pos_idx + 1;
+        };
+        k3 = k3 + 1;
+    };
+    循环(pos_idx < positional.长度()){
+        ordered.添加(positional.获取(pos_idx));
+        pos_idx = pos_idx + 1;
+    };
+    node.args = ordered;
+    返回值 1;
+};
+声明 resolve_call(raw_node, func, cls){
+    创建 ASTNode:node;
+    node = raw_node;
+    设 name = 空;
+
+    创建 ASTNode:callee_node;
+    callee_node = node.callee;
+    如果(callee_node != 空 && callee_node.type == AST_VAR){
+        name = callee_node.sval;
+    };
+    设 n_args = 0;
+    如果(node.args != 空){
+        n_args = node.args.长度();
+    };
+    如果(name != 空){
+
+        设 bid = lookup_builtin(name);
+
+        如果(bid == B_FILE_READ && n_args == 3){ bid = B_FILE_READ_LINES; };
+        如果(bid != 0){
+
+            如果((bid == B_DICT_SET || bid == B_DICT_GET) && node.args != 空 && node.args.长度() > 0){
+                创建 ASTNode:a0;
+                a0 = node.args.获取(0);
+                设 rc2 = sem_recv_static_type(a0, func, cls);
+                如果(rc2 != 空){
+                    设 oname3 = "?";
+                    如果(a0.sval != 空){ oname3 = a0.sval; };
+                    报错("第" + node.line + "行: 「" + oname3 + "」是「" + rc2.name + "」实例,不能当字典用:「" + name + "」请用 = [] 创建字典");
+                };
+            };
+            创建 SemNode:n(SN_BUILTIN);
+            n.builtin_id = bid;
+            n.n_args = n_args;
+            返回值 n;
+        };
+
+        如果(cls != 空){
+            设 m = sem_find_method(cls, name);
+            如果(m != 空){
+                创建 SemMethod:mm;
+                mm = m;
+                如果(sem_check_method_call(mm, cls, node.line, node.col) == 0){
+
+                    创建 SemNode:dn(SN_DISPATCH);
+                    dn.n_args = n_args;
+                    返回值 dn;
+                };
+                bind_named_args(node, mm);
+                n_args = node.args.长度();
+                创建 SemNode:n(SN_METHOD);
+                n.target_id = mm.id;
+                n.cls = mm.owner;
+                n.n_args = n_args;
+                如果(mm.sem_func != 空){
+                    n.type_kind = mm.sem_func.ret_type_kind;
+                };
+                返回值 n;
+            };
+        };
+
+        设 f = sem_find_topfunc(name);
+        如果(f == 空){
+
+            设 cpkg = sem_caller_pkg(func, cls);
+            如果(cpkg != 空){
+                f = sem_find_topfunc(cpkg + "." + name);
+            };
+        };
+        如果(f != 空){
+            创建 SemMethod:fm;
+            fm = f;
+            bind_named_args(node, fm);
+            n_args = node.args.长度();
+            创建 SemNode:n(SN_FUNC);
+            n.target_id = fm.id;
+            n.n_args = n_args;
+            如果(fm.sem_func != 空){
+                n.type_kind = fm.sem_func.ret_type_kind;
+            };
+            返回值 n;
+        };
+
+        设 h = sem_find_hook(name);
+        如果(h != 空){
+            创建 SemMethod:hm;
+            hm = h;
+            bind_named_args(node, hm);
+            n_args = node.args.长度();
+            创建 SemNode:n(SN_FUNC);
+            n.target_id = hm.id;
+            n.n_args = n_args;
+            如果(hm.sem_func != 空){
+                n.type_kind = hm.sem_func.ret_type_kind;
+            };
+            返回值 n;
+        };
+
+        设 l = sem_find_local(func, name);
+        如果(l != 空){
+            创建 SemLocal:local;
+            local = l;
+            创建 SemNode:n(SN_LAMBDA);
+            n.offset = local.offset;
+            n.n_args = n_args;
+            返回值 n;
+        };
+    };
+
+    创建 SemNode:n(SN_DISPATCH);
+    n.n_args = n_args;
+    返回值 n;
+};
+
+声明 flatten_name_chain(ob){
+    如果(ob == 空){ 返回值 空; };
+    创建 ASTNode:n0;
+    n0 = ob;
+    如果(n0.type == AST_VAR){ 返回值 n0.sval; };
+    如果(n0.type == AST_MEMBER){
+        设 base = flatten_name_chain(n0.obj);
+        如果(base == 空){ 返回值 空; };
+        返回值 base + "." + n0.member;
+    };
+    返回值 空;
+};
+
+声明 sem_check_method_call(m, cur_cls, line, col){
+    如果(m == 空 || m.owner == 空){ 返回值 1; };
+    创建 SemMethod:mm;
+    mm = m;
+    设 target = mm.owner;
+    如果(target == cur_cls){ 返回值 1; };
+    如果(mm.access == ACCESS_PUBLIC){ 返回值 1; };
+    如果(mm.access == ACCESS_PROTECTED && cur_cls != 空){
+
+        设 p = cur_cls.parent_cls;
+        循环(p != 空){
+            如果(p == target){ 返回值 1; };
+            p = p.parent_cls;
+        };
+    };
+    设 kind = "私有";
+    如果(mm.access == ACCESS_PROTECTED){ kind = "受保护"; };
+    设 cur_name = "顶层";
+    如果(cur_cls != 空){ cur_name = cur_cls.name; };
+    报错("第" + line + "行: 不能访问类「" + target.name + "」的" + kind + "方法「" + mm.name + "」（当前上下文" + cur_name + "）");
+    had_error = 1;
+    返回值 0;
+};
+
+声明 sem_caller_pkg(func, cls){
+    如果(func != 空 && func.pkg_name != 空){ 返回值 func.pkg_name; };
+    如果(cls != 空 && cls.pkg_name != 空){ 返回值 cls.pkg_name; };
+    返回值 空;
+};
+
+声明 sem_check_pkg_member_access(access, target_pkg, func, cls, line, col){
+    如果(access == ACCESS_PUBLIC){ 返回值 1; };
+    设 cp = sem_caller_pkg(func, cls);
+    如果(target_pkg != 空 && cp != 空 && cp == target_pkg){ 返回值 1; };
+    设 包名显示 = "?";
+    如果(target_pkg != 空){ 包名显示 = target_pkg; };
+    设 级别显示 = "受保护";
+    如果(access == ACCESS_PRIVATE){ 级别显示 = "私有"; };
+    报错("第" + line + "行: 包成员不能跨包访问（" + 包名显示 + " 的" + 级别显示 + "成员）");
+    返回值 0;
+};
+
+声明 sem_check_pkg_class_access(c, func, cls, line, col){
+    如果(c == 空 || c.pkg_name == 空 || c.access == ACCESS_PUBLIC){ 返回值 1; };
+    返回值 sem_check_pkg_member_access(c.access, c.pkg_name, func, cls, line, col);
+};
+
+声明 resolve_methodcall(raw_node, func, cls){
+    创建 ASTNode:node;
+    node = raw_node;
+    设 method = node.method_name;
+    设 n_args = 0;
+    如果(node.args != 空){
+        n_args = node.args.长度();
+    };
+    设 obj = node.obj;
+
+    如果(obj != 空 && obj.type == AST_VAR && obj.sval != 空){
+        设 oname = obj.sval;
+        设 c = sem_resolve_class_name(oname);
+        如果(c != 空){
+            设 m = sem_find_method(c, method);
+            如果(m != 空){
+                创建 SemMethod:mm;
+                mm = m;
+
+                sem_check_pkg_class_access(c, func, cls, node.line, node.col);
+                如果(sem_check_method_call(mm, cls, node.line, node.col) == 0){
+
+                    创建 SemNode:dn(SN_DISPATCH);
+                    dn.n_args = n_args;
+                    返回值 dn;
+                };
+                创建 SemNode:n(SN_METHOD);
+                n.target_id = mm.id;
+                n.cls = c;
+                n.n_args = n_args;
+                返回值 n;
+            };
+        };
+
+        设 i = 0;
+        循环(i < g_sem_funcs.长度()){
+            创建 SemMethod:sm;
+            sm = g_sem_funcs.获取(i);
+            如果(sm.name != 空){
+                如果(sm.name == oname + "." + method){
+
+                    sem_check_pkg_member_access(sm.access, sm.pkg_name, func, cls, raw_node.line, raw_node.col);
+                    创建 SemNode:n(SN_PKGFUNC);
+                    n.target_id = sm.id;
+                    n.n_args = n_args;
+                    如果(sm.sem_func != 空){
+                        n.type_kind = sm.sem_func.ret_type_kind;
+                    };
+                    返回值 n;
+                };
+            };
+            i = i + 1;
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_MEMBER){
+        设 flat = flatten_name_chain(obj);
+        如果(flat != 空){
+            设 i2 = 0;
+            循环(i2 < g_sem_funcs.长度()){
+                创建 SemMethod:sm2;
+                sm2 = g_sem_funcs.获取(i2);
+                如果(sm2.name != 空 && sm2.name == flat + "." + method){
+                    sem_check_pkg_member_access(sm2.access, sm2.pkg_name, func, cls, node.line, node.col);
+                    创建 SemNode:n2(SN_PKGFUNC);
+                    n2.target_id = sm2.id;
+                    n2.n_args = n_args;
+                    如果(sm2.sem_func != 空){
+                        n2.type_kind = sm2.sem_func.ret_type_kind;
+                    };
+                    返回值 n2;
+                };
+                i2 = i2 + 1;
+            };
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_NEW){
+        设 c = sem_resolve_class_name(obj.new_cls_name);
+        如果(c != 空){
+            设 m = sem_find_method(c, method);
+            如果(m != 空){
+                创建 SemMethod:mm;
+                mm = m;
+                如果(sem_check_method_call(mm, cls, node.line, node.col) == 0){
+
+                    创建 SemNode:dn(SN_DISPATCH);
+                    dn.n_args = n_args;
+                    返回值 dn;
+                };
+                创建 SemNode:n(SN_METHOD);
+                n.target_id = mm.id;
+                n.cls = c;
+                n.n_args = n_args;
+                返回值 n;
+            };
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_VAR && obj.sval != 空){
+        设 lc = sem_find_local_type(func, obj.sval);
+        如果(lc != 空){
+            设 m = sem_find_method(lc, method);
+            如果(m != 空){
+                创建 SemMethod:mm;
+                mm = m;
+                如果(sem_check_method_call(mm, cls, node.line, node.col) == 0){
+
+                    创建 SemNode:dn(SN_DISPATCH);
+                    dn.n_args = n_args;
+                    返回值 dn;
+                };
+                创建 SemNode:n(SN_METHOD);
+                n.target_id = mm.id;
+                n.cls = lc;
+                n.n_args = n_args;
+                返回值 n;
+            };
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_VAR && obj.sval != 空){
+        设 gc = sem_find_global_type(obj.sval);
+        如果(gc != 空){
+            设 m = sem_find_method(gc, method);
+            如果(m != 空){
+                创建 SemMethod:mm;
+                mm = m;
+                如果(sem_check_method_call(mm, cls, node.line, node.col) == 0){
+
+                    创建 SemNode:dn(SN_DISPATCH);
+                    dn.n_args = n_args;
+                    返回值 dn;
+                };
+                创建 SemNode:n(SN_METHOD);
+                n.target_id = mm.id;
+                n.cls = gc;
+                n.n_args = n_args;
+                返回值 n;
+            };
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_VAR && obj.sval != 空 && cls != 空){
+        设 fi = sem_find_field(cls, obj.sval);
+        如果(fi >= 0){
+            设 fc = sem_find_field_type(cls, fi);
+            如果(fc != 空){
+                设 m = sem_find_method(fc, method);
+                如果(m != 空){
+                    创建 SemMethod:mm;
+                    mm = m;
+                    创建 SemNode:n(SN_METHOD);
+                    n.target_id = mm.id;
+                    n.cls = fc;
+                    n.n_args = n_args;
+                    返回值 n;
+                };
+            };
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_MEMBER && obj.sem != 空){
+        创建 SemNode:obj_sem;
+        obj_sem = obj.sem;
+        如果(obj_sem.kind == SN_MEM_FIELD && obj_sem.cls != 空 && obj_sem.offset >= 0){
+            设 fc = sem_find_field_type(obj_sem.cls, obj_sem.offset);
+            如果(fc != 空){
+                设 m = sem_find_method(fc, method);
+                如果(m != 空){
+                    创建 SemMethod:mm;
+                    mm = m;
+                    创建 SemNode:n(SN_METHOD);
+                    n.target_id = mm.id;
+                    n.cls = fc;
+                    n.n_args = n_args;
+                    返回值 n;
+                };
+            };
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_MEMBER && obj.sem != 空){
+        创建 SemNode:obj_sem2;
+        obj_sem2 = obj.sem;
+        如果(obj_sem2.kind == SN_MEM_FIELD && obj_sem2.offset < 0){
+            创建 SemNode:n(SN_DISPATCH);
+            n.n_args = n_args;
+            返回值 n;
+        };
+    };
+
+    如果(method == "接着" || method == "否则"){
+        创建 SemNode:n(SN_RESULT_CHAIN);
+        n.n_args = n_args;
+        返回值 n;
+    };
+
+    设 sm = lookup_strmethod(method);
+    如果(sm != 0){
+
+        设 recv_cls = sem_recv_static_type(obj, func, cls);
+        如果(recv_cls != 空){
+            设 oname2 = "?";
+            如果(obj.sval != 空){ oname2 = obj.sval; };
+            报错("第" + node.line + "行: 「" + oname2 + "」是「" + recv_cls.name + "」实例,不能当原生列表/字典用:「" + method + "」请用 = [] 创建列表/字典");
+        };
+        创建 SemNode:n(SN_STRMETHOD);
+        n.strmethod_id = sm;
+        n.n_args = n_args;
+        返回值 n;
+    };
+
+    创建 SemNode:n(SN_DISPATCH);
+    n.n_args = n_args;
+    返回值 n;
+};
+
+声明 resolve_member(raw_node, func, cls){
+    创建 ASTNode:node;
+    node = raw_node;
+    设 member = node.member;
+    设 obj = node.obj;
+
+    如果(obj != 空 && obj.type == AST_VAR && obj.sval != 空 && member != 空){
+        创建 SemClass:ec;
+        ec = sem_resolve_class_name(obj.sval);
+        如果(ec != 空){
+
+            如果(ec.static_fields != 空){
+                创建 ArrayList:sf_list;
+                sf_list = ec.static_fields;
+                设 si = 0;
+                循环(si < sf_list.长度()){
+                    如果(sf_list.获取(si) == member){
+                        创建 SemNode:n(SN_MEM_STATIC_FIELD);
+                        n.cls = ec;
+                        n.offset = si;
+                        返回值 n;
+                    };
+                    si = si + 1;
+                };
+            };
+            如果(ec.enum_vals != 空 && ec.enum_vals.长度() > 0){
+                创建 ArrayList:ev_list;
+                ev_list = ec.enum_vals;
+                设 ei = 0;
+                循环(ei < ev_list.长度()){
+                    如果(ev_list.获取(ei) == member){
+                        创建 SemNode:n(SN_MEM_ENUM);
+                        n.enum_val = ei;
+                        n.type_kind = 1;
+                        返回值 n;
+                    };
+                    ei = ei + 1;
+                };
+            };
+        };
+
+        如果(ec == 空){
+            设 gi = sem_find_global(obj.sval + "." + member);
+            如果(gi >= 0){
+                创建 SemNode:n(SN_GLOBAL);
+                n.offset = gi;
+                返回值 n;
+            };
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_MEMBER){
+        设 flat2 = flatten_name_chain(obj);
+        如果(flat2 != 空){
+            设 gi2 = sem_find_global(flat2 + "." + member);
+            如果(gi2 >= 0){
+                创建 SemNode:n2(SN_GLOBAL);
+                n2.offset = gi2;
+                返回值 n2;
+            };
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_VAR && obj.sval == "参数"){
+        如果(member == "个数"){
+            创建 SemNode:n(SN_MEM_ARGC);
+            返回值 n;
+        };
+    };
+
+    如果(member == "长度"){
+        创建 SemNode:n(SN_MEM_LISTLEN);
+        返回值 n;
+    };
+
+    如果(member == "个数"){
+        创建 SemNode:n(SN_MEM_LISTLEN);
+        返回值 n;
+    };
+
+    如果(obj != 空 && obj.type == AST_VAR){
+        如果(cls != 空){
+            设 fi = sem_find_field(cls, member);
+            如果(fi >= 0){
+                创建 SemNode:n(SN_MEM_FIELD);
+                n.offset = fi;
+                n.cls = cls;
+                返回值 n;
+            };
+        };
+
+        如果(obj.sval != 空){
+            设 lc = sem_find_local_type(func, obj.sval);
+            如果(lc != 空){
+                设 fi = sem_find_field(lc, member);
+                如果(fi >= 0){
+                    创建 SemNode:n(SN_MEM_FIELD);
+                    n.offset = fi;
+                    n.cls = lc;
+                    返回值 n;
+                };
+            };
+        };
+    };
+
+    如果(obj != 空 && obj.type == AST_NEW){
+        设 c = sem_resolve_class_name(obj.new_cls_name);
+        如果(c != 空){
+            设 fi = sem_find_field(c, member);
+            如果(fi >= 0){
+                创建 SemNode:n(SN_MEM_FIELD);
+                n.offset = fi;
+                n.cls = c;
+                返回值 n;
+            };
+        };
+    };
+
+    创建 SemNode:n(SN_MEM_FIELD);
+    n.offset = -1;
+    返回值 n;
+};
+
+声明 append_ui_block_end(block, func, cls){
+    如果(block == 空 || block.type != AST_BLOCK){ 返回值 0; };
+    如果(block.children != 空 && block.children.长度() > 0){
+        创建 ASTNode:last;
+        last = block.children.获取(block.children.长度() - 1);
+        如果(last != 空 && last.type == AST_CALL && last.callee != 空 &&
+           last.callee.type == AST_VAR && last.callee.sval == "__控件块结束"){
+            返回值 0;
+        };
+    };
+    创建 ASTNode:popc(AST_VAR, block.line, block.col);
+    popc.sval = "__控件块结束";
+    创建 ASTNode:pop(AST_CALL, block.line, block.col);
+    pop.callee = popc;
+    pop.ensure_args();
+    block.children.添加(pop);
+    resolve_node(pop, func, cls);
+    返回值 0;
+};
+
+声明 resolve_node(raw_node, func, cls){
+    如果(raw_node == 空){ 返回值 0; };
+    创建 ASTNode:node;
+    node = raw_node;
+    如果(node.type == AST_BLOCK){
+        如果(node.children != 空){
+            设 i = 0;
+            循环(i < node.children.长度()){
+                resolve_node(node.children.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_VAR){
+        node.sem = resolve_var(node.sval, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_HOOKCALL){
+
+        创建 SemMethod:hk;
+        hk = sem_find_hook(node.method_name);
+        如果(hk != 空){
+            创建 SemNode:hn(SN_FUNC);
+            hn.target_id = hk.id;
+
+            如果(hk.sem_func != 空){
+                创建 SemFunc:hkf;
+                hkf = hk.sem_func;
+                hn.type_kind = hkf.ret_type_kind;
+            }否则{
+                hn.type_kind = 0;
+            };
+            node.sem = hn;
+        };
+
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                resolve_node(node.args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+
+        如果(node.lhs != 空){
+            resolve_node(node.lhs, func, cls);
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_LITERAL){
+        返回值 0;
+    };
+    如果(node.type == AST_BINARY){
+        resolve_node(node.lhs, func, cls);
+        resolve_node(node.rhs, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_UNARY){
+        resolve_node(node.operand, func, cls);
+        返回值 0;
+    };
+
+    如果(node.type == AST_REF || node.type == AST_DEREF){
+        如果(node.operand != 空){
+            resolve_node(node.operand, func, cls);
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_ASSIGN){
+
+        创建 ASTNode:lhs_n;
+        lhs_n = node.lhs;
+        如果(lhs_n != 空 && lhs_n.type == AST_VAR && lhs_n.sval != 空){
+            设 name = lhs_n.sval;
+            设 l = sem_find_local(func, name);
+            如果(l != 空){
+
+                如果(l.is_const == 1){
+                    报错("第" + lhs_n.line + "行: 常量不可赋值: " + name + "(固定 声明的值不能修改)");
+                    had_error = 1;
+                };
+                创建 SemLocal:local;
+                local = l;
+                创建 SemNode:s(SN_LOCAL);
+                s.offset = local.offset;
+                lhs_n.sem = s;
+            }又如果(cls != 空 && sem_find_field(cls, name) >= 0){
+                设 fi = sem_find_field(cls, name);
+                创建 SemNode:s(SN_FIELD);
+                s.offset = fi;
+                s.cls = cls;
+                lhs_n.sem = s;
+            }又如果(sem_find_global(name) >= 0){
+                设 gi = sem_find_global(name);
+
+                如果(gi <= g_sem_global_consts.长度() && g_sem_global_consts.获取(gi - 1) == 1){
+                    报错("第" + lhs_n.line + "行: 常量不可赋值: " + name + "(固定 声明的值不能修改)");
+                    had_error = 1;
+                };
+                创建 SemNode:s(SN_GLOBAL);
+                s.offset = gi;
+                lhs_n.sem = s;
+            }又如果(func != 空 && func.pkg_name != 空 && sem_find_global(func.pkg_name + "." + name) >= 0){
+
+                设 gi2 = sem_find_global(func.pkg_name + "." + name);
+                创建 SemNode:s2(SN_GLOBAL);
+                s2.offset = gi2;
+                lhs_n.sem = s2;
+            }否则{
+                如果(func == 空){
+
+                    报错("第" + lhs_n.line + "行: 顶层赋值给未声明的变量: " + name);
+                    had_error = 1;
+                }否则{
+                    设 new_l = sem_add_local(func, name);
+                    创建 SemNode:s(SN_LOCAL);
+                    s.offset = new_l.offset;
+                    lhs_n.sem = s;
+                };
+            };
+        }否则{
+            resolve_node(node.lhs, func, cls);
+        };
+        resolve_node(node.rhs, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_IF){
+        resolve_node(node.cond, func, cls);
+        resolve_node(node.then_block, func, cls);
+        resolve_node(node.else_block, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_LOOP){
+        resolve_node(node.loop_init, func, cls);
+        resolve_node(node.loop_cond, func, cls);
+        resolve_node(node.loop_step, func, cls);
+        resolve_node(node.loop_count, func, cls);
+        resolve_node(node.loop_item, func, cls);
+        resolve_node(node.loop_item2, func, cls);
+        resolve_node(node.loop_body, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_SELECT){
+        resolve_node(node.obj, func, cls);
+
+        创建 ArrayList:sel_ch;
+        sel_ch = node.children;
+        如果(sel_ch != 空){
+            设 i = 0;
+            循环(i < sel_ch.长度()){
+                创建 ASTNode:cs;
+                cs = sel_ch.获取(i);
+                如果(cs.case_cond != 空){
+
+                    如果(cs.case_cond.type == AST_VAR && cs.case_cond.sval == "_"){
+
+                    }否则{
+                        resolve_node(cs.case_cond, func, cls);
+                    };
+                };
+                如果(cs.lhs != 空){ resolve_node(cs.lhs, func, cls); };
+
+                如果(cs.case_alt != 空){
+                    创建 ArrayList:alt_l2;
+                    alt_l2 = cs.case_alt;
+                    设 ai = 0;
+                    循环(ai < alt_l2.长度()){
+                        创建 ASTNode:alt_e2;
+                        alt_e2 = alt_l2.获取(ai);
+                        如果(alt_e2 != 空){ resolve_node(alt_e2, func, cls); };
+                        ai = ai + 1;
+                    };
+                };
+                创建 ArrayList:case_bodies;
+                case_bodies = cs.children;
+                如果(case_bodies != 空){
+                    设 j = 0;
+                    循环(j < case_bodies.长度()){
+                        resolve_node(case_bodies.获取(j), func, cls);
+                        j = j + 1;
+                    };
+                };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_RETURN){
+        resolve_node(node.ret_value, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_WAIT){
+
+        resolve_node(node.ret_value, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_WAIT_TASK){
+
+        resolve_node(node.ret_value, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_TRY_BUBBLE){
+
+        如果(func != 空 && func.is_top_func == 1){
+            报错("? 冒泡只能在函数/异步块内使用,顶层无返回目标");
+        };
+        resolve_node(node.operand, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_ASYNC){
+
+        创建 SemFunc:vf;
+        vf.is_task_func = 1;
+        创建 ArrayList:ac;
+        ac = node.children;
+        如果(ac != 空){
+            设 vi = 0;
+            循环(vi < ac.长度()){
+                collect_locals(ac.获取(vi), vf, 空);
+                vi = vi + 1;
+            };
+        };
+        设 vj2 = 0;
+        循环(vj2 < vf.locals.长度()){
+            创建 SemLocal:vl2;
+            vl2 = vf.locals.获取(vj2);
+            vl2.offset = -(vj2 + 1) * 8;
+            vj2 = vj2 + 1;
+        };
+        如果(ac != 空){
+            设 vk = 0;
+            循环(vk < ac.长度()){
+                resolve_node(ac.获取(vk), vf, 空);
+                vk = vk + 1;
+            };
+        };
+        node.async_func = vf;
+        返回值 0;
+    };
+    如果(node.type == AST_MEMBER){
+        resolve_node(node.obj, func, cls);
+        node.sem = resolve_member(node, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_INDEX){
+        resolve_node(node.obj, func, cls);
+        resolve_node(node.index, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_CALL){
+
+        如果(node.callee != 空 && node.callee.type != AST_VAR){
+            resolve_node(node.callee, func, cls);
+        };
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                resolve_node(node.args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+
+        如果(node.block_arg != 空){
+            append_ui_block_end(node.block_arg, func, cls);
+            resolve_node(node.block_arg, func, cls);
+        };
+        node.sem = resolve_call(node, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_METHODCALL){
+        resolve_node(node.obj, func, cls);
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                resolve_node(node.args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        node.sem = resolve_methodcall(node, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_MODCALL){
+        设 mname0 = node.mod_name + "." + node.method_name;
+        设 mid0 = lookup_modcall(mname0);
+        如果(mid0 != 0){
+            bind_named_args_modcall(node, mname0);
+        };
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                resolve_node(node.args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        如果(node.second_args != 空){
+            设 i = 0;
+            循环(i < node.second_args.长度()){
+                resolve_node(node.second_args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        如果(node.block_arg != 空){
+            resolve_node(node.block_arg, func, cls);
+        };
+        设 mname = mname0;
+        设 na = 0;
+        如果(node.args != 空){ na = node.args.长度(); };
+        设 mid = mid0;
+        如果(mid == 0){
+
+            如果(node.mod_name == "界面" || node.mod_name == "主题"){
+                设 ui_fn = sem_find_topfunc(node.mod_name + "_" + node.method_name);
+                如果(ui_fn != 空){
+                    创建 SemMethod:uim;
+                    uim = ui_fn;
+
+                    bind_named_args(node, uim);
+                    如果(node.args != 空){ na = node.args.长度(); };
+                    创建 SemNode:uin(SN_FUNC);
+                    uin.target_id = uim.id;
+                    uin.n_args = na;
+                    如果(uim.sem_func != 空){
+                        uin.type_kind = uim.sem_func.ret_type_kind;
+                    };
+
+                    append_ui_block_end(node.block_arg, func, cls);
+                    node.sem = uin;
+                    返回值 0;
+                };
+
+            };
+
+            设 ph = sem_find_hook(mname);
+            如果(ph != 空){
+                创建 SemNode:mn2(SN_FUNC);
+                mn2.target_id = ph.id;
+                mn2.n_args = na;
+                如果(ph.sem_func != 空){
+                    mn2.type_kind = ph.sem_func.ret_type_kind;
+                };
+                node.sem = mn2;
+                返回值 0;
+            };
+
+            如果(mname == "输入.处理"){
+                设 th = sem_find_topfunc("__输入处理");
+                如果(th != 空){
+                    创建 SemMethod:thm;
+                    thm = th;
+                    创建 SemNode:nt(SN_FUNC);
+                    nt.target_id = thm.id;
+                    nt.n_args = na;
+                    如果(thm.sem_func != 空){
+                        nt.type_kind = thm.sem_func.ret_type_kind;
+                    };
+                    node.sem = nt;
+                    返回值 0;
+                }否则{
+                    报错("第" + node.line + "行: 「输入.处理」需要程序包含 监听(事件:...) 事件订阅");
+                };
+            };
+        };
+        创建 SemNode:mn(SN_MODCALL);
+        mn.modcall_id = mid;
+        mn.n_args = na;
+        node.sem = mn;
+        返回值 0;
+    };
+    如果(node.type == AST_PAIR){
+        resolve_node(node.pair_left, func, cls);
+        resolve_node(node.pair_right, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_NAMED_ARG){
+        resolve_node(node.lhs, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_COLOR_SUFFIX){
+        resolve_node(node.base_expr, func, cls);
+        resolve_node(node.color_expr, func, cls);
+        如果(node.alpha_expr != 空){
+            resolve_node(node.alpha_expr, func, cls);
+        };
+
+        创建 ArrayList:na_sem2;
+        na_sem2 = node.named_args;
+        如果(na_sem2 != 空){
+            设 ni = 0;
+            循环(ni < na_sem2.长度()){
+                创建 ASTNode:na;
+                na = na_sem2.获取(ni);
+                resolve_node(na.lhs, func, cls);
+                ni = ni + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_LIST_LIT){
+        如果(node.children != 空){
+            设 i = 0;
+            循环(i < node.children.长度()){
+                resolve_node(node.children.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_FUNC){
+
+        创建 SemMethod:sm;
+        sm.name = "<lambda>";
+        sm.owner = 空;
+        sm.func = node;
+        sm.nparams = node.fn_params.长度();
+        sm.id = g_next_id;
+        g_next_id = g_next_id + 1;
+        sm.kind = 3;
+        g_sem_lambdas.添加(sm);
+        创建 SemNode:n(SN_LAMBDA);
+        n.target_id = sm.id;
+        node.sem = n;
+
+        sem_analyze_func_sm(node, 空, sm);
+        返回值 0;
+    };
+    如果(node.type == AST_NEW){
+        设 c = sem_resolve_class_name(node.new_cls_name);
+
+        sem_check_pkg_class_access(c, func, cls, node.line, node.col);
+        创建 SemNode:n(SN_CLASS);
+        n.cls = c;
+        如果(c != 空){
+            设 ctor = sem_find_method(c, "构造");
+            如果(ctor != 空){
+                创建 SemMethod:cm;
+                cm = ctor;
+                n.target_id = cm.id;
+            };
+        };
+        node.sem = n;
+        如果(node.new_args != 空){
+            设 i = 0;
+            循环(i < node.new_args.长度()){
+                resolve_node(node.new_args.获取(i), func, cls);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_EXPRSTMT){
+        resolve_node(node.operand, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_VARDECL){
+        如果(node.var_inits != 空){
+            设 i = 0;
+            循环(i < node.var_inits.长度()){
+                设 init = node.var_inits.获取(i);
+                如果(init != 空){
+                    resolve_node(init, func, cls);
+                };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_READFILE){
+
+        如果(node.rf_body != 空){
+            resolve_node(node.rf_body, func, cls);
+        };
+        返回值 0;
+    };
+    如果(node.type == AST_DESTROY){
+
+        resolve_node(node.operand, func, cls);
+        创建 SemNode:n(SN_CLASS);
+        n.cls = 空;
+        创建 ASTNode:op;
+        op = node.operand;
+        如果(op != 空 && op.type == AST_VAR && op.sval != 空){
+            设 dc = sem_find_local_type(func, op.sval);
+            如果(dc == 空 && cls != 空){
+                dc = sem_find_field_type(cls, sem_find_field(cls, op.sval));
+            };
+            如果(dc == 空){
+                dc = sem_find_global_type(op.sval);
+            };
+            n.cls = dc;
+            如果(dc != 空){
+                设 dtor = sem_find_method(dc, "~" + dc.name);
+                如果(dtor != 空){
+                    创建 SemMethod:dm;
+                    dm = dtor;
+                    n.target_id = dm.id;
+                };
+            };
+        };
+
+        如果(n.cls == 空 && op != 空 && op.sem != 空){
+            创建 SemNode:os;
+            os = op.sem;
+            如果(os.kind == SN_MEM_FIELD && os.cls != 空){
+                n.cls = os.cls;
+            };
+        };
+        node.sem = n;
+        返回值 0;
+    };
+    如果(node.type == AST_THROW){
+
+        resolve_node(node.operand, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_TRY){
+
+        resolve_node(node.then_block, func, cls);
+        如果(node.catch_var != 空){
+
+            创建 SemLocal:cl;
+            cl = sem_find_local(func, node.catch_var);
+            如果(cl != 空){
+                创建 SemNode:cs(SN_LOCAL);
+                cs.offset = cl.offset;
+                node.sem = cs;
+            };
+        };
+        resolve_node(node.catch_block, func, cls);
+        resolve_node(node.finally_block, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_LISTEN){
+
+        resolve_node(node.cond, func, cls);
+        resolve_node(node.then_block, func, cls);
+        返回值 0;
+    };
+    如果(node.type == AST_LISTEN_EVENT){
+
+        设 evid = 0;
+        创建 ASTNode:ev0;
+        ev0 = node.event_expr;
+        如果(ev0 != 空 && ev0.type == AST_MODCALL && ev0.mod_name == "输入"){
+            evid = 事件id(ev0.method_name);
+        };
+        如果(evid == 0){
+            设 evname = "?";
+            如果(ev0 != 空 && ev0.type == AST_MODCALL){ evname = "输入." + ev0.method_name; };
+            报错("第" + node.line + "行: 未知事件「" + evname + "」(支持: 输入.键盘按下/键盘松开/鼠标移动/鼠标点击/鼠标抬起/滚轮/关闭窗口/大小变化/字符输入)");
+        };
+
+        创建 ASTNode:key_filter;
+        key_filter = 空;
+        创建 ArrayList:flt_r;
+        flt_r = node.filters;
+        如果(flt_r != 空){
+            设 fi_r = 0;
+            循环(fi_r < flt_r.长度()){
+                创建 ASTNode:fa_r;
+                fa_r = flt_r.获取(fi_r);
+                如果(fa_r != 空 && fa_r.type == AST_NAMED_ARG){
+                    如果(fa_r.sval == "键"){
+                        如果(key_filter != 空){
+                            报错("第" + fa_r.line + "行: 重复的过滤器「键」");
+                        };
+                        创建 ASTNode:fv_r;
+                        fv_r = fa_r.lhs;
+                        如果(fv_r != 空 && fv_r.type == AST_LITERAL && fv_r.op == LIT_STRING){
+                            创建 ASTNode:cpc(AST_CALL, fv_r.line, fv_r.col);
+                            创建 ASTNode:cpc_cal(AST_VAR, fv_r.line, fv_r.col);
+                            cpc_cal.sval = "码点";
+                            cpc.callee = cpc_cal;
+                            cpc.ensure_args();
+                            cpc.args.添加(fv_r);
+                            fa_r.lhs = cpc;
+                            key_filter = cpc;
+                        }又如果(fv_r != 空 && fv_r.type == AST_LITERAL && fv_r.op == LIT_INT){
+                            key_filter = fv_r;
+                        }又如果(fv_r != 空 && fv_r.type == AST_VAR && (fv_r.sval == "左" || fv_r.sval == "右" || fv_r.sval == "中")){
+
+                            设 bcode = 1;
+                            如果(fv_r.sval == "右"){ bcode = 2; };
+                            如果(fv_r.sval == "中"){ bcode = 3; };
+                            创建 ASTNode:bl2(AST_LITERAL, fv_r.line, fv_r.col);
+                            bl2.op = LIT_INT;
+                            bl2.ival = bcode;
+                            fa_r.lhs = bl2;
+                            key_filter = bl2;
+                        }否则{
+                            报错("第" + fa_r.line + "行: 过滤器「键」的值仅支持 字符串/整数/鼠标按钮名(左/右/中)");
+                        };
+                    }否则{
+                        报错("第" + fa_r.line + "行: 未知事件过滤器「" + fa_r.sval + "」(M1 仅支持 键)");
+                    };
+                };
+                fi_r = fi_r + 1;
+            };
+        };
+
+        创建 ArrayList:args_e;
+        创建 ASTNode:idl(AST_LITERAL, node.line, node.col);
+        idl.op = LIT_INT;
+        idl.ival = evid;
+        args_e.添加(idl);
+        如果(key_filter != 空){
+            args_e.添加(key_filter);
+        }否则{
+            创建 ASTNode:fz(AST_LITERAL, node.line, node.col);
+            fz.op = LIT_INT;
+            fz.ival = 0;
+            args_e.添加(fz);
+        };
+        args_e.添加(node.lambda_func);
+        创建 ASTNode:wz(AST_LITERAL, node.line, node.col);
+        wz.op = LIT_INT;
+        wz.ival = 0;
+        args_e.添加(wz);
+        创建 ASTNode:cc_r(AST_CALL, node.line, node.col);
+        创建 ASTNode:ccv(AST_VAR, node.line, node.col);
+        ccv.sval = "__事件订阅";
+        cc_r.callee = ccv;
+        cc_r.args = args_e;
+        node.call_node = cc_r;
+
+        resolve_node(cc_r, func, cls);
+        node.sem = cc_r.sem;
+        返回值 0;
+    };
+    如果(node.type == AST_WHEN){
+
+        创建 ArrayList:args_w;
+        创建 ASTNode:wnm(AST_LITERAL, node.line, node.col);
+        wnm.op = LIT_STRING;
+        wnm.sval = node.method_name;
+        args_w.添加(wnm);
+        args_w.添加(node.lambda_func);
+        创建 ASTNode:wc_r(AST_CALL, node.line, node.col);
+        创建 ASTNode:wcv(AST_VAR, node.line, node.col);
+        wcv.sval = "__控件事件";
+        wc_r.callee = wcv;
+        wc_r.args = args_w;
+        node.call_node = wc_r;
+
+        resolve_node(wc_r, func, cls);
+        node.sem = wc_r.sem;
+        返回值 0;
+    };
+    如果(node.type == AST_GAMES){
+
+        resolve_node(node.then_block, func, cls);
+        返回值 0;
+    };
+    返回值 0;
+};
+
+设 T_INT = 1;
+设 T_STR = 2;
+设 T_NONINT = 3;
+设 T_FLOAT = 4;
+
+声明 infer_expr_kind(e, f){
+    如果(e == 空){ 返回值 0; };
+    创建 ASTNode:n;
+    n = e;
+    如果(n.type == AST_LITERAL){
+        如果(n.op == LIT_INT){ 返回值 1; };
+        如果(n.op == LIT_FLOAT){ 返回值 4; };
+        返回值 3;
+    };
+    如果(n.type == AST_VAR){
+        如果(f == 空){ 返回值 0; };
+        创建 SemLocal:l;
+        l = sem_find_local(f, n.sval);
+        如果(l != 空){
+            如果(l.type_kind == 1){ 返回值 1; };
+            如果(l.type_kind == 4){ 返回值 4; };
+            如果(l.type_kind == 0){ 返回值 0; };
+            返回值 3;
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_BINARY){
+        设 op = n.op;
+        如果(op == TOK_PLUS || op == TOK_MINUS || op == TOK_STAR || op == TOK_SLASH ||
+           op == TOK_PERCENT || op == TOK_AMP || op == TOK_BOR || op == TOK_BXOR ||
+           op == TOK_SHL || op == TOK_SHR){
+            设 lk = infer_expr_kind(n.lhs, f);
+            设 rk = infer_expr_kind(n.rhs, f);
+
+            如果(op == TOK_PLUS && (lk == 3 || rk == 3)){ 返回值 3; };
+            如果(lk == 4 || rk == 4){ 返回值 4; };
+            如果(lk == 3 || rk == 3){ 返回值 3; };
+            如果(lk == 1 && rk == 1){ 返回值 1; };
+            返回值 0;
+        };
+        如果(op == TOK_EQ || op == TOK_NE || op == TOK_LT || op == TOK_GT || op == TOK_LE || op == TOK_GE){
+            返回值 3;
+        };
+        如果(op == TOK_AND || op == TOK_OR){
+            返回值 3;
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_UNARY){
+        如果(n.op == TOK_MINUS){
+            返回值 infer_expr_kind(n.operand, f);
+        };
+        如果(n.op == TOK_NOT){
+            返回值 3;
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_CALL){
+
+        如果(n.sem != 空){
+            创建 SemNode:cs2;
+            cs2 = n.sem;
+            如果(cs2.kind == SN_METHOD || cs2.kind == SN_PKGFUNC || cs2.kind == SN_FUNC){
+                返回值 infer_target_ret_kind(cs2.target_id);
+            };
+        };
+
+        如果(n.callee != 空 && n.callee.type == AST_VAR){
+            创建 SemMethod:tm;
+            tm = sem_find_topfunc(n.callee.sval);
+            如果(tm != 空 && tm.sem_func != 空){
+                创建 SemFunc:tf;
+                tf = tm.sem_func;
+                返回值 tf.ret_type_kind;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_METHODCALL){
+
+        如果(n.sem != 空){
+            创建 SemNode:ms;
+            ms = n.sem;
+            如果(ms.kind == SN_METHOD || ms.kind == SN_PKGFUNC || ms.kind == SN_FUNC){
+                返回值 infer_target_ret_kind(ms.target_id);
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_HOOKCALL){
+
+        如果(n.sem != 空){
+            创建 SemNode:hs;
+            hs = n.sem;
+            如果(hs.kind == SN_METHOD || hs.kind == SN_PKGFUNC || hs.kind == SN_FUNC){
+                返回值 infer_target_ret_kind(hs.target_id);
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_MODCALL){
+
+        如果(n.sem != 空){
+            创建 SemNode:ms2;
+            ms2 = n.sem;
+            如果(ms2.kind == SN_FUNC){
+                返回值 infer_target_ret_kind(ms2.target_id);
+            };
+        };
+        返回值 0;
+    };
+    返回值 0;
+};
+
+声明 infer_target_ret_kind(tid){
+    如果(tid == 0){ 返回值 0; };
+    设 ci = 0;
+    循环(ci < g_sem_classes.长度()){
+        创建 SemClass:cc;
+        cc = g_sem_classes.获取(ci);
+        设 mj = 0;
+        循环(mj < cc.methods.长度()){
+            创建 SemMethod:tm;
+            tm = cc.methods.获取(mj);
+            如果(tm.id == tid && tm.sem_func != 空){
+                创建 SemFunc:tf;
+                tf = tm.sem_func;
+                返回值 tf.ret_type_kind;
+            };
+            mj = mj + 1;
+        };
+        ci = ci + 1;
+    };
+    设 fi = 0;
+    循环(fi < g_sem_funcs.长度()){
+        创建 SemMethod:tm2;
+        tm2 = g_sem_funcs.获取(fi);
+        如果(tm2.id == tid && tm2.sem_func != 空){
+            创建 SemFunc:tf2;
+            tf2 = tm2.sem_func;
+            返回值 tf2.ret_type_kind;
+        };
+        fi = fi + 1;
+    };
+    设 hi = 0;
+    循环(hi < g_sem_hooks.长度()){
+        创建 SemMethod:tm3;
+        tm3 = g_sem_hooks.获取(hi);
+        如果(tm3.id == tid && tm3.sem_func != 空){
+            创建 SemFunc:tf3;
+            tf3 = tm3.sem_func;
+            返回值 tf3.ret_type_kind;
+        };
+        hi = hi + 1;
+    };
+    返回值 0;
+};
+
+声明 check_var_kind_stmt(node, f){
+    如果(node == 空){ 返回值 0; };
+    创建 ASTNode:n;
+    n = node;
+    如果(n.type == AST_BLOCK){
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                check_var_kind_stmt(n.children.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_LIST_DECL || n.type == AST_ARRAY_DECL || n.type == AST_GROUP_DECL){
+
+        如果(n.sval != 空){
+            创建 SemLocal:dl;
+            dl = sem_find_local(f, n.sval);
+            如果(dl != 空){ dl.type_kind = 3; };
+        };
+        如果(n.arr_init != 空){ check_var_kind_stmt(n.arr_init, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_VARDECL){
+        如果(n.var_names != 空){
+            设 i = 0;
+            循环(i < n.var_names.长度()){
+                设 vn = n.var_names.获取(i);
+                创建 SemLocal:l;
+                l = sem_find_local(f, vn);
+                如果(l != 空){
+                    如果(i < n.var_inits.长度()){
+                        创建 ASTNode:init;
+                        init = n.var_inits.获取(i);
+                        如果(init == 空 || infer_expr_kind(init, f) != 1){
+                            如果(init == 空){ l.type_kind = 0; }
+                            否则{ l.type_kind = infer_expr_kind(init, f); };
+                        };
+
+                        如果(init != 空){ check_var_kind_stmt(init, f); };
+                    }否则{
+                        l.type_kind = 0;
+                    };
+                };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_READFILE){
+
+        创建 SemLocal:sl;
+        sl = sem_find_local(f, "s");
+        如果(sl != 空){ sl.type_kind = 3; };
+        如果(n.rf_body != 空){ check_var_kind_stmt(n.rf_body, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_ASSIGN){
+        创建 ASTNode:lhs;
+        lhs = n.lhs;
+        创建 ASTNode:rhs;
+        rhs = n.rhs;
+        如果(rhs != 空 && infer_expr_kind(rhs, f) != 1){
+            如果(lhs != 空 && lhs.type == AST_VAR){
+                创建 SemLocal:l;
+                l = sem_find_local(f, lhs.sval);
+                如果(l != 空){ l.type_kind = infer_expr_kind(rhs, f); };
+            };
+        }否则{
+
+            如果(lhs != 空 && lhs.type == AST_VAR && sem_find_local(f, lhs.sval) == 空){
+                如果(rhs != 空 && rhs.type == AST_VAR){
+                    创建 SemLocal:rl;
+                    rl = sem_find_local(f, rhs.sval);
+                    如果(rl != 空){ rl.type_kind = 0; };
+                };
+            };
+        };
+
+        如果(lhs != 空){ check_var_kind_stmt(lhs, f); };
+        如果(rhs != 空){ check_var_kind_stmt(rhs, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_UNARY){
+
+        如果(n.op == TOK_AMP && n.operand != 空 && n.operand.type == AST_VAR){
+            创建 SemLocal:l;
+            l = sem_find_local(f, n.operand.sval);
+            如果(l != 空){ l.type_kind = 0; };
+        };
+        如果(n.operand != 空){ check_var_kind_stmt(n.operand, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_REF){
+
+        如果(n.operand != 空 && n.operand.type == AST_VAR){
+            创建 SemLocal:rl;
+            rl = sem_find_local(f, n.operand.sval);
+            如果(rl != 空){ rl.type_kind = 0; };
+        };
+        如果(n.operand != 空){ check_var_kind_stmt(n.operand, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_IF){
+        如果(n.cond != 空){ check_var_kind_stmt(n.cond, f); };
+        如果(n.then_block != 空){ check_var_kind_stmt(n.then_block, f); };
+        如果(n.else_block != 空){ check_var_kind_stmt(n.else_block, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_LOOP){
+        如果(n.loop_init != 空){ check_var_kind_stmt(n.loop_init, f); };
+        如果(n.loop_cond != 空){ check_var_kind_stmt(n.loop_cond, f); };
+        如果(n.loop_count != 空){ check_var_kind_stmt(n.loop_count, f); };
+        如果(n.loop_body != 空){ check_var_kind_stmt(n.loop_body, f); };
+        如果(n.loop_step != 空){ check_var_kind_stmt(n.loop_step, f); };
+
+        如果(n.loop_kind == LOOP_FOREACH){
+            如果(n.loop_item != 空){
+                创建 ASTNode:item_node;
+                item_node = n.loop_item;
+                如果(item_node.sval != 空){
+                    创建 SemLocal:il;
+                    il = sem_find_local(f, item_node.sval);
+                    如果(il != 空){ il.type_kind = 0; };
+                };
+            };
+            如果(n.loop_item2 != 空){
+                创建 ASTNode:item2_node;
+                item2_node = n.loop_item2;
+                如果(item2_node.sval != 空){
+                    创建 SemLocal:il2;
+                    il2 = sem_find_local(f, item2_node.sval);
+                    如果(il2 != 空){ il2.type_kind = 0; };
+                };
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_SELECT){
+        如果(n.obj != 空){ check_var_kind_stmt(n.obj, f); };
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                创建 ASTNode:cs;
+                cs = n.children.获取(i);
+
+                如果(cs.case_kind == 4 && cs.case_destruct_vars != 空){
+                    创建 ArrayList:dv4;
+                    dv4 = cs.case_destruct_vars;
+                    设 di4 = 0;
+                    循环(di4 < dv4.长度()){
+                        创建 SemLocal:dl4;
+                        dl4 = sem_find_local(f, dv4.获取(di4));
+                        如果(dl4 != 空){ dl4.type_kind = 0; };
+                        di4 = di4 + 1;
+                    };
+                };
+                如果(cs.case_cond != 空){ check_var_kind_stmt(cs.case_cond, f); };
+                如果(cs.lhs != 空){ check_var_kind_stmt(cs.lhs, f); };
+                如果(cs.children != 空){
+                    设 j = 0;
+                    循环(j < cs.children.长度()){
+                        check_var_kind_stmt(cs.children.获取(j), f);
+                        j = j + 1;
+                    };
+                };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_RETURN){
+        如果(n.ret_value != 空){ check_var_kind_stmt(n.ret_value, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_SHOW){
+        如果(n.show_args != 空){
+            设 i = 0;
+            循环(i < n.show_args.长度()){
+                check_var_kind_stmt(n.show_args.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_BINARY){
+        如果(n.lhs != 空){ check_var_kind_stmt(n.lhs, f); };
+        如果(n.rhs != 空){ check_var_kind_stmt(n.rhs, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_CALL || n.type == AST_METHODCALL || n.type == AST_HOOKCALL){
+        如果(n.args != 空){
+            设 i = 0;
+            循环(i < n.args.长度()){
+                check_var_kind_stmt(n.args.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_EXPRSTMT){
+        如果(n.operand != 空){ check_var_kind_stmt(n.operand, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_LISTEN){
+        如果(n.cond != 空){ check_var_kind_stmt(n.cond, f); };
+        如果(n.then_block != 空){ check_var_kind_stmt(n.then_block, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_LISTEN_EVENT){
+
+        如果(n.call_node != 空){ check_var_kind_stmt(n.call_node, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_GAMES){
+        如果(n.then_block != 空){ check_var_kind_stmt(n.then_block, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_DESTROY){
+        如果(n.operand != 空){ check_var_kind_stmt(n.operand, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_THROW){
+        如果(n.operand != 空){ check_var_kind_stmt(n.operand, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_TRY){
+
+        如果(n.catch_var != 空){
+            创建 SemLocal:cv;
+            cv = sem_find_local(f, n.catch_var);
+            如果(cv != 空){ cv.type_kind = 0; };
+        };
+        如果(n.then_block != 空){ check_var_kind_stmt(n.then_block, f); };
+        如果(n.catch_block != 空){ check_var_kind_stmt(n.catch_block, f); };
+        如果(n.finally_block != 空){ check_var_kind_stmt(n.finally_block, f); };
+        返回值 0;
+    };
+    返回值 0;
+};
+
+声明 mark_node_kind(node, f){
+    如果(node == 空){ 返回值 0; };
+    创建 ASTNode:n;
+    n = node;
+    设 nk = infer_expr_kind(n, f);
+    如果(n.sem != 空){
+        创建 SemNode:sn;
+        sn = n.sem;
+        sn.type_kind = nk;
+    }否则{
+        创建 SemNode:ns(0);
+        ns.type_kind = nk;
+        n.sem = ns;
+    };
+    如果(n.type == AST_BLOCK){
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                mark_node_kind(n.children.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_VARDECL){
+        如果(n.var_inits != 空){
+            设 i = 0;
+            循环(i < n.var_inits.长度()){
+                mark_node_kind(n.var_inits.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_ASSIGN){
+        如果(n.lhs != 空){ mark_node_kind(n.lhs, f); };
+        如果(n.rhs != 空){ mark_node_kind(n.rhs, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_UNARY){
+        如果(n.operand != 空){ mark_node_kind(n.operand, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_IF){
+        如果(n.cond != 空){ mark_node_kind(n.cond, f); };
+        如果(n.then_block != 空){ mark_node_kind(n.then_block, f); };
+        如果(n.else_block != 空){ mark_node_kind(n.else_block, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_LOOP){
+        如果(n.loop_init != 空){ mark_node_kind(n.loop_init, f); };
+        如果(n.loop_cond != 空){ mark_node_kind(n.loop_cond, f); };
+        如果(n.loop_count != 空){ mark_node_kind(n.loop_count, f); };
+        如果(n.loop_body != 空){ mark_node_kind(n.loop_body, f); };
+        如果(n.loop_step != 空){ mark_node_kind(n.loop_step, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_SELECT){
+        如果(n.obj != 空){ mark_node_kind(n.obj, f); };
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                创建 ASTNode:cs;
+                cs = n.children.获取(i);
+                如果(cs.case_cond != 空){ mark_node_kind(cs.case_cond, f); };
+                如果(cs.lhs != 空){ mark_node_kind(cs.lhs, f); };
+                如果(cs.children != 空){
+                    设 j = 0;
+                    循环(j < cs.children.长度()){
+                        mark_node_kind(cs.children.获取(j), f);
+                        j = j + 1;
+                    };
+                };
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_RETURN){
+        如果(n.ret_value != 空){ mark_node_kind(n.ret_value, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_WAIT){
+
+        如果(n.ret_value != 空){ mark_node_kind(n.ret_value, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_WAIT_TASK){
+        如果(n.ret_value != 空){ mark_node_kind(n.ret_value, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_ASYNC){
+        创建 ArrayList:async_ch2;
+        async_ch2 = n.children;
+        如果(async_ch2 != 空){
+            设 i = 0;
+            循环(i < async_ch2.长度()){
+                mark_node_kind(async_ch2.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_SHOW){
+        如果(n.show_args != 空){
+            设 i = 0;
+            循环(i < n.show_args.长度()){
+                mark_node_kind(n.show_args.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_BINARY){
+        如果(n.lhs != 空){ mark_node_kind(n.lhs, f); };
+        如果(n.rhs != 空){ mark_node_kind(n.rhs, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_INDEX){
+        如果(n.obj != 空){ mark_node_kind(n.obj, f); };
+        如果(n.index != 空){ mark_node_kind(n.index, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_MEMBER){
+        如果(n.obj != 空){ mark_node_kind(n.obj, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_CALL || n.type == AST_HOOKCALL){
+        如果(n.args != 空){
+            设 i = 0;
+            循环(i < n.args.长度()){
+                mark_node_kind(n.args.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_METHODCALL){
+        如果(n.obj != 空){ mark_node_kind(n.obj, f); };
+        如果(n.args != 空){
+            设 i = 0;
+            循环(i < n.args.长度()){
+                mark_node_kind(n.args.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_MODCALL){
+        如果(n.args != 空){
+            设 i = 0;
+            循环(i < n.args.长度()){
+                mark_node_kind(n.args.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_NEW){
+        如果(n.new_args != 空){
+            设 i = 0;
+            循环(i < n.new_args.长度()){
+                mark_node_kind(n.new_args.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_LIST_LIT){
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                mark_node_kind(n.children.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_TRY){
+        如果(n.then_block != 空){ mark_node_kind(n.then_block, f); };
+        如果(n.catch_block != 空){ mark_node_kind(n.catch_block, f); };
+        如果(n.finally_block != 空){ mark_node_kind(n.finally_block, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_THROW){
+        如果(n.operand != 空){ mark_node_kind(n.operand, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_READFILE){
+        如果(n.rf_body != 空){ mark_node_kind(n.rf_body, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_EXPRSTMT){
+        如果(n.operand != 空){ mark_node_kind(n.operand, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_LISTEN){
+        如果(n.cond != 空){ mark_node_kind(n.cond, f); };
+        如果(n.then_block != 空){ mark_node_kind(n.then_block, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_LISTEN_EVENT){
+        如果(n.call_node != 空){ mark_node_kind(n.call_node, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_GAMES){
+        如果(n.then_block != 空){ mark_node_kind(n.then_block, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_DESTROY){
+        如果(n.operand != 空){ mark_node_kind(n.operand, f); };
+        返回值 0;
+    };
+    返回值 0;
+};
+
+声明 is_param_local(f, name){
+    如果(f == 空 || name == 空){ 返回值 0; };
+    创建 SemFunc:sf;
+    sf = f;
+    设 lim = sf.nparams;
+    如果(lim > sf.locals.长度()){ lim = sf.locals.长度(); };
+    设 i = 0;
+    循环(i < lim){
+        创建 SemLocal:l;
+        l = sf.locals.获取(i);
+        如果(l.name == name){ 返回值 1; };
+        i = i + 1;
+    };
+    返回值 0;
+};
+
+声明 infer_param_types_stmt(node, f){
+    如果(node == 空){ 返回值 0; };
+    创建 ASTNode:n;
+    n = node;
+    如果(n.type == AST_BLOCK){
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                infer_param_types_stmt(n.children.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_VARDECL){
+        如果(n.var_inits != 空){
+            设 i = 0;
+            循环(i < n.var_inits.长度()){
+                infer_param_types_stmt(n.var_inits.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_ASSIGN){
+        如果(n.lhs != 空){ infer_param_types_stmt(n.lhs, f); };
+        如果(n.rhs != 空){ infer_param_types_stmt(n.rhs, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_IF){
+        如果(n.cond != 空){ infer_param_types_stmt(n.cond, f); };
+        如果(n.then_block != 空){ infer_param_types_stmt(n.then_block, f); };
+        如果(n.else_block != 空){ infer_param_types_stmt(n.else_block, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_LOOP){
+        如果(n.loop_init != 空){ infer_param_types_stmt(n.loop_init, f); };
+        如果(n.loop_cond != 空){ infer_param_types_stmt(n.loop_cond, f); };
+        如果(n.loop_step != 空){ infer_param_types_stmt(n.loop_step, f); };
+        如果(n.loop_count != 空){ infer_param_types_stmt(n.loop_count, f); };
+        如果(n.loop_item != 空){ infer_param_types_stmt(n.loop_item, f); };
+        如果(n.loop_body != 空){ infer_param_types_stmt(n.loop_body, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_RETURN){
+        如果(n.ret_value != 空){ infer_param_types_stmt(n.ret_value, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_BINARY){
+        如果(n.lhs != 空){ infer_param_types_stmt(n.lhs, f); };
+        如果(n.rhs != 空){ infer_param_types_stmt(n.rhs, f); };
+        设 op = n.op;
+        设 is_int_op = 0;
+        如果(op == TOK_PLUS){ is_int_op = 1; };
+        如果(op == TOK_MINUS){ is_int_op = 1; };
+        如果(op == TOK_STAR){ is_int_op = 1; };
+        如果(op == TOK_SLASH){ is_int_op = 1; };
+        如果(op == TOK_PERCENT){ is_int_op = 1; };
+        如果(op == TOK_EQ){ is_int_op = 1; };
+        如果(op == TOK_NE){ is_int_op = 1; };
+        如果(op == TOK_LT){ is_int_op = 1; };
+        如果(op == TOK_GT){ is_int_op = 1; };
+        如果(op == TOK_LE){ is_int_op = 1; };
+        如果(op == TOK_GE){ is_int_op = 1; };
+        如果(op == TOK_AMP){ is_int_op = 1; };
+        如果(op == TOK_BOR){ is_int_op = 1; };
+        如果(op == TOK_BXOR){ is_int_op = 1; };
+        如果(op == TOK_SHL){ is_int_op = 1; };
+        如果(op == TOK_SHR){ is_int_op = 1; };
+        如果(is_int_op != 1){ 返回值 0; };
+
+        如果(n.lhs != 空 && n.lhs.type == AST_VAR && n.lhs.sval != 空 && n.rhs != 空 && n.rhs.sem != 空){
+            创建 SemNode:rn;
+            rn = n.rhs.sem;
+            如果(rn.type_kind == 1 && is_param_local(f, n.lhs.sval) == 1){
+                创建 SemLocal:pl;
+                pl = sem_find_local(f, n.lhs.sval);
+                如果(pl != 空 && pl.type_kind == 0){ pl.type_kind = 1; };
+            };
+        };
+
+        如果(n.rhs != 空 && n.rhs.type == AST_VAR && n.rhs.sval != 空 && n.lhs != 空 && n.lhs.sem != 空){
+            创建 SemNode:ln;
+            ln = n.lhs.sem;
+            如果(ln.type_kind == 1 && is_param_local(f, n.rhs.sval) == 1){
+                创建 SemLocal:pl2;
+                pl2 = sem_find_local(f, n.rhs.sval);
+                如果(pl2 != 空 && pl2.type_kind == 0){ pl2.type_kind = 1; };
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_UNARY){
+        如果(n.operand != 空){ infer_param_types_stmt(n.operand, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_CALL){
+        如果(n.callee != 空){ infer_param_types_stmt(n.callee, f); };
+        如果(n.args != 空){
+            设 i = 0;
+            循环(i < n.args.长度()){
+                infer_param_types_stmt(n.args.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_METHODCALL){
+        如果(n.obj != 空){ infer_param_types_stmt(n.obj, f); };
+        如果(n.args != 空){
+            设 i = 0;
+            循环(i < n.args.长度()){
+                infer_param_types_stmt(n.args.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    如果(n.type == AST_MEMBER){
+        如果(n.obj != 空){ infer_param_types_stmt(n.obj, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_INDEX){
+        如果(n.obj != 空){ infer_param_types_stmt(n.obj, f); };
+        如果(n.index != 空){ infer_param_types_stmt(n.index, f); };
+        返回值 0;
+    };
+    如果(n.type == AST_LIST_LIT){
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                infer_param_types_stmt(n.children.获取(i), f);
+                i = i + 1;
+            };
+        };
+        返回值 0;
+    };
+    返回值 0;
+};
+
+声明 count_returns(node){
+    如果(node == 空){ 返回值 0; };
+    创建 ASTNode:n;
+    n = node;
+    如果(n.type == AST_RETURN){ 返回值 1; };
+    设 total = 0;
+    如果(n.type == AST_BLOCK){
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                total = total + count_returns(n.children.获取(i));
+                i = i + 1;
+            };
+        };
+     }又如果(n.type == AST_IF){
+        total = total + count_returns(n.then_block);
+        如果(n.else_block != 空){ total = total + count_returns(n.else_block); };
+     }又如果(n.type == AST_LOOP){
+        total = total + count_returns(n.loop_body);
+     }又如果(n.type == AST_EXPRSTMT){
+        total = total + count_returns(n.operand);
+    };
+    返回值 total;
+};
+
+声明 all_returns_kind(node){
+    如果(node == 空){ 返回值 0; };
+    创建 ASTNode:n;
+    n = node;
+    如果(n.type == AST_RETURN){
+        如果(n.ret_value != 空 && n.ret_value.sem != 空){
+            创建 SemNode:sn;
+            sn = n.ret_value.sem;
+            如果(sn.type_kind == 1){ 返回值 1; };
+            如果(sn.type_kind != 0){ 返回值 3; };
+            返回值 0;
+        };
+        返回值 3;
+    };
+    如果(n.type == AST_BLOCK){
+        设 rt = 0;
+        如果(n.children != 空){
+            设 i = 0;
+            循环(i < n.children.长度()){
+                设 t = all_returns_kind(n.children.获取(i));
+                如果(t == 3){ 返回值 3; };
+                如果(t == 1){ rt = 1; };
+                i = i + 1;
+            };
+        };
+        返回值 rt;
+    };
+    如果(n.type == AST_IF){
+        设 ta = all_returns_kind(n.then_block);
+        设 tb = all_returns_kind(n.else_block);
+        如果(ta == 3 || tb == 3){ 返回值 3; };
+        如果(ta == 1 || tb == 1){ 返回值 1; };
+        返回值 0;
+    };
+    如果(n.type == AST_LOOP){
+        返回值 all_returns_kind(n.loop_body);
+    };
+    如果(n.type == AST_EXPRSTMT){
+        返回值 all_returns_kind(n.operand);
+    };
+    返回值 0;
+};
+
+声明 sem_type_pass_funcs(kind){
+    设 ci = 0;
+    循环(ci < g_sem_classes.长度()){
+        创建 SemClass:cc;
+        cc = g_sem_classes.获取(ci);
+        设 mj = 0;
+        循环(mj < cc.methods.长度()){
+            创建 SemMethod:mm;
+            mm = cc.methods.获取(mj);
+            如果(mm.sem_func != 空 && mm.func != 空){
+                创建 SemFunc:ff;
+                ff = mm.sem_func;
+                如果(kind == 1){ check_var_kind_stmt(mm.func.then_block, ff); };
+                如果(kind == 2){ mark_node_kind(mm.func.then_block, ff); };
+                如果(kind == 4){ infer_param_types_stmt(mm.func.then_block, ff); };
+                如果(kind == 3){
+                    ff.ret_type_kind = 0;
+                    如果(count_returns(mm.func.then_block) > 0){
+                        设 ak = all_returns_kind(mm.func.then_block);
+                        如果(ak == 1){ ff.ret_type_kind = 1; };
+                        如果(ak == 3){ ff.ret_type_kind = 3; };
+                    };
+                };
+            };
+            mj = mj + 1;
+        };
+        ci = ci + 1;
+    };
+    设 fi = 0;
+    循环(fi < g_sem_funcs.长度()){
+        创建 SemMethod:fm;
+        fm = g_sem_funcs.获取(fi);
+        如果(fm.sem_func != 空 && fm.func != 空){
+            创建 SemFunc:ff2;
+            ff2 = fm.sem_func;
+            如果(kind == 1){ check_var_kind_stmt(fm.func.then_block, ff2); };
+            如果(kind == 2){ mark_node_kind(fm.func.then_block, ff2); };
+            如果(kind == 4){ infer_param_types_stmt(fm.func.then_block, ff2); };
+            如果(kind == 3){
+                ff2.ret_type_kind = 0;
+                如果(count_returns(fm.func.then_block) > 0){
+                    设 ak2 = all_returns_kind(fm.func.then_block);
+                    如果(ak2 == 1){ ff2.ret_type_kind = 1; };
+                    如果(ak2 == 3){ ff2.ret_type_kind = 3; };
+                };
+            };
+        };
+        fi = fi + 1;
+    };
+    设 hi = 0;
+    循环(hi < g_sem_hooks.长度()){
+        创建 SemMethod:hm;
+        hm = g_sem_hooks.获取(hi);
+        如果(hm.sem_func != 空 && hm.func != 空){
+            创建 SemFunc:ff3;
+            ff3 = hm.sem_func;
+            如果(kind == 1){ check_var_kind_stmt(hm.func.then_block, ff3); };
+            如果(kind == 2){ mark_node_kind(hm.func.then_block, ff3); };
+            如果(kind == 4){ infer_param_types_stmt(hm.func.then_block, ff3); };
+            如果(kind == 3){
+                ff3.ret_type_kind = 0;
+                如果(count_returns(hm.func.then_block) > 0){
+                    设 ak3 = all_returns_kind(hm.func.then_block);
+                    如果(ak3 == 1){ ff3.ret_type_kind = 1; };
+                    如果(ak3 == 3){ ff3.ret_type_kind = 3; };
+                };
+            };
+        };
+        hi = hi + 1;
+    };
+    返回值 0;
+};
+
+声明 sem_type_pass(){
+
+    设 ci = 0;
+    循环(ci < g_sem_classes.长度()){
+        创建 SemClass:cc;
+        cc = g_sem_classes.获取(ci);
+        设 mj = 0;
+        循环(mj < cc.methods.长度()){
+            创建 SemMethod:mm;
+            mm = cc.methods.获取(mj);
+            如果(mm.sem_func != 空){
+                创建 SemFunc:ff;
+                ff = mm.sem_func;
+                设 li = 0;
+                循环(li < ff.locals.长度()){
+                    创建 SemLocal:ll;
+                    ll = ff.locals.获取(li);
+
+                    如果(li >= ff.nparams){
+                        ll.type_kind = 1;
+                    };
+                    li = li + 1;
+                };
+            };
+            mj = mj + 1;
+        };
+        ci = ci + 1;
+    };
+    设 fi = 0;
+    循环(fi < g_sem_funcs.长度()){
+        创建 SemMethod:fm;
+        fm = g_sem_funcs.获取(fi);
+        如果(fm.sem_func != 空){
+            创建 SemFunc:ff;
+            ff = fm.sem_func;
+            设 li = 0;
+            循环(li < ff.locals.长度()){
+                创建 SemLocal:ll;
+                ll = ff.locals.获取(li);
+                如果(li >= ff.nparams){
+                    ll.type_kind = 1;
+                };
+                li = li + 1;
+            };
+        };
+        fi = fi + 1;
+    };
+    设 hi = 0;
+    循环(hi < g_sem_hooks.长度()){
+        创建 SemMethod:hm;
+        hm = g_sem_hooks.获取(hi);
+        如果(hm.sem_func != 空){
+            创建 SemFunc:ff;
+            ff = hm.sem_func;
+            设 li = 0;
+            循环(li < ff.locals.长度()){
+                创建 SemLocal:ll;
+                ll = ff.locals.获取(li);
+                如果(li >= ff.nparams){
+                    ll.type_kind = 1;
+                };
+                li = li + 1;
+            };
+        };
+        hi = hi + 1;
+    };
+
+    设 round = 0;
+    循环(round < 5){
+        sem_type_pass_funcs(1);
+        round = round + 1;
+    };
+
+    设 iter = 0;
+    循环(iter < 4){
+        sem_type_pass_funcs(2);
+        sem_type_pass_funcs(4);
+        sem_type_pass_funcs(3);
+        iter = iter + 1;
+    };
+
+    sem_type_pass_funcs(2);
+    返回值 0;
+};
+
+声明 sem_analyze_func_sm(raw_func, owner_cls, sm){
+    创建 ASTNode:func;
+    func = raw_func;
+    创建 SemFunc:sf;
+    sf.owner_cls = owner_cls;
+
+    如果(sm != 空 && sm.pkg_name != 空){ sf.pkg_name = sm.pkg_name; };
+
+    如果(sm.kind == 3){ sf.is_task_func = 2; };
+
+    设 nparams = 0;
+    如果(func.type == AST_HOOK){
+        nparams = func.hk_param_types.长度();
+        设 i = 0;
+        循环(i < nparams){
+            设 pname = "参数" + (i + 1);
+            创建 SemLocal:pl;
+            pl = sem_add_local(sf, pname);
+
+            设 tn = func.hk_param_types.获取(i);
+            如果(tn == "字符串"){ pl.type_kind = T_STR; };
+            i = i + 1;
+        };
+    }否则{
+        nparams = func.fn_params.长度();
+        设 i = 0;
+        循环(i < nparams){
+            设 pname = func.fn_params.获取(i);
+            sem_add_local(sf, pname);
+            i = i + 1;
+        };
+    };
+    sf.nparams = nparams;
+
+    如果(sm != 空){
+        创建 SemMethod:m;
+        m = sm;
+        m.sem_func = sf;
+
+        sf.param_names = "";
+        设 pi = 0;
+        循环(pi < nparams){
+            如果(pi > 0){ sf.param_names = sf.param_names + "|"; };
+            如果(func.type == AST_HOOK){ sf.param_names = sf.param_names + "参数" + (pi + 1); }否则{ sf.param_names = sf.param_names + func.fn_params.获取(pi); };
+            pi = pi + 1;
+        };
+    };
+    collect_locals(func.then_block, sf, owner_cls);
+
+    设 i2 = 0;
+    循环(i2 < sf.locals.长度()){
+        创建 SemLocal:l;
+        l = sf.locals.获取(i2);
+        l.offset = -(i2 + 1) * 8;
+        i2 = i2 + 1;
+    };
+
+    设 locals_bytes = sf.locals.长度() * 8;
+    设 frame = locals_bytes + 256;
+    frame = (frame + 15) / 16 * 16;
+    sf.frame_size = frame;
+
+    resolve_node(func.then_block, sf, owner_cls);
+    返回值 0;
+};
+
+声明 is_entry_name(name){
+    如果(name.长度() >= 2){
+        如果(name.子字符串(0, 2) == "测试"){ 返回值 1; };
+    };
+    如果(name.长度() >= 2){
+        如果(name.子字符串(0, 2) == "运行"){ 返回值 1; };
+    };
+    返回值 0;
+};
+
+声明 collect_entries(){
+    设 i = 0;
+    循环(i < g_sem_classes.长度()){
+        创建 SemClass:c;
+        c = g_sem_classes.获取(i);
+        如果(c.is_interface != 0){ i = i + 1; 继续; };
+        设 j = 0;
+        循环(j < c.methods.长度()){
+            创建 SemMethod:m;
+            m = c.methods.获取(j);
+            如果(is_entry_name(m.name) != 0){
+                创建 SemEntry:e(c, m);
+                g_sem_entries.添加(e);
+            };
+            j = j + 1;
+        };
+        i = i + 1;
+    };
+    返回值 0;
+};
+
+声明 check_interfaces(){
+
+    设 ia = 0;
+    循环(ia < g_sem_classes.长度()){
+        创建 SemClass:c;
+        c = g_sem_classes.获取(ia);
+        如果(c.is_interface == 0 || c.parent == 空){ ia = ia + 1; 继续; };
+
+        创建 SemClass:pi;
+        pi = sem_find_class(c.parent);
+        如果(pi == 空){
+            报错("接口继承的父接口 '" + c.parent + "' 不存在(接口 " + c.name + ")");
+            ia = ia + 1; 继续;
+        };
+        如果(pi.is_interface == 0){
+            报错("接口 " + c.name + " 只能继承接口,'" + c.parent + "' 不是接口");
+            ia = ia + 1; 继续;
+        };
+
+        设 jp = 0;
+        循环(jp < pi.methods.长度()){
+            创建 SemMethod:pm;
+            pm = pi.methods.获取(jp);
+            设 found = 0;
+            设 k = 0;
+            循环(k < c.methods.长度()){
+                创建 SemMethod:cm;
+                cm = c.methods.获取(k);
+                如果(cm.name == pm.name){ found = 1; 跳出; };
+                k = k + 1;
+            };
+            如果(found == 0){
+                c.methods.添加(pm);
+            };
+            jp = jp + 1;
+        };
+        ia = ia + 1;
+    };
+
+    设 ib = 0;
+    循环(ib < g_sem_classes.长度()){
+        创建 SemClass:c;
+        c = g_sem_classes.获取(ib);
+        如果(c.is_interface != 0 || c.implements == 空){ ib = ib + 1; 继续; };
+        如果(c.implements.长度() == 0){ ib = ib + 1; 继续; };
+        设 jj = 0;
+        循环(jj < c.implements.长度()){
+            设 iname = c.implements.获取(jj);
+            创建 SemClass:ic;
+            ic = sem_find_class(iname);
+            如果(ic == 空){
+                报错("类 " + c.name + " 实现的接口 '" + iname + "' 不存在");
+                jj = jj + 1; 继续;
+            };
+            如果(ic.is_interface == 0){
+                报错("'" + iname + "' 不是接口,类 " + c.name + " 不能实现它");
+                jj = jj + 1; 继续;
+            };
+            设 kk = 0;
+            循环(kk < ic.methods.长度()){
+                创建 SemMethod:im;
+                im = ic.methods.获取(kk);
+                创建 SemMethod:fm;
+                fm = sem_find_method(c, im.name);
+                如果(fm == 空){
+                    报错("类 " + c.name + " 未实现接口 " + iname + " 的方法「" + im.name + "」");
+                };
+                kk = kk + 1;
+            };
+            jj = jj + 1;
+        };
+        ib = ib + 1;
+    };
+    返回值 0;
+};
+
+设 g_sem_dbg_count 存在;
+声明 sem_analyze(raw_decls){
+    g_sem_dbg_count = 0;
+
+    创建 ArrayList:g_sem_classes;
+    创建 ArrayList:g_sem_funcs;
+    创建 ArrayList:g_sem_hooks;
+    创建 ArrayList:g_sem_lambdas;
+    创建 ArrayList:g_sem_globals;
+    创建 ArrayList:g_sem_global_decls;
+    创建 ArrayList:g_sem_global_types;
+    创建 ArrayList:g_sem_global_consts;
+    创建 ArrayList:g_sem_entries;
+    创建 ArrayList:g_sem_top_exprs;
+    g_next_id = 1;
+    设 g_sem_func_count = 0;
+    创建 ArrayList:decls;
+    decls = raw_decls;
+
+    设 i = 0;
+    循环(i < decls.长度()){
+        collect_decl(decls.获取(i));
+        i = i + 1;
+    };
+    内存报告("sem-p1");
+
+    resolve_inheritance();
+    内存报告("sem-p2");
+
+    check_interfaces();
+    内存报告("sem-p21");
+
+    设 i2 = 0;
+    循环(i2 < g_sem_global_decls.长度()){
+        创建 ASTNode:decl;
+        decl = g_sem_global_decls.获取(i2);
+        创建 ArrayList:names;
+        names = decl.var_names;
+        创建 ArrayList:inits;
+        inits = decl.var_inits;
+        设 j = 0;
+        循环(j < names.长度()){
+            设 vn = names.获取(j);
+            设 init = inits.获取(j);
+            如果(init != 空){
+                resolve_node(init, 空, 空);
+                如果(init.type == AST_NEW && init.new_cls_name != 空){
+                    设 rc = sem_resolve_class_name(init.new_cls_name);
+                    如果(rc != 空){
+                        sem_set_global_type(vn, rc);
+                    };
+                };
+            };
+            j = j + 1;
+        };
+        i2 = i2 + 1;
+    };
+    内存报告("sem-p25");
+
+    设 i_pre = 0;
+    循环(i_pre < g_sem_classes.长度()){
+        创建 SemClass:c_pre;
+        c_pre = g_sem_classes.获取(i_pre);
+        设 j_pre = 0;
+        循环(j_pre < c_pre.methods.长度()){
+            创建 SemMethod:m_pre;
+            m_pre = c_pre.methods.获取(j_pre);
+            创建 ASTNode:fn_pre;
+            fn_pre = m_pre.func;
+            prescan_global_types(fn_pre.then_block);
+            j_pre = j_pre + 1;
+        };
+        i_pre = i_pre + 1;
+    };
+    设 i_pre2 = 0;
+    循环(i_pre2 < g_sem_funcs.长度()){
+        创建 SemMethod:m_pre2;
+        m_pre2 = g_sem_funcs.获取(i_pre2);
+        创建 ASTNode:fn_pre2;
+        fn_pre2 = m_pre2.func;
+        prescan_global_types(fn_pre2.then_block);
+        i_pre2 = i_pre2 + 1;
+    };
+    设 i_pre3 = 0;
+    循环(i_pre3 < g_sem_hooks.长度()){
+        创建 SemMethod:m_pre3;
+        m_pre3 = g_sem_hooks.获取(i_pre3);
+        创建 ASTNode:fn_pre3;
+        fn_pre3 = m_pre3.func;
+        prescan_global_types(fn_pre3.then_block);
+        i_pre3 = i_pre3 + 1;
+    };
+    内存报告("sem-p27");
+
+    设 i3 = 0;
+    循环(i3 < g_sem_classes.长度()){
+        创建 SemClass:c;
+        c = g_sem_classes.获取(i3);
+        设 j = 0;
+        循环(j < c.methods.长度()){
+            创建 SemMethod:m;
+            m = c.methods.获取(j);
+            如果(g_sem_dbg_count < 3){
+
+                g_sem_dbg_count = g_sem_dbg_count + 1;
+            };
+            sem_analyze_func_sm(m.func, c, m);
+            j = j + 1;
+        };
+        i3 = i3 + 1;
+    };
+
+    设 i4 = 0;
+    循环(i4 < g_sem_funcs.长度()){
+        创建 SemMethod:m;
+        m = g_sem_funcs.获取(i4);
+        sem_analyze_func_sm(m.func, 空, m);
+        i4 = i4 + 1;
+    };
+
+    设 i5 = 0;
+    循环(i5 < g_sem_hooks.长度()){
+        创建 SemMethod:m;
+        m = g_sem_hooks.获取(i5);
+        sem_analyze_func_sm(m.func, 空, m);
+        i5 = i5 + 1;
+    };
+
+    sem_type_pass();
+
+    创建 SemFunc:topf;
+    topf.is_top_func = 1;
+    设 i36 = 0;
+    循环(i36 < g_sem_top_exprs.长度()){
+        collect_locals(g_sem_top_exprs.获取(i36), topf, 空);
+        i36 = i36 + 1;
+    };
+
+    设 i37 = 0;
+    循环(i37 < topf.locals.长度()){
+        创建 SemLocal:tl;
+        tl = topf.locals.获取(i37);
+        tl.offset = -(i37 + 1) * 8;
+        i37 = i37 + 1;
+    };
+
+    设 i38 = 0;
+    循环(i38 < g_sem_top_exprs.长度()){
+        resolve_node(g_sem_top_exprs.获取(i38), topf, 空);
+        i38 = i38 + 1;
+    };
+    g_sem_top_func = topf;
+    g_sem_top_locals_n = topf.locals.长度();
+
+    collect_entries();
+    返回值 0;
+};
+
+声明 sem_kind_name(k){
+    如果(k == SN_LOCAL){ 返回值 "LOCAL"; };
+    如果(k == SN_FIELD){ 返回值 "FIELD"; };
+    如果(k == SN_GLOBAL){ 返回值 "GLOBAL"; };
+    如果(k == SN_CLASS){ 返回值 "CLASS"; };
+    如果(k == SN_SPECIAL){ 返回值 "SPECIAL"; };
+    如果(k == SN_BUILTIN_VAR){ 返回值 "BUILTIN_VAR"; };
+    如果(k == SN_FUNC){ 返回值 "FUNC"; };
+    如果(k == SN_METHOD){ 返回值 "METHOD"; };
+    如果(k == SN_BUILTIN){ 返回值 "BUILTIN"; };
+    如果(k == SN_LAMBDA){ 返回值 "LAMBDA"; };
+    如果(k == SN_PKGFUNC){ 返回值 "PKGFUNC"; };
+    如果(k == SN_STRMETHOD){ 返回值 "STRMETHOD"; };
+    如果(k == SN_MODCALL){ 返回值 "MODCALL"; };
+    如果(k == SN_DISPATCH){ 返回值 "DISPATCH"; };
+    如果(k == SN_MEM_FIELD){ 返回值 "MEM_FIELD"; };
+    如果(k == SN_MEM_STRLEN){ 返回值 "MEM_STRLEN"; };
+    如果(k == SN_MEM_ARGC){ 返回值 "MEM_ARGC"; };
+    如果(k == SN_MEM_LISTLEN){ 返回值 "MEM_LISTLEN"; };
+    返回值 "SN_" + k;
+};
+
+声明 sem_dump(raw_node, indent){
+    如果(raw_node == 空){ 返回值 0; };
+    创建 ASTNode:node;
+    node = raw_node;
+    设 pad = "";
+    设 n = indent;
+    循环(n > 0){
+        pad = pad + "  ";
+        n = n - 1;
+    };
+    如果(node.sem != 空){
+        创建 SemNode:s;
+        s = node.sem;
+
+        如果(s.kind >= SN_LOCAL && s.kind <= SN_MEM_BUILTIN){
+        设 info = pad + "sem: " + sem_kind_name(s.kind);
+        如果(s.kind == SN_LOCAL || s.kind == SN_FIELD || s.kind == SN_GLOBAL){
+            info = info + " offset=" + s.offset;
+        };
+        如果(s.kind == SN_METHOD || s.kind == SN_FUNC || s.kind == SN_PKGFUNC){
+            info = info + " target=" + s.target_id;
+        };
+        如果(s.kind == SN_BUILTIN){
+            info = info + " bid=" + s.builtin_id;
+        };
+        打印(info);
+        };
+    };
+
+    如果(node.type == AST_BLOCK){
+        如果(node.children != 空){
+            设 i = 0;
+            循环(i < node.children.长度()){
+                sem_dump(node.children.获取(i), indent + 1);
+                i = i + 1;
+            };
+        };
+    }又如果(node.type == AST_BINARY || node.type == AST_ASSIGN){
+        sem_dump(node.lhs, indent + 1);
+        sem_dump(node.rhs, indent + 1);
+    }又如果(node.type == AST_VAR || node.type == AST_LITERAL){
+
+    }又如果(node.type == AST_CALL || node.type == AST_METHODCALL){
+        sem_dump(node.callee, indent + 1);
+        如果(node.args != 空){
+            设 i = 0;
+            循环(i < node.args.长度()){
+                sem_dump(node.args.获取(i), indent + 1);
+                i = i + 1;
+            };
+        };
+    }又如果(node.type == AST_MEMBER){
+        sem_dump(node.obj, indent + 1);
+    }又如果(node.type == AST_NEW){
+        如果(node.new_args != 空){
+            设 i = 0;
+            循环(i < node.new_args.长度()){
+                sem_dump(node.new_args.获取(i), indent + 1);
+                i = i + 1;
+            };
+        };
+    }又如果(node.type == AST_IF){
+        sem_dump(node.cond, indent + 1);
+        sem_dump(node.then_block, indent + 1);
+        sem_dump(node.else_block, indent + 1);
+    }又如果(node.type == AST_LOOP){
+        sem_dump(node.loop_body, indent + 1);
+    }又如果(node.type == AST_SELECT){
+        sem_dump(node.obj, indent + 1);
+    }又如果(node.type == AST_RETURN){
+        sem_dump(node.ret_value, indent + 1);
+    }又如果(node.type == AST_EXPRSTMT){
+        sem_dump(node.operand, indent + 1);
+    }又如果(node.type == AST_VARDECL){
+        如果(node.var_inits != 空){
+            设 i = 0;
+            循环(i < node.var_inits.长度()){
+                sem_dump(node.var_inits.获取(i), indent + 1);
+                i = i + 1;
+            };
+        };
+    }又如果(node.type == AST_CLASS){
+        如果(node.cls_members != 空){
+            设 i = 0;
+            循环(i < node.cls_members.长度()){
+                sem_dump(node.cls_members.获取(i), indent + 1);
+                i = i + 1;
+            };
+        };
+    }又如果(node.type == AST_FUNC){
+        sem_dump(node.then_block, indent + 1);
+    };
+    返回值 0;
+};

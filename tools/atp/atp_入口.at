@@ -1,0 +1,247 @@
+引用.文件(../../self-hosted/atl_ds.at);
+引用.模块导入("atp.at");
+
+设 g_thunk_code = 0;
+设 g_thunk_params = 0;
+
+声明 w8(off, v){
+    内存.写字节(g_thunk_code, off, v);
+    返回值 0;
+};
+声明 write_u32(buf, off, v){
+    内存.写字节(buf, off, v & 255);
+    内存.写字节(buf, off + 1, (v / 256) & 255);
+    内存.写字节(buf, off + 2, (v / 65536) & 255);
+    内存.写字节(buf, off + 3, (v / 16777216) & 255);
+    返回值 0;
+};
+声明 write_u64(buf, off, val){
+    设 lo = val & 4294967295;
+    设 hi = (val / 4294967296) & 4294967295;
+    write_u32(buf, off, lo);
+    write_u32(buf, off + 4, hi);
+    返回值 0;
+};
+
+声明 init_win32_thunk(){
+    g_thunk_params = 内存.分配(64);
+    g_thunk_code = 内存.分配可执行内存(80);
+
+    w8(0, 0x48); w8(1, 0x81); w8(2, 0xEC); w8(3, 0x48); w8(4, 0); w8(5, 0); w8(6, 0);
+
+    w8(7, 0x48); w8(8, 0xB8);
+
+    w8(17, 0x48); w8(18, 0x8B); w8(19, 0x08);
+
+    w8(20, 0x48); w8(21, 0x8B); w8(22, 0x50); w8(23, 0x08);
+
+    w8(24, 0x4C); w8(25, 0x8B); w8(26, 0x40); w8(27, 0x10);
+
+    w8(28, 0x4C); w8(29, 0x8B); w8(30, 0x48); w8(31, 0x18);
+
+    w8(32, 0x4C); w8(33, 0x8B); w8(34, 0x50); w8(35, 0x20);
+
+    w8(36, 0x4C); w8(37, 0x89); w8(38, 0x54); w8(39, 0x24); w8(40, 0x20);
+
+    w8(41, 0x4C); w8(42, 0x8B); w8(43, 0x50); w8(44, 0x28);
+
+    w8(45, 0x4C); w8(46, 0x89); w8(47, 0x54); w8(48, 0x24); w8(49, 0x28);
+
+    w8(50, 0x4C); w8(51, 0x8B); w8(52, 0x50); w8(53, 0x30);
+
+    w8(54, 0x4C); w8(55, 0x89); w8(56, 0x54); w8(57, 0x24); w8(58, 0x30);
+
+    w8(59, 0x4C); w8(60, 0x8B); w8(61, 0x50); w8(62, 0x38);
+
+    w8(63, 0x41); w8(64, 0xFF); w8(65, 0xD2);
+
+    w8(66, 0x48); w8(67, 0x81); w8(68, 0xC4); w8(69, 0x48); w8(70, 0); w8(71, 0); w8(72, 0);
+
+    w8(73, 0xC3);
+
+    write_u64(g_thunk_code, 9, g_thunk_params);
+    内存.设为可执行(g_thunk_code, 80);
+    返回值 0;
+};
+
+声明 获取命令行(){
+    如果(g_thunk_code == 0){ init_win32_thunk(); };
+    设 fn = 系统.获取函数("kernel32.dll", "GetCommandLineW");
+    write_u64(g_thunk_params, 0, 0);
+    write_u64(g_thunk_params, 8, 0);
+    write_u64(g_thunk_params, 16, 0);
+    write_u64(g_thunk_params, 24, 0);
+    write_u64(g_thunk_params, 32, 0);
+    write_u64(g_thunk_params, 40, 0);
+    write_u64(g_thunk_params, 48, 0);
+    write_u64(g_thunk_params, 56, fn);
+    返回值 内存.执行(g_thunk_code);
+};
+
+声明 读码点(addr, idx){
+    设 lo = 内存.读字节(addr, idx * 2);
+    设 hi = 内存.读字节(addr, idx * 2 + 1);
+    返回值 lo + hi * 256;
+};
+
+声明 解析参数(cmdline_addr){
+    创建 ArrayList:args;
+    设 i = 0;
+    设 maxlen = 4096;
+
+    设 first_char = 读码点(cmdline_addr, 0);
+    如果(first_char == 0x22){
+        i = 1;
+        循环(i < maxlen){
+            设 c = 读码点(cmdline_addr, i);
+            如果(c == 0x22 || c == 0){ 跳出; };
+            i = i + 1;
+        };
+        i = i + 1;
+    }否则{
+        循环(i < maxlen){
+            设 c = 读码点(cmdline_addr, i);
+            如果(c == 0x20 || c == 0){ 跳出; };
+            i = i + 1;
+        };
+    };
+
+    循环(i < maxlen){
+        设 c = 读码点(cmdline_addr, i);
+        如果(c == 0){ 跳出; };
+        如果(c != 0x20){ 跳出; };
+        i = i + 1;
+    };
+
+    循环(i < maxlen){
+        设 c = 读码点(cmdline_addr, i);
+        如果(c == 0){ 跳出; };
+        如果(c == 0x20){ i = i + 1; 继续; };
+        设 arg = "";
+        设 in_quote = 0;
+        循环(i < maxlen){
+            设 ch = 读码点(cmdline_addr, i);
+            如果(ch == 0){ 跳出; };
+            如果(ch == 0x22){ in_quote = 1 - in_quote; i = i + 1; 继续; };
+            如果(ch == 0x20 && in_quote == 0){ 跳出; };
+            arg = arg + 字符(ch);
+            i = i + 1;
+        };
+        args.添加(arg);
+    };
+    返回值 args;
+};
+
+类 atp入口测试 {
+公开:
+    声明 运行(){
+        创建 ArrayList:args;
+        args = 解析参数(获取命令行());
+        设 n = args.长度();
+        如果(n < 2){
+            打印("用法: atp create 包名");
+            打印("      atp install 包名 [仓库目录|httpURL]");
+            打印("      atp install（无参）/ update [仓库] — 按 包.lock 重装");
+            打印("      atp list [仓库目录]");
+            打印("      atp search 关键字 [仓库目录]");
+            打印("      atp uninstall 包名");
+            打印("      atp pull <url|url.zip> 包名");
+            打印("      atp publish 包名 [源目录]");
+            返回值 1;
+        };
+
+        设 cmd = args.获取(0);
+
+        如果(cmd == "create"){
+            如果(n < 2){
+                打印("用法: atp create 包名");
+                返回值 1;
+            };
+            设 rc1 = 引用.atp创建(args.获取(1));
+            返回值 rc1;
+        }又如果(cmd == "install"){
+            如果(n < 2){
+
+                设 rc0 = 引用.atp重装("仓库");
+                返回值 rc0;
+            };
+            设 仓库 = "仓库";
+            如果(n >= 3){ 仓库 = args.获取(2); };
+            设 依赖清单 = 空;
+
+            如果(仓库.以开始("http://") || 仓库.以开始("https://")){
+                依赖清单 = 引用.atp远程安装(args.获取(1), 仓库, "包/", "");
+            }否则{
+                依赖清单 = 引用.atp安装(args.获取(1), 仓库, "包/", "");
+            };
+            如果(依赖清单 == 空){
+                打印("安装失败: " + args.获取(1));
+                返回值 1;
+            };
+            设 rc1 = 引用.atp写锁(依赖清单);
+            返回值 rc1;
+        }又如果(cmd == "list"){
+            设 仓库 = "仓库";
+            如果(n >= 2){ 仓库 = args.获取(1); };
+            设 rc3 = 引用.atp列表(仓库);
+            返回值 rc3;
+        }又如果(cmd == "search"){
+            如果(n < 2){
+                打印("用法: atp search 关键字 [仓库目录]");
+                返回值 1;
+            };
+            设 仓库 = "仓库";
+            如果(n >= 3){ 仓库 = args.获取(2); };
+            设 rc5 = 引用.atp搜索(args.获取(1), 仓库);
+            返回值 rc5;
+        }又如果(cmd == "uninstall"){
+            如果(n < 2){
+                打印("用法: atp uninstall 包名");
+                返回值 1;
+            };
+            设 rc6 = 引用.atp卸载(args.获取(1));
+            返回值 rc6;
+        }又如果(cmd == "update"){
+
+            如果(n >= 2){
+                设 仓库 = "仓库";
+                如果(n >= 3){ 仓库 = args.获取(2); };
+                设 升级清单 = 引用.atp升级(args.获取(1), 仓库);
+                如果(升级清单 == 空){
+                    打印("升级失败: " + args.获取(1));
+                    返回值 1;
+                };
+                如果(升级清单.长度() > 0){
+                    设 rc8 = 引用.atp写锁(升级清单);
+                    返回值 rc8;
+                };
+                返回值 0;
+            };
+            设 仓库 = "仓库";
+            如果(n >= 2){ 仓库 = args.获取(1); };
+            设 rc7 = 引用.atp重装(仓库);
+            返回值 rc7;
+        }又如果(cmd == "pull"){
+            如果(n < 3){
+                打印("用法: atp pull <url> 包名");
+                返回值 1;
+            };
+            设 rc4 = 引用.atp拉取(args.获取(1), args.获取(2));
+            返回值 rc4;
+        }又如果(cmd == "publish"){
+
+            如果(n < 2){
+                打印("用法: atp publish 包名 [源目录]");
+                返回值 1;
+            };
+            设 源目录 = "包/" + args.获取(1);
+            如果(n >= 3){ 源目录 = args.获取(2); };
+            创建文件夹("发布/");
+            设 rc9 = 引用.atp打包(args.获取(1), 源目录, "发布/" + args.获取(1) + ".zip");
+            返回值 rc9;
+        }否则{
+            打印("未知命令: " + cmd);
+            返回值 1;
+        };
+    };
+};
