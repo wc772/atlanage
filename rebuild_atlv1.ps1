@@ -37,8 +37,8 @@ if ($LASTEXITCODE -ne 0) { Write-Host "atlv1 -link 失败" -ForegroundColor Red;
 Write-Host "  AT-V1_self.exe 生成完成（全自研链第二代）" -ForegroundColor Green
 
 Write-Host "===== 步骤4: 输出一致性比较（自举收敛） =====" -ForegroundColor Yellow
-& .\AT-V1.exe _regression/t1_format.at | Out-File -FilePath "_b7_a.asm" -Encoding ascii
-& .\AT-V1_self.exe _regression/t1_format.at | Out-File -FilePath "_b7_b.asm" -Encoding ascii
+& .\AT-V1.exe examples/hello.at | Out-File -FilePath "_b7_a.asm" -Encoding ascii
+& .\AT-V1_self.exe examples/hello.at | Out-File -FilePath "_b7_b.asm" -Encoding ascii
 $fa = Get-Content -LiteralPath "_b7_a.asm" -Raw
 $fb = Get-Content -LiteralPath "_b7_b.asm" -Raw
 if ($fa -eq $fb) {
